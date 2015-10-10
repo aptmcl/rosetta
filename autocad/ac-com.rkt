@@ -2766,3 +2766,21 @@
                   (cx target) (cy target) (cz target)
                   (distance camera target)
                   lens))
+
+
+(provide open-dbx-doc)
+(define (open-dbx-doc [filename : String])
+  (let ((dbx-doc
+         (get-interface-object
+          (string-append "ObjectDBX.AxDbDocument."
+                         (substring (acadver) 0 2)))))
+    (open dbx-doc filename)
+    dbx-doc))
+
+(provide insert-objects-from)
+(define (insert-objects-from [filename : String] [predicate : (Option (-> Com-Object Any)) #f])
+  (let ((doc (open-dbx-doc filename)))
+    (let ((objs (all-objects (modelspace doc))))
+      (let ((filtered-objs (if predicate (filter predicate objs) objs)))
+        (unless (null? filtered-objs)
+          (copy-objects doc filtered-objs (active-modelspace)))))))
