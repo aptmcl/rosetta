@@ -174,7 +174,7 @@
      [OutPlane  Real-Matrix  matrix<-nested-plane]
      [Locs      Points       locs->vector-vector-double-flonum]
      [Points    Locs         vector-vector-double-flonum->locs]
-     [Locs      ArrDouble    locs->vector-double-flonum]
+     [Locs      ArrDouble    locs->vector-3-double-flonums]
      [Refs      Ids          list->vector]
      [Ids       Refs         vector->list]
      [IdsOrVoid Refs         ids-or-void->refs]
