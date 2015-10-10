@@ -77,8 +77,10 @@
   (let ((clsid (progid->clsid "AutoCAD.Application")))
     (with-handlers ((exn?
                      (λ (e)
-                       (displayln "Starting AutoCAD...")
-                       (com-create-instance clsid))))
+                       (display "Starting AutoCAD...")
+                       (begin0
+                           (com-create-instance clsid)
+                         (displayln "done!")))))
       (com-get-active-object clsid))))
 
 (define-cached (active-document) : Com-Object

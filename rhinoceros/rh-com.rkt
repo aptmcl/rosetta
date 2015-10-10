@@ -47,15 +47,17 @@
            (with-handlers
                ((exn?
                  (λ (e)
-                   (displayln "Starting Rhinoceros...")
-                   (com-create-instance clsid))))
+                   (display "Starting Rhinoceros...")
+                   (begin0
+                       (com-create-instance clsid)
+                     (displayln "done!")))))
              (cast (com-get-active-object clsid) Com-Object))))
       (com-set-property! coclass "Visible" #t)
       (let retry ([count 3])
         (let ((result (com-invoke coclass "GetScriptObject")))
           (if (void? result)
               (cond ((> count 0)
-                     (displayln "Waiting for Rhinoceros...")
+                     ;(displayln "Waiting for Rhinoceros...")
                      (sleep 1)
                      (retry (- count 1)))
                     (else
