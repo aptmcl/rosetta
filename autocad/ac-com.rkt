@@ -25,7 +25,8 @@
                                (Vector Double Double Double Double)))
 (define-type VarDouble3 (Variant Double3))
 (define-type VarDouble4x4 (Variant Double4x4))
-(define-type VarDoubleN (Variant (Vectorof Double)))
+(define-type VarDouble3N (Variant (Vectorof Double)))
+(define-type VarDouble2N (Variant (Vectorof Double)))
 (define-type VarIntegerN (Variant (Vectorof Integer)))
 
 (define-syntax-rule (mf m i j) (real->double-flonum (matrix-ref m i j)))
@@ -111,7 +112,8 @@
   (define com-obj (make-immutable-free-id-table 
                    (list (cons #'Application #'(application))
                          (cons #'Document #'(active-document))
-                         (cons #'ModelSpace #'(active-modelspace)))))
+                         (cons #'ModelSpace #'(active-modelspace))
+                         (cons #'Utility #'(utility)))))
   (define com-type (make-immutable-free-id-table
                     (map (lambda (id) (cons id id #;#'Com-Object))
                          (list #'3DFace
@@ -151,7 +153,8 @@
 
 (with-upgrade-types ([Double Real]
                      [VarDouble3 Loc]
-                     [VarDoubleN Locs]
+                     [VarDouble3N Locs]
+                     [VarDouble2N Locs]
                      [VarDouble4x4 Loc]
                      [VarIdN Refs]
                      [VarIntegerN Shorts]))
@@ -159,17 +162,19 @@
 ;;In most cases, upgrading from one type to another requires a conversion function for the type values
 
 (with-conversions
-    ([Real       Double       real->double-flonum]
-     [Shorts     VarIntegerN  Integers->VarShortN]
-     [Double     Real         identity]
-     [Loc        VarDouble3   loc->vector-double-flonum]
-     [Loc        VarDouble4x4 loc->transformation-matrix]
-     [VarDouble3 Loc          vector-double-flonum->loc]
-     [VarDoubleN Locs         vector-double-flonum->locs]
-     [Locs       VarDoubleN   locs->vector-double-flonum]
-     [Refs       VarIdN       list->vector]
-     [VarIdN     Refs         vector->list]
-     [IdsOrVoid  Refs         ids-or-void->refs]))
+    ([Real        Double       real->double-flonum]
+     [Shorts      VarIntegerN  Integers->VarShortN]
+     [Double      Real         identity]
+     [Loc         VarDouble3   loc->vector-double-flonum]
+     [Loc         VarDouble4x4 loc->transformation-matrix]
+     [VarDouble3  Loc          vector-double-flonum->loc]
+     [VarDouble3N Locs         vector-3-double-flonums->locs]
+     [VarDouble2N Locs         vector-2-double-flonums->locs]
+     [Locs        VarDouble3N  locs->vector-3-double-flonums]
+     [Locs        VarDouble2N  locs->vector-2-double-flonums]
+     [Refs        VarIdN       list->vector]
+     [VarIdN      Refs         vector->list]
+     [IdsOrVoid   Refs         ids-or-void->refs]))
 
 #|
 ; object properties
@@ -199,9 +204,6 @@
 (def-com-property type (Integer Integer))
 
 (def-com-property visible (boolean boolean))
-(def-com-property coordinates coords<-flat-vector)
-(def-com-property (2d-coordinates "Coordinates") coords<-vector-xy) ;;for 2d-polyline?
-(def-com-property (point-coordinates "Coordinates") coord<-vector) ;;for point?
 
 (define (convert-3dpolyline obj)
   (let ((type (object-name obj)))
@@ -451,9 +453,10 @@
 (def-rw-property (ContourlinesPerSurface DatabasePreferences) Integer)
 (def-rw-property (Contrast DwfUnderlay) Integer)
 (def-rw-property (ControlPoints Spline) Double)
-(Coordinate property idh_coordinate.htm)
 |#
-(def-rw-property (coordinates All) VarDoubleN)
+(def-rw-property (coordinates All) VarDouble3N)
+(def-rw-property ((2d-coordinates Coordinates) All) VarDouble2N)
+(def-rw-property ((point-coordinates Coordinates) All) VarDouble3N)
 (def-ro-property (count All) Integer)
 #|(def-rw-property (CreateBackup PreferencesOpenSave) Boolean)
 (CurrentSectionType property idh_currentsectiontype.htm)
@@ -519,7 +522,9 @@
 (def-rw-property (DrawMLeaderOrderType MLeaderStyle) AcDrawLeaderOrderType)
 (def-rw-property (DriversPath PreferencesFiles) String)
 (def-ro-property (EffectiveName BlockRef) String)
-(def-rw-property (Elevation Hatch) Double)
+|#
+(def-rw-property (elevation All) Double)
+#|
 (def-rw-property (ElevationModelSpace Document) Double)
 (def-rw-property (ElevationPaperSpace Document) Double)
 (def-rw-property (Enable PopupMenuItem) Boolean)
@@ -1157,7 +1162,7 @@
 ;;COM METHODS
 (define-syntax (def-com stx)
   (syntax-case stx ()
-    [(def ((name meth-name) com) (param-spec ...) rtype)
+    [(def (name com) (param-spec ...) rtype)
      (let ((known-com (translate com-obj #'com #f)))
        (with-syntax ([(param-spec ...)
                       (map (lambda (param-spec)
@@ -1175,17 +1180,13 @@
                (syntax/loc stx
                  (def-com-method name known-com (param-spec ...) rtype)))
              (syntax/loc stx
-               (def-com-method name #f (param-spec ...) rtype)))))]
-    [(def (name com) (param-spec ...) rtype)
-     (quasisyntax/loc stx
-       (def ((name name) com) (param-spec ...) rtype))]))
-
+               (def-com-method name #f (param-spec ...) rtype)))))]))
 
 (def-com (activate Document) () Void)
 (def-com (add All) ((Name String)) Id)
 (def-com ((add-3d-face Add3DFace) ModelSpace) ((Point1 VarDouble3) (Point2 VarDouble3) (Point3 VarDouble3) (Point4 VarDouble3)) 3DFace)
-(def-com ((add-3d-mesh Add3dMesh) ModelSpace) ((M Integer) (N Integer) (PointsMatrix VarDoubleN)) PolygonMesh)
-(def-com ((add-3d-poly Add3DPoly) ModelSpace) ((PointsArray VarDoubleN)) 3DPolyline)
+(def-com ((add-3d-mesh Add3dMesh) ModelSpace) ((M Integer) (N Integer) (PointsMatrix VarDouble3N)) PolygonMesh)
+(def-com ((add-3d-poly Add3DPoly) ModelSpace) ((PointsArray VarDouble3N)) 3DPolyline)
 (def-com (add-arc ModelSpace) ((Center VarDouble3) (Radius Double) (StartAngle Double) (EndAngle Double)) Arc)
 ;(def-com (AddAttribute ModelSpace) ((Height Double) (Mode AcAttributeMode) (Prompt String) (InsertionPoint VarDouble3) (Tag String) (Value String)) Attribute)
 (def-com (add-box ModelSpace) ((Origin VarDouble3) (Length Double) (Width Double) (Height Double)) 3DSolid)
@@ -1216,22 +1217,22 @@
 (def-com (AddFitPoint Spline) ((Index Integer) (FitPoint VarDouble3)) Void)
 (def-com (AddHatch ModelSpace) ((PatternType AcPatternType) (PatternName String) (Associativity Boolean) (HatchObjectType OPT-HatchObjectType)) Hatch)
 (def-com (AddItems SelectionSet) ((Items VarIdN)) Void)
-(def-com (AddLeader ModelSpace) ((PointsArray VarDoubleN) (Annotation Object) (Type AcLeaderType)) Leader)
+(def-com (AddLeader ModelSpace) ((PointsArray VarDouble3N) (Annotation Object) (Type AcLeaderType)) Leader)
 |#
-(def-com ((add-lightweight-polyline AddLightWeightPolyline) ModelSpace) ((VerticesList VarDoubleN)) LightweightPolyline)
+(def-com ((add-lightweight-polyline AddLightWeightPolyline) ModelSpace) ((VerticesList VarDouble3N)) LightweightPolyline)
 (def-com (add-line ModelSpace) ((StartPoint VarDouble3) (EndPoint VarDouble3)) Line)
 #|
 ;(AddMenuItem method idh_addmenuitem.htm)
 (def-com (AddMInsertBlock ModelSpace) ((InsertionPoint VarDouble3) (Name String) (XScale Double) (YScale Double) (ZScale Double) (Rotation Double) (NumRows Long) (NumColumns Long) (RowSpacing Long) (ColumnSpacing Long) (Password Variant)) MInsertBlock)
 (def-com (AddMLeader ModelSpace) ((pointsArray VarDouble3) (leaderLineIndex Long)) MLeader)
-(def-com (AddMLine ModelSpace) ((VertexList VarDoubleN)) MLine)
+(def-com (AddMLine ModelSpace) ((VertexList VarDouble3N)) MLine)
 (def-com (AddMtext ModelSpace) ((InsertionPoint VarDouble3) (Width Double) (Text String)) MText)
 (def-com (AddObject Dictionary) ((Keyword String) (ObjectName String)) Object)
 |#
 (def-com (add-point ModelSpace) ((Pt VarDouble3)) Point)
 ;;AML FIX THE ANY
-(def-com (add-polyface-mesh ModelSpace) ((VerticesList VarDoubleN) (FaceList Any #;VarIntegerN)) PolyfaceMesh)
-(def-com (add-polyline ModelSpace) ((VerticesList VarDoubleN)) Polyline)
+(def-com (add-polyface-mesh ModelSpace) ((VerticesList VarDouble3N) (FaceList Any #;VarIntegerN)) PolyfaceMesh)
+(def-com (add-polyline ModelSpace) ((VerticesList VarDouble3N)) Polyline)
 #|
 (def-com (AddPViewport PaperSpace) ((Center VarDouble3) (Width Double) (Height Double)) PViewport)
 (def-com (AddRaster ModelSpace) ((ImageFileName String) (InsertionPoint VarDouble3) (ScaleFactor Double) (RotationAngle Double)) Raster)
@@ -1246,7 +1247,7 @@
 (def-com (AddSolid ModelSpace) ((Point1 VarDouble3) (Point2 VarDouble3) (Point3 VarDouble3) (Point4 VarDouble3)) Solid)
 |#
 (def-com (add-sphere ModelSpace) ((Center VarDouble3) (Radius Double)) 3DSolid)
-(def-com (add-spline ModelSpace) ((PointsArray VarDoubleN) (StartTangent VarDouble3) (EndTangent VarDouble3)) Spline)
+(def-com (add-spline ModelSpace) ((PointsArray VarDouble3N) (StartTangent VarDouble3) (EndTangent VarDouble3)) Spline)
 #|
 ;(AddSubMenu method idh_addsubmenu.htm)
 (def-com (AddTable ModelSpace) ((InsertionPoint Integer) (NumRows Long) (NumColumns Long) (RowHeight Double) (ColWidth Double)) Table)
@@ -1258,7 +1259,7 @@
 |#
 (def-com (add-torus ModelSpace) ((Center VarDouble3) (TorusRadius Double) (TubeRadius Double)) 3DSolid)
 #|
-(def-com (AddTrace ModelSpace) ((PointsArray VarDoubleN)) Trace)
+(def-com (AddTrace ModelSpace) ((PointsArray VarDouble3N)) Trace)
 (def-com (AddVertex LightweightPolyline) ((Index Integer) (Point VarDouble3)) Void)
 |#
 (def-com (add-wedge ModelSpace) ((Center VarDouble3) (Length Double) (Width Double) (Height Double)) 3DSolid)
@@ -1366,7 +1367,7 @@
 (def-com (GetBlockTableRecordId2 Table) ((nRow Integer) (nCol Integer) (nContent Integer)) Long_PTR)
 (def-com (GetBlockTableRecordId32 Table) ((nRow Integer) (nCol Integer) (nContent Integer)) Long)
 |#
-(def-com (get-bounding-box shape) ([min-point Any] [max-point Any]) Void)
+(def-com (get-bounding-box Shape) ([min-point Any] [max-point Any]) Void)
 
 (provide bounding-box)
 (define (bounding-box [shape : Com-Object]) : (List Loc Loc)
@@ -1419,7 +1420,18 @@
 (GetDataType2 method idh_getdatatype2.htm)
 (GetDistance method idh_getdistance.htm)
 (def-com (GetDynamicBlockProperties BlockRef) () Void)
-(GetEntity method idh_getentity.htm)
+|#
+(def-com ((native-get-entity GetEntity) Utility) ((entity (Boxof Com-Object)) (point (Boxof VarDouble3)) #:opt (str String)) Void)
+
+(provide get-entity)
+(define (get-entity [str : String "Select shape"]) : Com-Object
+  (define point (box (vector 0.0 0.0 0.0)))
+  (define entity (box (utility)))
+  ;(com-invoke (utility) "GetEntity" entity point str)
+  (native-get-entity entity point str)
+  (cast (unbox entity) Com-Object))
+
+#|
 (def-com (GetExtensionDictionary All) () Dictionary)
 (def-com (GetFieldId Table) ((row Long) (col Long)) Long)
 (def-com (GetFieldId2 Table) ((nRow Integer) (nCol Integer) (nContent Integer)) Long_PTR)
@@ -1446,8 +1458,8 @@
 (def-com (GetHasDataLink Table) ((nRow Integer) (nCol Integer)) Boolean)
 (def-com (GetHasFormula Table) ((nRow Integer) (nCol Integer) (nContent Integer)) Boolean)
 (def-com (GetInput Utility) () String)
-(GetInteger method idh_getinteger.htm)
 |#
+(def-com (get-integer Utility) (#:opt (str String)) Integer)
 (def-com (get-interface-object Application) ((ProgID String)) Com-Object)
 #|(GetInvisibleEdge method idh_getinvisibleedge.htm)
 (def-com (GetIsCellStyleInUse TableStyle) ((pszCellStyle String)) Boolean)
@@ -1467,9 +1479,13 @@
 (def-com (GetPaperSize Layout) ((Width Double) (Height Double)) Void)
 (def-com (GetPlotDeviceNames Layout) () Variant)
 (def-com (GetPlotStyleTableNames Layout) () Variant)
-(GetPoint method idh_getpoint.htm)
+|#
+(def-com (get-point Utility) ((point VarDouble3) #:opt (str String)) VarDouble3)
+#|
 (def-com (GetProjectFilePath PreferencesFiles) ((ProjectName String)) String)
-(GetReal method idh_getreal.htm)
+|#
+(def-com (get-real Utility) (#:opt (str String)) Real)
+#|
 (GetRelativeDrawOrder method idh_getrelativedraworder.htm)
 (GetRemoteFile method idh_getremotefile.htm)
 (def-com (GetRotation Table) ((nRow Integer) (nCol Integer) (nContent Integer)) Double)
@@ -1614,10 +1630,10 @@
 (def-com (scale-entity All) ((BasePoint VarDouble3) (ScaleFactor Double)) Void)
 (def-com (section-solid 3DSolid) ((Point1 VarDouble3) (Point2 VarDouble3) (Point3 VarDouble3)) Region)
 #|
-(def-com (Select SelectionSet) ((Mode AcSelect) (Point1 VarDoubleN) (Point2 VarDouble3) (FilterType Integer) (FilterData Variant)) Void)
+(def-com (Select SelectionSet) ((Mode AcSelect) (Point1 VarDouble3N) (Point2 VarDouble3) (FilterType Integer) (FilterData Variant)) Void)
 (Select method idh_table_select.htm)
 (def-com (SelectAtPoint SelectionSet) ((Point VarDouble3) (FilterType Integer) (FilterData Variant)) Void)
-(def-com (SelectByPolygon SelectionSet) ((Mode AcSelect) (PointsList VarDoubleN) (FilterType Integer) (FilterData Variant)) Void)
+(def-com (SelectByPolygon SelectionSet) ((Mode AcSelect) (PointsList VarDouble3N) (FilterType Integer) (FilterData Variant)) Void)
 (def-com (SelectOnScreen SelectionSet) ((FilterType Integer) (FilterData Variant)) Void)
 (SelectSubRegion method idh_table_selectsubregion.htm)
 |#
@@ -2618,17 +2634,6 @@
 ; (princ)
 ;)
 ;;
-
-(def-utility get-point (#:opt point String) vector-double-flonum->xyz)
-(provide get-entity)
-(define (get-entity [str "Select shape"])
-  (define point (box (vector 0.0 0.0 0.0)))
-  (define entity (box utility))
-  (com-invoke utility "GetEntity" entity point str)
-  (displayln (object-name (unbox entity)))
-  (unbox entity))
-(def-utility get-integer (#:opt String) number)
-(def-utility get-real (#:opt String) number)
 
 |#
 

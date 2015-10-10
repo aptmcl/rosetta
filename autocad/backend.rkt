@@ -18,6 +18,10 @@
          curve-end-point
          enable-update
          disable-update
+         prompt-point
+         prompt-integer
+         prompt-real
+         prompt-shape
          )
 
 (define (current-backend-name) "AutoCAD")
@@ -166,15 +170,31 @@ pseudo-operations.
   (%erase-all)
   (void))
 
+
 (define (shape<-ref [r : Ref]) ;HACK Bug in typed/racket : Shape
+  (define (coordinates [r : Ref])
+    (let ((pts
+           (cond ((%line? r)
+                  (list (%start-point r) (%end-point r)))
+                 ((%lightweight-polyline? r) ;;This is not right, we need to convert coordinates
+                  (let ((h (%elevation r)))
+                    (map (lambda ([p : Loc]) (+z p h)) (%2d-coordinates r))))
+                 ((%3d-polyline? r)
+                  (%coordinates r))
+                 (else
+                  (error 'coordinates "Can't compute vertices of ~A" r)))))
+      (if (or (%closed r)
+              (< (distance (car pts) (last pts)) 1.0e-015)) ;AutoCAD tolerance
+          (drop-right pts 1)
+          pts)))
   (let ((geometry (%object-geometry r)))
     (case geometry
       ((line)
        (new-line (thunk r)
-                 (%coordinates r)))
+                 (coordinates r)))
       ((closed-line)
        (new-closed-line (thunk r)
-                        (%coordinates r)))
+                        (coordinates r)))
       (else
        (error "Unknown object geometry" geometry)))))
 
@@ -911,8 +931,6 @@ The following example does not work as intended. Rotating the args to closed-spl
         (xyz (car p) (cadr p) (caddr p)))))
 |#
 
-
-
 (define (disable-update)
   ;Is there a way of disabling updates in AutoCAD
   #f)
@@ -921,3 +939,15 @@ The following example does not work as intended. Rotating the args to closed-spl
    ;Is there a way of disabling updates in AutoCAD
   (%regen-active-viewport))
 
+(define (prompt-point [str : String "Select position"]) : Loc
+  (%get-point (u0) str))
+
+(define (prompt-integer [str : String "Integer?"]) : Integer
+  (%get-integer str))
+
+(define (prompt-real [str : String "Real?"]) : Real
+  (%get-real str))
+
+(define (prompt-shape [str : String "Select shape"]) : Shape
+  (shape<-ref
+   (%get-entity str)))
