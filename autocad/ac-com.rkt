@@ -78,6 +78,7 @@
     (with-handlers ((exn?
                      (λ (e)
                        (display "Starting AutoCAD...")
+                       (flush-output)
                        (begin0
                            (com-create-instance clsid)
                          (displayln "done!")))))

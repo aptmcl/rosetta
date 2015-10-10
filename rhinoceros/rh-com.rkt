@@ -48,6 +48,7 @@
                ((exn?
                  (λ (e)
                    (display "Starting Rhinoceros...")
+                   (flush-output)
                    (begin0
                        (com-create-instance clsid)
                      (displayln "done!")))))
