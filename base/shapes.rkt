@@ -465,6 +465,8 @@
 (def-base-shape (intersection [shapes : (Base-Shapes R)]))
 (def-base-shape (subtraction [shapes : (Base-Shapes R)]))
 
+(def-base-shape (triangle-face [p0 : Loc] [p1 : Loc] [p2 : Loc]))
+(def-base-shape (quadrangle-face [p0 : Loc] [p1 : Loc] [p2 : Loc] [p3 : Loc]))
 (def-base-shape (unknown))
 
 (define #:forall (R)

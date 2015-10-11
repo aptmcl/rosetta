@@ -879,6 +879,14 @@ In order to implement this, we need to create shapes that represent failed opera
                 (cdr (failed-subtraction-refs r))))))
       (mark-deleted! shape))))
 
+
+(def-shape (triangle-face [p0 : Loc] [p1 : Loc] [p2 : Loc])
+  (%add-srf-pt (list p0 p1 p2)))
+
+(def-shape (quadrangle-face [p0 : Loc] [p1 : Loc] [p2 : Loc] [p3 : Loc])
+  (%add-srf-pt (list p0 p1 p2 p3)))
+
+
 (provide bounding-box)
 (define (bounding-box [s : Shape]) : Locs
   (%bounding-box (shape-refs s)))

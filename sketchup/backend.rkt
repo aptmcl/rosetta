@@ -413,6 +413,13 @@
                (cx p) (cy p) (cz p)
                (cx n) (cy n) (cz n))))
 
+(def-shape (triangle-face [p0 : Loc] [p1 : Loc] [p2 : Loc])
+  (%addSurfacePolygon (map loc->list-real (list p0 p1 p2))))
+
+(def-shape (quadrangle-face [p0 : Loc] [p1 : Loc] [p2 : Loc] [p3 : Loc])
+  (%addSurfacePolygon (map loc->list-real (list p0 p1 p2 p3))))
+
+
 
 (provide bounding-box)
 (define (bounding-box [s : Shape]) : Locs

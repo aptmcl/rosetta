@@ -857,6 +857,12 @@ The following example does not work as intended. Rotating the args to closed-spl
         (%slice-command r p (vz)))
      (mark-deleted! shape))))
 
+(def-shape (triangle-face [p0 : Loc] [p1 : Loc] [p2 : Loc])
+  (%add-3d-face p0 p1 p2 p2))
+
+(def-shape (quadrangle-face [p0 : Loc] [p1 : Loc] [p2 : Loc] [p3 : Loc])
+  (%add-3d-face p0 p1 p2 p3))
+
 
 (provide bounding-box)
 (define (bounding-box [s : Shape]) : Locs
