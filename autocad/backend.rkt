@@ -179,10 +179,10 @@ pseudo-operations.
                  ((%lightweight-polyline? r) ;;This is not right, we need to convert coordinates
                   (let ((h (%elevation r)))
                     (map (lambda ([p : Loc]) (+z p h)) (%2d-coordinates r))))
-                 ((%3d-polyline? r)
+                 ((or (%2d-polyline? r) (%3d-polyline? r))
                   (%coordinates r))
                  (else
-                  (error 'coordinates "Can't compute vertices of ~A" r)))))
+                  (error 'coordinates "Can't compute vertices of ~A" (%object-name r))))))
       (if (or (%closed r)
               (< (distance (car pts) (last pts)) 1.0e-015)) ;AutoCAD tolerance
           (drop-right pts 1)
