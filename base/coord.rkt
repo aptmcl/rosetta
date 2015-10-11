@@ -36,6 +36,7 @@
          loc-in-world
          vec-in-world
          =c?
+         loc=?
          +x +y +z +xy +xz +yz +xyz
          +vx +vy +vz +vxy +vxz +vyz +vxyz
          pol +pol
@@ -49,6 +50,7 @@
          sph-rho sph-phi sph-psi
          p+v p-p v*r v/r
          v+v
+         +c -c *c /c
          intermediate-point ;;find better name?
          pi/6
          pi/5
@@ -71,6 +73,7 @@
          -4pi         
          coterminal
          distance
+         sqr-distance
          position-and-height
          inverted-position-and-height
          Xyz
@@ -160,6 +163,10 @@
     (and (= (cx p0) (cx p1))
          (= (cy p0) (cy p1))
          (= (cz p0) (cz p1)))))
+
+(define (loc=? [p0 : Loc] [p1 : Loc]) : Boolean
+  (or (eq? p0 p1)
+      (=c? p0 p1)))
 
 (define current-cs : (Parameterof Cs) (make-parameter world-cs))
 
@@ -372,14 +379,15 @@
 (define (vec-in-world [v : Vec]) : Vec
   (VXyz (Cs-transformation world-cs) (world-loc v)))
 
-(define (distance [p0 : Loc] [p1 : Loc]) : Real
+(define (sqr-distance [p0 : Loc] [p1 : Loc]) : Real
   (let ((c0 (world-loc p0))
         (c1 (world-loc p1)))
-    (cast
-     (sqrt (+ (sqr (- (col-idx c1 0) (col-idx c0 0)))
-              (sqr (- (col-idx c1 1) (col-idx c0 1)))
-              (sqr (- (col-idx c1 2) (col-idx c0 2)))))
-     Real)))
+    (+ (sqr (- (col-idx c1 0) (col-idx c0 0)))
+       (sqr (- (col-idx c1 1) (col-idx c0 1)))
+       (sqr (- (col-idx c1 2) (col-idx c0 2))))))
+
+(define (distance [p0 : Loc] [p1 : Loc]) : Real
+  (cast (sqrt (distance p0 p1)) Real))
 
 (define (p-p [p0 : Loc] [p1 : Loc]) : Vec
   (let-values (((c0 c1)
@@ -431,6 +439,46 @@
           (/ (col-idx c 1) r)          
           (/ (col-idx c 2) r)
           v)))
+
+;;The following ones are semantically incorrect but those who know what they are doing...
+
+(define (-c [p0 : Loc] [p1 : Loc]) : Loc
+  (let-values (((c0 c1)
+                (if (=cs? p0 p1)
+                    (values (Xyz-loc p0) (Xyz-loc p1))
+                    (values (world-loc p0) (world-loc p1)))))
+    (xyz (- (col-idx c0 0) (col-idx c1 0))
+         (- (col-idx c0 1) (col-idx c1 1))
+         (- (col-idx c0 2) (col-idx c1 2))
+         (if (=cs? p0 p1)
+             p0
+             world-cs))))
+
+(define (+c [p : Loc] [v : Loc]) : Loc
+  (let-values (((c0 c1)
+                (if (=cs? p v)
+                    (values (Xyz-loc p) (Xyz-loc v))
+                    (values (world-loc p) (world-loc v)))))
+    (xyz (+ (col-idx c0 0) (col-idx c1 0))
+         (+ (col-idx c0 1) (col-idx c1 1))
+         (+ (col-idx c0 2) (col-idx c1 2))
+         (if (=cs? p v)
+             p
+             world-cs))))
+
+(define (*c [v : Loc] [r : Real]) : Loc
+  (let ((c (Xyz-loc v)))
+    (xyz (* (col-idx c 0) r)
+         (* (col-idx c 1) r)          
+         (* (col-idx c 2) r)
+         v)))
+
+(define (/c [v : Loc] [r : Real]) : Loc
+  (let ((c (Xyz-loc v)))
+    (xyz (/ (col-idx c 0) r)
+         (/ (col-idx c 1) r)          
+         (/ (col-idx c 2) r)
+         v)))
 
 (define-syntax-rule
   (let-coords ([(x y z) p] ...) body ...)
