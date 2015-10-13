@@ -387,7 +387,7 @@
        (sqr (- (col-idx c1 2) (col-idx c0 2))))))
 
 (define (distance [p0 : Loc] [p1 : Loc]) : Real
-  (cast (sqrt (distance p0 p1)) Real))
+  (cast (sqrt (sqr-distance p0 p1)) Real))
 
 (define (p-p [p0 : Loc] [p1 : Loc]) : Vec
   (let-values (((c0 c1)
