@@ -171,7 +171,7 @@
         ((= amplitude 0)
          (%add-point (+pol center radius start-angle)))
         ((>= (abs amplitude) 2pi)
-         (%add-circle center radius))
+         (%add-circle-plane center radius))
         (else
          (%add-arc
           (if (= start-angle 0)

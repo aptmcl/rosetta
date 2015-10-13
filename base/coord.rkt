@@ -564,8 +564,8 @@
 
 (define (cs-from-o-phi [o : Loc] [phi : Real]) : Cs
   (let ((o (loc-in-world o))
-        (vx (vec-in-world (vcyl 1 phi 0)))
-        (vy (vec-in-world (vcyl 1 (+ phi pi/2) 0))))
+        (vx (vec-in-world (vcyl 1 phi 0 o)))
+        (vy (vec-in-world (vcyl 1 (+ phi pi/2) 0 o))))
     (let ((vz (v*v vx vy)))
       (cs-from-o-vx-vy-vz o vx vy vz))))
 
