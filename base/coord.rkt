@@ -11,6 +11,11 @@
          world-cs
          world-cs?
          current-cs
+         translated-cs
+         scaled-cs
+         x-rotated-cs
+         y-rotated-cs
+         z-rotated-cs
          xyz
          xy
          yz
@@ -34,9 +39,11 @@
          v.v
          loc-in
          loc-in-world
+         loc-in-cs
          vec-in-world
          =c?
          loc=?
+         loc?
          +x +y +z +xy +xz +yz +xyz
          +vx +vy +vz +vxy +vxz +vyz +vxyz
          pol +pol
@@ -235,6 +242,8 @@
   #:property
   prop:custom-write fprint-Xyz)
 
+(define loc? Xyz?)
+
 ;;Let's speedup a little by using syntax instead of a function
 (define-syntax-rule
   (col-idx m i)
@@ -370,10 +379,13 @@
   (Xyz (Cs-transformation world-cs) (world-loc p)))
 
 ;;Convert points to other cs
-(define (loc-in [p : Loc] [q : Loc]) : Loc
-  (Xyz (Cs-transformation q)
-       (matrix* (matrix-inverse (Cs-transformation q))
+(define (loc-in-cs [p : Loc] [cs : Cs]) : Loc
+  (Xyz (Cs-transformation cs)
+       (matrix* (matrix-inverse (Cs-transformation cs))
                 (world-loc p))))
+
+(define (loc-in [p : Loc] [q : Loc]) : Loc
+  (loc-in-cs p q))
 
 ;;Convert vectors to world
 (define (vec-in-world [v : Vec]) : Vec
