@@ -270,6 +270,11 @@
   (let ((pts (regular-polygon-vertices edges center radius angle inscribed?)))
     (%add-polyline (append pts (list (car pts))))))
 
+(def-shape (surface-regular-polygon [edges : Integer 3] [center : Loc (u0)] [radius : Real 1] [angle : Real 0] [inscribed? : Boolean #f])
+  (let ((pts (regular-polygon-vertices edges center radius angle inscribed?)))
+    (error "TO BE DONE")))
+
+
 (def-shape (regular-pyramid-frustum [edges : Integer 4] [cb : Loc (u0)] [rb : Real 1] [a : Real 0] [h/ct : (U Real Loc) 1] [rt : Real 1] [inscribed? : Boolean #f])
   (let-values ([(cb ct)
                 (if (number? h/ct)

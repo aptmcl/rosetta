@@ -379,14 +379,8 @@
 (def-base-shape (closed-spline [pts : (Listof Loc)]))
 (def-base-shape (polygon [pts : (Listof Loc) (list (u0) (ux) (uy))]))
 (def-base-shape (surface-polygon [pts : (Listof Loc) (list (u0) (ux) (uy))]))
-(def-base-shape (regular-polygon [edges : Integer 3]
-                                 [center : Loc (u0)]
-                                 [radius : Real 1]
-                                 [angle : Real 0]
-                                 [inscribed? : Boolean #f]))
-#|
-(def-base-shape (surface-regular-polygon edges [c (u0)] [r 1] [a 0] [inscribed? #f]))
-|#
+(def-base-shape (regular-polygon [edges : Integer 3] [center : Loc (u0)] [radius : Real 1] [angle : Real 0] [inscribed? : Boolean #f]))
+(def-base-shape (surface-regular-polygon [edges : Integer 3] [center : Loc (u0)] [radius : Real 1] [angle : Real 0] [inscribed? : Boolean #f]))
 (def-base-shape (rectangle [c : Loc (u0)] [dx/c1 : (U Real Loc) 1] [dy : Real 1]))
 (def-base-shape (surface-rectangle [c : Loc (u0)] [dx/c1 : (U Real Loc) 1] [dy : Real 1]))
 (def-base-shape (text [str : String ""] [c : Loc (u0)] [h : Real 1]))

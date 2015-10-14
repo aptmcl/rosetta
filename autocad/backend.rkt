@@ -195,6 +195,9 @@ pseudo-operations.
       ((closed-line)
        (new-closed-line (thunk r)
                         (coordinates r)))
+      ((point)
+       (new-point (thunk r)
+                  (%point-coordinates r)))
       (else
        (error "Unknown object geometry" geometry)))))
 
@@ -374,6 +377,10 @@ The following example does not work as intended. Rotating the args to closed-spl
 (def-shape (regular-polygon [edges : Integer 3] [center : Loc (u0)] [radius : Real 1] [angle : Real 0] [inscribed? : Boolean #f])
   (let ((pts (regular-polygon-vertices edges center radius angle inscribed?)))
     (%add-3d-poly (append pts (list (car pts))))))
+
+(def-shape (surface-regular-polygon [edges : Integer 3] [center : Loc (u0)] [radius : Real 1] [angle : Real 0] [inscribed? : Boolean #f])
+  (let ((pts (regular-polygon-vertices edges center radius angle inscribed?)))
+    (error "TO BE DONE")))
 
 (define (loft [profiles : Shapes]
               [ruled? : Boolean #f] [solid? : Boolean #f] [closed? : Boolean #f]) : Shape

@@ -456,7 +456,7 @@
 |#
 (def-rw-property (coordinates All) VarDouble3N)
 (def-rw-property ((2d-coordinates Coordinates) All) VarDouble2N)
-(def-rw-property ((point-coordinates Coordinates) All) VarDouble3N)
+(def-rw-property ((point-coordinates Coordinates) All) VarDouble3)
 (def-ro-property (count All) Integer)
 #|(def-rw-property (CreateBackup PreferencesOpenSave) Boolean)
 (CurrentSectionType property idh_currentsectiontype.htm)
@@ -2166,7 +2166,7 @@
 (define-object-predicate ellipse? "AcDbEllipse" ellipse)
 (define-object-predicate lightweight-polyline? "AcDbPolyline" open-or-closed-line)
 (define-object-predicate line? "AcDbLine" line)
-(define-object-predicate point? "AcDbPoint" Point)
+(define-object-predicate point? "AcDbPoint" point)
 (define-object-predicate region? "AcDbRegion" surface)
 (define-object-predicate spline? "AcDbSpline" open-or-closed-spline)
 (define-object-predicate surface? "AcDbSurface" surface)
