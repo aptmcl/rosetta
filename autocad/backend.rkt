@@ -227,7 +227,7 @@ pseudo-operations.
 
 (def-shape (circle [center : Loc (u0)] [radius : Real 1])
   (%transform
-   (%add-circle (u0) radius)
+   (%add-circle (u0 world-cs) radius)
    center))
 
 (def-shape (arc [center : Loc (u0)] [radius : Real 1] [start-angle : Real 0] [amplitude : Real pi])
@@ -237,26 +237,26 @@ pseudo-operations.
          (%add-point (+pol center radius start-angle)))
         ((>= (abs amplitude) 2pi)
          (%transform
-          (%add-circle (u0) radius)
+          (%add-circle (u0 world-cs) radius)
           center))
         (else
          (let ((end-angle (+ start-angle amplitude)))
            (%transform
             (if (> end-angle start-angle)
-                (%add-arc (u0) radius start-angle end-angle)
-                (%add-arc (u0) radius end-angle start-angle))
+                (%add-arc (u0 world-cs) radius start-angle end-angle)
+                (%add-arc (u0 world-cs) radius end-angle start-angle))
             center)))))
 
 (def-shape (ellipse [center : Loc (u0)] [radius-x : Real 1] [radius-y : Real 1])
   (%transform
    (if (> radius-x radius-y)
-       (%add-ellipse (u0) (xyz radius-x 0 0) (/ radius-y radius-x))
-       (%add-ellipse (u0) (xyz 0 radius-y 0) (/ radius-x radius-y)))
+       (%add-ellipse (u0 world-cs) (xyz radius-x 0 0) (/ radius-y radius-x))
+       (%add-ellipse (u0 world-cs) (xyz 0 radius-y 0) (/ radius-x radius-y)))
    center))
 
 (define (%add-surface-circle [center : Loc] [radius : Real])
   (%transform
-   (let ((circ (%add-circle (u0) radius)))
+   (let ((circ (%add-circle (u0 world-cs) radius)))
      (begin0
        (singleton-ref (%add-region (list circ)))
        (%delete circ)))
@@ -278,8 +278,8 @@ pseudo-operations.
                   (list
                    (%transform
                     (if (> end-angle start-angle)
-                        (%add-arc (u0) radius start-angle end-angle)
-                        (%add-arc (u0) radius end-angle start-angle))
+                        (%add-arc (u0 world-cs) radius start-angle end-angle)
+                        (%add-arc (u0 world-cs) radius end-angle start-angle))
                     center)
                    (%add-line center (+pol center radius start-angle))
                    (%add-line center (+pol center radius end-angle)))))
@@ -490,14 +490,14 @@ The following example does not work as intended. Rotating the args to closed-spl
 (def-shape (right-cuboid [cb : Loc (u0)] [width : Real 1] [height : Real 1] [h/ct : LocOrZ 1])
   (let-values ([(cb dz) (position-and-height cb h/ct)])
     (%transform
-     (%add-box (+z (u0) (/ dz 2.0)) width height dz)
+     (%add-box (+z (u0 world-cs) (/ dz 2.0)) width height dz)
      cb)))
 
 (def-shape (cylinder [cb : Loc (u0)] [r : Real 1] [h/ct : LocOrZ 1])
    (let-values ([(c h) (position-and-height cb h/ct)])
      (or (axial-morph c r h %add-point %add-circle %add-line)
          (%transform
-          (%add-cylinder (+z (u0) (/ h 2.0)) r h)
+          (%add-cylinder (+z (u0 world-cs) (/ h 2.0)) r h)
           c))))
 
 (def-shape (box [c : Loc (u0)] [dx/c1 : LocOrZ 1] [dy : Real (if (number? dx/c1) dx/c1 1)] [dz : Real dy])
@@ -519,13 +519,13 @@ The following example does not work as intended. Rotating the args to closed-spl
                      %add-circle 
                      %add-line2)
         (%transform
-         (%add-cone (+z (u0) (/ h 2)) r h)
+         (%add-cone (+z (u0 world-cs) (/ h 2)) r h)
          c))))
 
 (def-shape (cone-frustum [cb : Loc (u0)] [rb : Real 1] [h/ct : LocOrZ 1] [rt : Real 1])
   (let-values ([(c h) (position-and-height cb h/ct)])
     (%transform
-     (%add-cone-frustum (u0) rb rt h)
+     (%add-cone-frustum (u0 world-cs) rb rt h)
      c)))
 
 (def-shape (cuboid [b0 : Loc (u0)]
@@ -592,7 +592,7 @@ The following example does not work as intended. Rotating the args to closed-spl
 
 (def-shape (text [str : String ""] [p : Loc (u0)] [h : Real 1])
   (%transform
-   (%add-text str (u0) h)
+   (%add-text str (u0 world-cs) h)
    p))
 
 (define (text-length [str : String ""] [h : Real 1]) : Real
@@ -601,12 +601,12 @@ The following example does not work as intended. Rotating the args to closed-spl
 
 (def-shape (text-centered [str : String ""] [p : Loc (u0)] [h : Real 1])
   (%transform
-   (%add-text str (u0) h)
+   (%add-text str (u0 world-cs) h)
    (+xy p (/ (text-length str h) -2) (/ h -2))))
 
 (def-shape (torus [center : Loc (u0)] [re : Real 1] [ri : Real 1/2])
   (%transform
-   (%add-torus (u0) re ri)
+   (%add-torus (u0 world-cs) re ri)
    center))
 
 (def-shape (surface [profile : (Curve-Shape RefOp)])
@@ -651,7 +651,7 @@ The following example does not work as intended. Rotating the args to closed-spl
     (single-ref-or-union
      (if (number? dir)
          (%extrude-command-length (shape-refs profile) dir (surface-region? profile))
-         (%extrude-command-direction (shape-refs profile) (u0) dir (surface-region? profile))))
+         (%extrude-command-direction (shape-refs profile) (u0 world-cs) dir (surface-region? profile))))
      (delete-shape profile)))
 
 (def-shape (mirror [shape : Shape] [p : Loc (u0)] [n : Vec (vz)] [copy? : Boolean #t])
@@ -764,16 +764,18 @@ The following example does not work as intended. Rotating the args to closed-spl
                   (subtract-refs r rs))))))))
 
 (define (subtract-refs [r : RefOp] [rs : RefOps]) : RefOp
-  (let*-values ([(failed-unions rs) (partition failed-union? rs)]
-                [(failed-intersections rs) (partition failed-intersection? rs)]
-                [(failed-subtractions rs) (partition failed-subtraction? rs)]
-                [(united)
-                 (union-refs
-                  (cast (append rs (apply append (map failed-union-refs failed-unions)))
-                        Refs))])
-    (assert failed-intersections null?)
-    (assert failed-subtractions null?)
-    (subtract-1-* r united)))
+  (if (null? rs)
+      r
+      (let*-values ([(failed-unions rs) (partition failed-union? rs)]
+                    [(failed-intersections rs) (partition failed-intersection? rs)]
+                    [(failed-subtractions rs) (partition failed-subtraction? rs)]
+                    [(united)
+                     (union-refs
+                      (cast (append rs (apply append (map failed-union-refs failed-unions)))
+                            Refs))])
+        (assert failed-intersections null?)
+        (assert failed-subtractions null?)
+        (subtract-1-* r united))))
 
 ;;The following function ensures that the subtraction is actually done
 (define (subtract-1-1 [r0 : RefOp] [r1 : RefOp]) : RefOp
@@ -953,7 +955,7 @@ The following example does not work as intended. Rotating the args to closed-spl
   (%regen-active-viewport))
 
 (define (prompt-point [str : String "Select position"]) : Loc
-  (%get-point (u0) str))
+  (%get-point (u0 world-cs) str))
 
 (define (prompt-integer [str : String "Integer?"]) : Integer
   (%get-integer str))

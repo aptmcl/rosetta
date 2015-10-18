@@ -45,7 +45,7 @@
         expr
         (%transform
          (lambda () : Void
-           (let ((c (u0)))
+           (let ((c (u0 world-cs)))
              expr
              (void)))
          c))))
@@ -106,8 +106,8 @@
    (or (ellipse-morph c xr yr)
        (%transform-from
         (if (> xr yr)
-            (%ellipse (u0) (xyz xr 0 0) (/ yr xr))
-            (%ellipse (u0) (xyz 0 yr 0) (/ xr yr)))
+            (%ellipse (u0 world-cs) (xyz xr 0 0) (/ yr xr))
+            (%ellipse (u0 world-cs) (xyz 0 yr 0) (/ xr yr)))
         c))))
 |#
 
@@ -222,7 +222,7 @@ The following example does not work as intended. Rotating the args to closed-spl
     ;;the wrong direction,
     (%extrude-command-direction 
      (shape-refs profile)
-     (u0)
+     (u0 world-cs)
      (if (number? dir) (z dir) dir)
      (surface-region? profile))
     (delete-shape profile)))
@@ -231,11 +231,11 @@ The following example does not work as intended. Rotating the args to closed-spl
 (define (move [sh : shape] [v : Loc])
   (unless #f;(empty-shape? s)
     (with-ref (r sh)
-      (%move r (u0) v)))
+      (%move r (u0 world-cs) v)))
   sh)
 
 (def-shape (mirror [sh : shape] [p : Loc (u0)] [n : Loc (uz)])
-  (let ((p (u0 (cs-from-o-n p (-c n (u0)))))) ;;Convert to vector. HACK: Is this a good idea?
+  (let ((p (u0 (cs-from-o-n p (-c n (u0 world-cs)))))) ;;Convert to vector. HACK: Is this a good idea?
     (let ((sm (map-ref (r sh) (%mirror3d r p (+x p 1) (+y p 1)))))
       (append sm (shape-refs sh)))))
 
@@ -1505,7 +1505,7 @@ Utilities: think about moving them to a different file
 
 (define (prompt-point [str "Select position"])
   (autocad
-   (ac:get-point (u0) str))
+   (ac:get-point (u0 world-cs) str))
   (rhino
    (rh:get-point str)))
 
@@ -1775,16 +1775,16 @@ Utilities: think about moving them to a different file
      (or (arc-morph c r beg-a a ac:add-point ac:add-circle)
          (ac:transform-from
           (if (> end-a beg-a)
-              (ac:add-arc (u0) r beg-a end-a)
-              (ac:add-arc (u0) r end-a beg-a))
+              (ac:add-arc (u0 world-cs) r beg-a end-a)
+              (ac:add-arc (u0 world-cs) r end-a beg-a))
           c))))
   (opengl
    (let ((end-a (+ beg-a a)))
      (or (arc-morph c r beg-a a gl:add-point gl:add-circle)
          (gl:transform-from
           (if (> end-a beg-a)
-              (gl:add-arc (u0) r beg-a end-a)
-              (gl:add-arc (u0) r end-a beg-a))
+              (gl:add-arc (u0 world-cs) r beg-a end-a)
+              (gl:add-arc (u0 world-cs) r end-a beg-a))
           c))))
   (tikz
    (let ((end-a (+ beg-a a)))
@@ -1828,8 +1828,8 @@ Utilities: think about moving them to a different file
        (let ((curves
               (list (ac:transform-from
                      (if (> end-a beg-a)
-                         (ac:add-arc (u0) r beg-a end-a)
-                         (ac:add-arc (u0) r end-a beg-a))
+                         (ac:add-arc (u0 world-cs) r beg-a end-a)
+                         (ac:add-arc (u0 world-cs) r end-a beg-a))
                      c)
                     (ac:add-line c (+pol c r beg-a))
                     (ac:add-line c (+pol c r end-a)))))
@@ -1840,8 +1840,8 @@ Utilities: think about moving them to a different file
    (or (arc-morph c r beg-a (- beg-a end-a) gl:add-point gl:add-surface-circle)
        (gl:transform-from
         (if (> end-a beg-a)
-            (gl:add-surface-arc (u0) r beg-a end-a)
-            (gl:add-surface-arc (u0) r end-a beg-a))
+            (gl:add-surface-arc (u0 world-cs) r beg-a end-a)
+            (gl:add-surface-arc (u0 world-cs) r end-a beg-a))
         c))))
 
 (define (ellipse-morph c xr yr)
@@ -1862,8 +1862,8 @@ Utilities: think about moving them to a different file
    (or (ellipse-morph c xr yr)
        (ac:transform-from
         (if (> xr yr)
-            (ac:add-ellipse (u0) (xyz xr 0 0) (/ yr xr))
-            (ac:add-ellipse (u0) (xyz 0 yr 0) (/ xr yr)))
+            (ac:add-ellipse (u0 world-cs) (xyz xr 0 0) (/ yr xr))
+            (ac:add-ellipse (u0 world-cs) (xyz 0 yr 0) (/ xr yr)))
         c))))
 
 (def-new-shape* (line cs)
@@ -2105,9 +2105,9 @@ The following example does not work as intended. Rotating the args to closed-spl
   (rhino
    (rh:add-torus2 c re ri))
   (autocad
-   (ac:transform-from (ac:add-torus (u0) re ri) c))
+   (ac:transform-from (ac:add-torus (u0 world-cs) re ri) c))
   (opengl
-   (gl:transform-from (gl:add-torus (u0) re ri) c)))
+   (gl:transform-from (gl:add-torus (u0 world-cs) re ri) c)))
 
 
 (def-new-shape (regular-pyramid-frustum [edges 4] [cb (u0)] [rb 1] [a 0] [h/ct 1] [rt 1] [inscribed? #f])
@@ -2118,8 +2118,8 @@ The following example does not work as intended. Rotating the args to closed-spl
                       (lambda (c r) (surface-regular-polygon edges c r a inscribed?))
                       line)
          (gl:transform (if (= rt 0)
-                           (gl:add-pyramid (u0) rb h a edges)
-                           (gl:add-pyramid-frustum (u0) rb rt h a edges))
+                           (gl:add-pyramid (u0 world-cs) rb h a edges)
+                           (gl:add-pyramid-frustum (u0 world-cs) rb rt h a edges))
                        (tr-matrix (position-cs (as-origin c)))))))   
   (else
    (let-values ([(c h) (position-and-height cb h/ct)])
@@ -2139,7 +2139,7 @@ The following example does not work as intended. Rotating the args to closed-spl
   (opengl
    (let-values ([(c h) (position-and-height cb h/ct)])
      (or (axial-morph c rb h gl:add-point gl:add-circle gl:add-line2) ;;HACK circle? WRONG!
-         (gl:transform (gl:add-pyramid (u0) rb h a edges)
+         (gl:transform (gl:add-pyramid (u0 world-cs) rb h a edges)
                        (tr-matrix (position-cs (as-origin c))))))))
 
 (def-new-shape (irregular-pyramid pts ct [solid? #t])
@@ -2201,12 +2201,12 @@ a 20~30x speedup
   (autocad
    (let-values ([(c h) (position-and-height cb h/ct)])
      (or ; finish this (axial-morph c r h ac:add-point ac:add-circle ac:add-line)
-         (ac:transform (ac:add-box (+z (u0) (/ h 2.0)) width height h)
+         (ac:transform (ac:add-box (+z (u0 world-cs) (/ h 2.0)) width height h)
                        (tr-matrix (position-cs (as-origin c)))))))
   (opengl
    (let-values ([(c h) (position-and-height cb h/ct)])
      (or ; finish this (axial-morph c r h ac:add-point ac:add-circle ac:add-line)
-         (gl:transform (gl:add-box (+z (u0) (/ h 2.0)) width height h)
+         (gl:transform (gl:add-box (+z (u0 world-cs) (/ h 2.0)) width height h)
                        (tr-matrix (position-cs (as-origin c))))))))
 
 ; box
@@ -2220,9 +2220,9 @@ a 20~30x speedup
          (line c (+y c dy)))
         ((= dy dz 0)
          (line c (+x c dx)))
-         ; ((= dx 0) (rectangle (line (u0) (y dy)) (line (u0) (z dz))) ; edit: not possible (yet?)
-         ; ((= dy 0) (rectangle (line (u0) (x dx)) (line (u0) (z dz))) ; edit: not possible (yet?)
-         ; ((= dz 0) (rectangle (line (u0) (x dx)) (line (u0) (y dy))) ; edit: not possible (yet?)
+         ; ((= dx 0) (rectangle (line (u0 world-cs) (y dy)) (line (u0 world-cs) (z dz))) ; edit: not possible (yet?)
+         ; ((= dy 0) (rectangle (line (u0 world-cs) (x dx)) (line (u0 world-cs) (z dz))) ; edit: not possible (yet?)
+         ; ((= dz 0) (rectangle (line (u0 world-cs) (x dx)) (line (u0 world-cs) (y dy))) ; edit: not possible (yet?)
         (else
          #f)))
 
@@ -2296,12 +2296,12 @@ a 20~30x speedup
   (autocad
    (let-values ([(c h) (position-and-height cb h/ct)])
      (or (axial-morph c r h ac:add-point ac:add-circle ac:add-line)
-         (ac:transform (ac:add-cone (+z (u0) (/ h 2.0)) r h)
+         (ac:transform (ac:add-cone (+z (u0 world-cs) (/ h 2.0)) r h)
                        (tr-matrix (position-cs (as-origin c)))))))
   (opengl
    (let-values ([(c h) (position-and-height cb h/ct)])
      (or (axial-morph c r h gl:add-point gl:add-circle gl:add-line2)
-         (gl:transform (gl:add-cone (u0) r h)
+         (gl:transform (gl:add-cone (u0 world-cs) r h)
                        (tr-matrix (position-cs (as-origin c))))))))
 
 ; cone-frustum
@@ -2318,12 +2318,12 @@ a 20~30x speedup
   (autocad
    (let-values ([(c h) (position-and-height cb h/ct)])
      (or (axial-morph c (max rb rt) h ac:add-point ac:add-circle ac:add-line)
-         (ac:transform (ac:add-cone-frustum (u0) rb rt h)
+         (ac:transform (ac:add-cone-frustum (u0 world-cs) rb rt h)
                        (tr-matrix (position-cs (as-origin c)))))))
   (opengl
    (let-values ([(c h) (position-and-height cb h/ct)])
      (or (axial-morph c (max rb rt) h gl:add-point gl:add-circle gl:add-line2)
-         (gl:transform (gl:add-cone-frustum (u0) rb rt h)
+         (gl:transform (gl:add-cone-frustum (u0 world-cs) rb rt h)
                        (tr-matrix (position-cs (as-origin c))))))))
 
 ; cylinder
@@ -2336,12 +2336,12 @@ a 20~30x speedup
   (autocad
    (let-values ([(c h) (position-and-height cb h/ct)])
      (or (axial-morph c r h ac:add-point ac:add-circle ac:add-line)
-         (ac:transform (ac:add-cylinder (+z (u0) (/ h 2.0)) r h)
+         (ac:transform (ac:add-cylinder (+z (u0 world-cs) (/ h 2.0)) r h)
                        (tr-matrix (position-cs (as-origin c)))))))
   (opengl
    (let-values ([(c h) (position-and-height cb h/ct)])
      (or (axial-morph c r h gl:add-point gl:add-circle gl:add-line2)
-         (gl:transform (gl:add-cylinder (u0) r h)
+         (gl:transform (gl:add-cylinder (u0 world-cs) r h)
                        (tr-matrix (position-cs (as-origin c))))))))
 
 
@@ -2364,10 +2364,10 @@ a 20~30x speedup
        (ac:singleton-or-union
         (if (number? dir)
             (ac:extrude-command-length (shape-impl profile) dir (surface-region? profile))
-            (ac:extrude-command-direction (shape-impl profile) (u0) dir (surface-region? profile))))
+            (ac:extrude-command-direction (shape-impl profile) (u0 world-cs) dir (surface-region? profile))))
        ;; (if (number? dir)
        ;;     (ac:add-extruded-solid (shape-impl profile) dir)
-       ;;     (let ((path (ac:add-line (u0) dir)))
+       ;;     (let ((path (ac:add-line (u0 world-cs) dir)))
        ;;       (begin0
        ;;           (ac:add-extruded-solid-along-path (shape-impl profile) path)
        ;;         (ac:delete path))))
@@ -2405,11 +2405,11 @@ a 20~30x speedup
                ;;the wrong direction,
                (if (number? dir)
                    #;(ac:extrude-command-length (shape-impl profile) dir (surface-region? profile))
-                   (ac:extrude-command-direction (shape-impl profile) (u0) (z dir) (surface-region? profile))
-                   (ac:extrude-command-direction (shape-impl profile) (u0) dir (surface-region? profile))))
+                   (ac:extrude-command-direction (shape-impl profile) (u0 world-cs) (z dir) (surface-region? profile))
+                   (ac:extrude-command-direction (shape-impl profile) (u0 world-cs) dir (surface-region? profile))))
               ;; (if (number? dir)
              ;;     (ac:add-extruded-solid (shape-impl profile) dir)
-              ;;     (let ((path (ac:add-line (u0) dir)))
+              ;;     (let ((path (ac:add-line (u0 world-cs) dir)))
               ;;       (begin0
               ;;           (ac:add-extruded-solid-along-path (shape-impl profile) path)
               ;;         (ac:delete path))))
@@ -2436,7 +2436,7 @@ a 20~30x speedup
            (rh:move-objects (shape-ref s) v)
            s)
           (autocad
-           (ac:move (shape-ref s) (u0) v)
+           (ac:move (shape-ref s) (u0 world-cs) v)
            s)
           (opengl
            (gl:move (shape-ref s) v)
@@ -2601,7 +2601,7 @@ a 20~30x speedup
             autocad
             (let ((r (ac:copy (shape-ref s))))
               (when translation
-                (ac:move r (u0) translation))
+                (ac:move r (u0 world-cs) translation))
               r))))))
    ss))
 
