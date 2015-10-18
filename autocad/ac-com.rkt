@@ -2350,7 +2350,7 @@
 ;;Sweep
 
 (def-new-shapes-cmd (sweep-command [section : Com-Object] [perpendicular? : Boolean] [path : Com-Object] [solid? : Boolean] [rotation : Real] [scale : Real])
-  (format "._sweep _mo ~A ~A  _A ~A ~A~A~A "
+  (format "._sweep _mo ~A ~A  _A ~A _B 0,0 ~A~A~A "
           (if solid? "_so" "_su")
           (handent section)
           (if perpendicular? "_Yes" "_No")
