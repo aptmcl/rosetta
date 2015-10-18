@@ -163,7 +163,7 @@
   (%add-point position))
 
 (def-shape (circle [center : Loc (u0)] [radius : Real 1])
-  (%add-circle center radius))
+  (%add-circle-plane center radius))
 
 (def-shape (arc [center : Loc (u0)] [radius : Real 1] [start-angle : Real 0] [amplitude : Real pi])
   (cond ((= radius 0)
@@ -622,13 +622,15 @@ In order to implement this, we need to create shapes that represent failed opera
 
 (define (subtract-refs [r : RefOp] [rs : RefOps]) : RefOp
   (show "subtract-refs:" r rs)
-  (let*-values ([(failed-unions rs) (partition failed-union? rs)]
-                [(failed-intersections rs) (partition failed-intersection? rs)]
-                [(failed-subtractions rs) (partition failed-subtraction? rs)]
-                [(rs) (append rs (apply append (map failed-union-refs failed-unions)))])
-    (assert failed-intersections null?)
-    (assert failed-subtractions null?)
-    (subtract-1-1 r (single-ref-or-union rs))))
+  (if (null? rs)
+      r
+      (let*-values ([(failed-unions rs) (partition failed-union? rs)]
+                    [(failed-intersections rs) (partition failed-intersection? rs)]
+                    [(failed-subtractions rs) (partition failed-subtraction? rs)]
+                    [(rs) (append rs (apply append (map failed-union-refs failed-unions)))])
+        (assert failed-intersections null?)
+        (assert failed-subtractions null?)
+        (subtract-1-1 r (single-ref-or-union rs)))))
 
 ;;The following function ensures that the subtraction is actually done
 (define (subtract-1-1 [r0 : RefOp] [r1 : RefOp]) : RefOp
@@ -890,6 +892,21 @@ In order to implement this, we need to create shapes that represent failed opera
 
 (def-shape (quadrangle-face [p0 : Loc] [p1 : Loc] [p2 : Loc] [p3 : Loc])
   (%add-srf-pt (list p0 p1 p2 p3)))
+
+(define (move [shape : Shape] [v : Vec (vx)])
+  ;;HACK: this need to be changed for the functional view of the operation
+  (%move-objects (shape-refs shape) v)
+  shape)
+
+(define (rotate [shape : Shape] [a : Real pi/2] [p0 : Loc (u0)] [p1 : Loc (+z p0 1)])
+  ;;HACK: this need to be changed for the functional view of the operation
+  (%rotate-objects (shape-refs shape) p0 (radians->degrees (coterminal a)) p1 #f)
+  shape)
+
+(define (scale [shape : Shape] [s : Real 1] [p : Loc (u0)])
+  ;;HACK: this need to be changed for the functional view of the operation
+  (%scale-objects (shape-refs shape) p (xyz s s s) #f)
+  shape)
 
 
 (provide bounding-box)
