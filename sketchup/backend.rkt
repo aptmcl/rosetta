@@ -11,6 +11,7 @@
 (provide immediate-mode?
          current-backend-name
          all-shapes
+         bounding-box
          delete-shape
          delete-shapes
          delete-all-shapes
@@ -18,6 +19,14 @@
          curve-end-point
          enable-update
          disable-update
+         prompt-point
+         ;prompt-integer
+         ;prompt-real
+         ;prompt-shape
+         view
+         view-top
+         render-view
+         zoom-extents
          )
 
 (define (current-backend-name) "SketchUp")
@@ -426,7 +435,6 @@
 
 
 
-(provide bounding-box)
 (define (bounding-box [s : Shape]) : Locs
   (let ((bb (%boundingBox (shape-reference s))))
     (match bb
@@ -448,7 +456,6 @@
 (define (fast-view) : Void
   (void))
 
-(provide view)
 (define (view [camera : (Option Loc) #f] [target : (Option Loc) #f] [lens : (Option Real) #f]) : (Values Loc Loc Real)
    (cond ((and camera target lens)
           (%view (cx camera) (cy camera) (cz camera) (cx target) (cy target) (cz target) lens)
@@ -461,13 +468,11 @@
                     (xyz (car target) (cadr target) (caddr target))
                     lens)))))
 
-(provide view-top)
 (define (view-top) : Void
   (%viewTop)
   (void))
 
 
-(provide render-view)
 (define (render-view name) : Void
   ;(%renderView (prepare-for-file (render-pathname name)) (render-width) (render-height))
   (void))
@@ -479,9 +484,7 @@
    (%render-view (prepare-for-file (render-pathname name)))
   (void))
 
-(provide zoom-extents)
 (define zoom-extents %zoomExtents)
-
 (provide prompt-point)
 (define (prompt-point [str : String "Select point"])
   (%startGetPoint str)

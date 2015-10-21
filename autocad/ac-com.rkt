@@ -625,7 +625,7 @@
 (def-rw-property (HatchStyle Hatch) acHatchStyle)
 (def-rw-property (HeaderSuppressed Table) Boolean)
 |#
-(def-rw-property (height Application) Double)
+(def-rw-property (height All) Double)
 #|
 (def-rw-property (HelpFilePath PreferencesFiles) String)
 (def-rw-property (HelpString PopupMenuItem) String)
@@ -650,7 +650,9 @@
 (IndicatorFillColor property idh_indicatorfillcolor.htm)
 (def-ro-property (IndicatorTransparency Section) Long)
 (def-rw-property (InsertionPoint Attribute) Double)
-(InsertionPoint property idh_ole_insertionpoint.htm)
+|#
+(def-ro-property (insertion-point All) VarDouble3)
+#|
 (def-ro-property (InsUnits BlockRef) String)
 (def-ro-property (InsUnitsFactor BlockRef) Double)
 (IntersectionBoundaryColor property idh_intersectionboundarycolor.htm)
@@ -1047,7 +1049,9 @@
 (def-rw-property (TextPrefix Dim3PointAngular) String)
 (def-rw-property (TextRightAttachmentType MLeader) AcTextAttachmentType)
 (def-rw-property (TextRotation Dim3PointAngular) Double)
-(def-rw-property (TextString Attribute) String)
+|#
+(def-rw-property (text-string All) String)
+#|
 (def-rw-property (TextStyle Dim3PointAngular) String)
 (def-rw-property (TextStyleName MLeader) String)
 (TextStyles property idh_textstyles.htm)
@@ -1500,7 +1504,9 @@
 (GetSubEntity method idh_getsubentity.htm)
 (def-com (GetSubSelection Table) ((rowMin Long) (rowMax Long) (colMin Long) (colMax Long)) Void)
 (def-com (GetText Table) ((row Long) (col Long)) String)
-(GetTextHeight method idh_ts_gettextheight.htm)
+|#
+;;;Is this correct?(def-com (get-text-height Text) () Real)
+#|
 (def-com (GetTextHeight2 Table) ((nRow Integer) (nCol Integer) (nContent Integer)) Double)
 (def-com (GetTextRotation Table) ((row Long) (col Long)) AcRotationAngle)
 (def-com (GetTextString Table) ((nRow Integer) (nCol Integer) (nContent Integer)) String)
@@ -2174,6 +2180,7 @@
 (define-object-predicate lofted-surface? "AcDbLoftedSurface" surface)
 (define-object-predicate revolved-surface? "AcDbRevolvedSurface" surface)
 (define-object-predicate text? "AcDbText" text)
+(define-object-predicate mtext? "AcDbMText" text)
 (define-object-predicate surface-grid? "AcDbPolygonMesh" surface)
 
 (provide object-geometry)

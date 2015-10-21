@@ -10,6 +10,7 @@
 (provide immediate-mode?
          current-backend-name
          all-shapes
+         bounding-box
          delete-shape
          delete-shapes
          delete-all-shapes
@@ -17,7 +18,15 @@
          curve-end-point
          enable-update
          disable-update
-         )
+         prompt-point
+         prompt-integer
+         prompt-real
+         prompt-shape
+         view
+         view-top
+         render-view
+         zoom-extents
+)
 
 (define (current-backend-name) "Rhino5")
 
@@ -744,7 +753,7 @@ In order to implement this, we need to create shapes that represent failed opera
           (cdr r1s)))))
 
 (define-syntax-rule
-  (with-ref ([r expr]) body ...)
+  (map-ref ([r expr]) body ...)
   (let rec : RefOp ([r : RefOp (shape-reference expr)])
     (cond ((string? r)
            body ...)
@@ -758,6 +767,19 @@ In order to implement this, we need to create shapes that represent failed opera
            (subtract-refs
             (rec (car (failed-subtraction-refs r)))
             (map rec (cdr (failed-subtraction-refs r))))))))
+
+(define-syntax-rule
+  (do-ref ([r expr]) body ...)
+  (let ((s expr))
+    (let rec : Void ([r : RefOp (shape-reference s)])
+      (cond ((ref? r)
+             body ...)
+            ((failed-union? r)
+             (for-each rec (failed-union-refs r)))
+            ((failed-intersection? r)
+             (for-each rec (failed-intersection-refs r)))
+            ((failed-subtraction? r)
+             (for-each rec (failed-subtraction-refs r)))))))
 
 (define (revolve-borders [profile : Ref]
                          [axis : (List Loc Loc)]
@@ -776,7 +798,7 @@ In order to implement this, we need to create shapes that represent failed opera
     (let ((axis (list c (p+v c v)))
           (start (radians->degrees start-angle))
           (end (radians->degrees (+ start-angle amplitude))))
-      (with-ref ([r shape])
+      (map-ref ([r shape])
         (cond ((%is-curve r)
                ;;HACK: there's a problem in Rhino when the curve
                ;;touches the revolution axis
@@ -794,7 +816,7 @@ In order to implement this, we need to create shapes that represent failed opera
 (def-shape (extrusion [profile : (Extrudable-Shape RefOp)] [dir : VecOrZ 1])
   (let ((dir (if (number? dir) (vz dir) dir)))
     (begin0
-      (with-ref ([r profile])
+      (map-ref ([r profile])
         (if (%is-curve r)
           (%extrude-curve-direction r dir)
           (let ((c (car (%surface-area-centroid r))))
@@ -813,7 +835,7 @@ In order to implement this, we need to create shapes that represent failed opera
 (def-shape (mirror [shape : Shape] [p : Loc (u0)] [n : Vec (vz)] [copy? : Boolean #t])
   (let ((p (loc-from-o-n p n)))
     (begin0
-      (with-ref ([r shape])
+      (map-ref ([r shape])
         (%mirror-object r p (+x p 1) copy?))
       (unless copy?
         (delete-shape shape)))))
@@ -832,8 +854,8 @@ In order to implement this, we need to create shapes that represent failed opera
   (assert (= scale 1))
   (maybe-delete-shapes
    (list path profile)
-   (with-ref ([%path path])
-    (with-ref ([%profile profile])
+   (map-ref ([%path path])
+    (map-ref ([%profile profile])
       (let* ((plane (%curve-perp-frame %path (%curve-parameter %path 0.0))))
         (%transform-object %profile plane #f)
         (%move-object %profile (%curve-start-point %path))
@@ -893,27 +915,28 @@ In order to implement this, we need to create shapes that represent failed opera
 (def-shape (quadrangle-face [p0 : Loc] [p1 : Loc] [p2 : Loc] [p3 : Loc])
   (%add-srf-pt (list p0 p1 p2 p3)))
 
-(define (move [shape : Shape] [v : Vec (vx)])
-  ;;HACK: this need to be changed for the functional view of the operation
-  (%move-objects (shape-refs shape) v)
-  shape)
+(def-shape (move [shape : Shape] [v : Vec (vx)])
+  (let ((refs (shape-refs shape)))
+    (%move-objects refs v)
+    (mark-deleted! shape)
+    (single-ref-or-union refs)))
 
-(define (rotate [shape : Shape] [a : Real pi/2] [p0 : Loc (u0)] [p1 : Loc (+z p0 1)])
-  ;;HACK: this need to be changed for the functional view of the operation
-  (%rotate-objects (shape-refs shape) p0 (radians->degrees (coterminal a)) p1 #f)
-  shape)
+(def-shape (rotate [shape : Shape] [a : Real pi/2] [p0 : Loc (u0)] [p1 : Loc (+z p0 1)])
+  (let ((refs (shape-refs shape)))
+    (%rotate-objects refs p0 (radians->degrees (coterminal a)) p1 #f)
+    (mark-deleted! shape)
+    (single-ref-or-union refs)))
 
-(define (scale [shape : Shape] [s : Real 1] [p : Loc (u0)])
-  ;;HACK: this need to be changed for the functional view of the operation
-  (%scale-objects (shape-refs shape) p (xyz s s s) #f)
-  shape)
+(def-shape (scale [shape : Shape] [s : Real 1] [p : Loc (u0)])
+  (let ((refs (shape-refs shape)))
+    (%scale-objects refs p (xyz s s s) #f)
+    (mark-deleted! shape)
+    (single-ref-or-union refs)))
 
 
-(provide bounding-box)
 (define (bounding-box [s : Shape]) : Locs
   (%bounding-box (shape-refs s)))
 
-(provide delete-all-shapes)
 (define (delete-all-shapes) : Void
   (%delete-objects (%all-objects #f #f #f))
   (void))
@@ -923,7 +946,6 @@ In order to implement this, we need to create shapes that represent failed opera
   (view-top)
   (void))
 
-(provide view)
 (define (view [camera : (Option Loc) #f] [target : (Option Loc) #f] [lens : (Option Real) #f]) : (Values Loc Loc Real)
   (cond ((and camera target lens)
          (unless (%is-view-maximized "Perspective")
@@ -943,7 +965,6 @@ In order to implement this, we need to create shapes that represent failed opera
                    (xyz (cx target) (cy target) (cz target))
                    lens)))))
 
-(provide view-top)
 (define (view-top) : Void
   (unless (%is-view-maximized "Top")
     (%maximize-restore-view "Top"))
@@ -988,15 +1009,12 @@ Command: _viewcapturetofile
 (define (zoom-extents) : Void
   (%ZoomExtents %com-omit #t))
 
-(provide prompt-point)
 (define (prompt-point [str : String "Select point"])
   (%get-point str))
 
-(provide prompt-integer)
 (define (prompt-integer [str : String "Integer?"])
   (%get-integer str))
 
-(provide prompt-real)
 (define (prompt-real [str : String "Real?"])
   (%get-real str))
 

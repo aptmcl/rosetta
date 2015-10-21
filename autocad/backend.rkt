@@ -11,6 +11,7 @@
 (provide immediate-mode?
          current-backend-name
          all-shapes
+         bounding-box
          delete-shape
          delete-shapes
          delete-all-shapes
@@ -22,7 +23,11 @@
          prompt-integer
          prompt-real
          prompt-shape
-         )
+         view
+         view-top
+         render-view
+         zoom-extents)
+
 
 (define (current-backend-name) "AutoCAD")
 
@@ -115,7 +120,7 @@ pseudo-operations.
       ref))
 
 (define-syntax-rule
-  (with-ref ([r expr]) body ...)
+  (map-ref ([r expr]) body ...)
   (let ((s expr))
     (let rec : RefOp ([r : RefOp (shape-reference s)])
       (cond ((ref? r)
@@ -130,6 +135,19 @@ pseudo-operations.
             ((failed-subtraction? r)
              (failed-subtraction
               (map rec (failed-subtraction-refs r))))))))
+
+(define-syntax-rule
+  (do-ref ([r expr]) body ...)
+  (let ((s expr))
+    (let rec : Void ([r : RefOp (shape-reference s)])
+      (cond ((ref? r)
+             body ...)
+            ((failed-union? r)
+             (for-each rec (failed-union-refs r)))
+            ((failed-intersection? r)
+             (for-each rec (failed-intersection-refs r)))
+            ((failed-subtraction? r)
+             (for-each rec (failed-subtraction-refs r)))))))
 
 ;;The empty shapes
 (define-values (empty-shape-ref empty-shape-ref?)
@@ -198,6 +216,11 @@ pseudo-operations.
       ((point)
        (new-point (thunk r)
                   (%point-coordinates r)))
+      ((text)
+       (new-text (thunk r)
+                 (%text-string r)
+                 (%insertion-point r)
+                 (%height r)))
       (else
        (error "Unknown object geometry" geometry)))))
 
@@ -657,7 +680,7 @@ The following example does not work as intended. Rotating the args to closed-spl
 (def-shape (mirror [shape : Shape] [p : Loc (u0)] [n : Vec (vz)] [copy? : Boolean #t])
   (let ((p (loc-from-o-n p n)))
     (begin0
-      (with-ref ([r shape])
+      (map-ref ([r shape])
         (%mirror3d r p (+x p 1) (+y p 1)))
       (unless copy?
         (delete-shape shape)))))
@@ -665,8 +688,8 @@ The following example does not work as intended. Rotating the args to closed-spl
 (def-shape (sweep [path : (Curve-Shape RefOp)] [profile : (Extrudable-Shape RefOp)] [rotation : Real 0] [scale : Real 1])
   (let ((surface? (surface-region? profile)))
     (begin0
-      (with-ref ([profile profile])
-        (with-ref ([path path])
+      (map-ref ([profile profile])
+        (map-ref ([path path])
           (%sweep-command profile #t path surface? rotation scale)))
       (delete-shapes (list profile path)))))
 
@@ -685,7 +708,7 @@ The following example does not work as intended. Rotating the args to closed-spl
      r0)
    rs))
 
-(def-shape (union [shapes : (Listof Shape)])
+(def-shape* (union [shapes : Shape *])
   (maybe-delete-shapes
    shapes
    (let ((shapes (filter-not empty-shape? (remove-duplicates shapes))))
@@ -713,11 +736,11 @@ The following example does not work as intended. Rotating the args to closed-spl
   (for ([s : Shape (in-list ss)])
     (unless (for/or : Boolean ([r : Ref (in-list (shape-refs s))])
               (member-ref? r rs))
-      (delete-shape s)))
+      (mark-deleted! s)))
   rs)
 
 
-(def-shape (intersection [shapes : Shapes])
+(def-shape* (intersection [shapes : Shape *])
   (maybe-delete-shapes
    shapes
    (let ((shapes (filter-not universal-shape? (remove-duplicates shapes))))
@@ -743,7 +766,7 @@ The following example does not work as intended. Rotating the args to closed-spl
                     (else
                      (error "Finish this")))))))))
 
-(def-shape (subtraction [shapes : Shapes])
+(def-shape* (subtraction [shapes : Shape *])
   (maybe-delete-shapes
    shapes
    (if (null? shapes)
@@ -862,7 +885,7 @@ The following example does not work as intended. Rotating the args to closed-spl
 (def-shape (slice [shape : Shape] [p : Loc (u0)] [n : Vec (vz 1 p)])
   (let ([p (loc-from-o-n p n)])
     (begin0
-      (with-ref ([r shape])
+      (map-ref ([r shape])
         (%slice-command r p (vz)))
      (mark-deleted! shape))))
 
@@ -871,6 +894,28 @@ The following example does not work as intended. Rotating the args to closed-spl
 
 (def-shape (quadrangle-face [p0 : Loc] [p1 : Loc] [p2 : Loc] [p3 : Loc])
   (%add-3d-face p0 p1 p2 p3))
+
+(def-shape (move [shape : Shape] [v : Vec (vx)])
+  (let ((o (u0 world-cs)))
+    (do-ref ([r shape])
+      (%move r o v))
+    (begin0
+      (shape-ref shape)
+      (mark-deleted! shape))))
+
+(def-shape (rotate [shape : Shape] [a : Real pi/2] [p0 : Loc (u0)] [p1 : Loc (+z p0 1)])
+  (do-ref ([r shape])
+    (%rotate3d r p0 p1 a))
+  (begin0
+    (shape-ref shape)
+    (mark-deleted! shape)))
+
+(def-shape (scale [shape : Shape] [s : Real 1] [p : Loc (u0)])
+  (do-ref ([r shape])
+    (%scale-entity r p s))
+  (begin0
+    (shape-ref shape)
+    (mark-deleted! shape)))
 
 
 (provide bounding-box)
@@ -930,7 +975,6 @@ The following example does not work as intended. Rotating the args to closed-spl
    (%render-view (prepare-for-file (render-pathname name)))
   (void))
 
-(provide zoom-extents)
 (define (zoom-extents) : Void
   (%zoom-extents))
 

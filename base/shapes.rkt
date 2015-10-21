@@ -221,13 +221,13 @@
              (or ref
                  (error "The shape was created but doesn't have a reference")))
             (else
-             (error "Inconsistent creation (~A) and deletion (~A)!" created deleted))))
+             (error (format "Inconsistent creation (~A) and deletion (~A)!" created deleted)))))
     (define (deleter) : Void
       (cond ((= created (add1 deleted))
              (set! ref #f)
              (set! deleted (add1 deleted)))
             (else
-             (error "Inconsistent creation (~A) and deletion (~A)!" created deleted))))
+             (error (format "Inconsistent creation (~A) and deletion (~A)!" created deleted)))))
     (define (realized?)
       (= created (add1 deleted)))
     (values realizer deleter realized?)))
