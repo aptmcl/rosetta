@@ -222,7 +222,7 @@ pseudo-operations.
                  (%insertion-point r)
                  (%height r)))
       (else
-       (error "Unknown object geometry" geometry)))))
+       (new-unknown (thunk r))))))
 
 (define (all-shapes)
   (map shape<-ref (%all-objects)))
