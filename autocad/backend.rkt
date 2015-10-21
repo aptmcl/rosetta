@@ -26,6 +26,8 @@
          view
          view-top
          render-view
+         select-shape
+         select-shapes
          zoom-extents)
 
 
@@ -900,21 +902,21 @@ The following example does not work as intended. Rotating the args to closed-spl
     (do-ref ([r shape])
       (%move r o v))
     (begin0
-      (shape-ref shape)
+      (shape-reference shape)
       (mark-deleted! shape))))
 
 (def-shape (rotate [shape : Shape] [a : Real pi/2] [p0 : Loc (u0)] [p1 : Loc (+z p0 1)])
   (do-ref ([r shape])
     (%rotate3d r p0 p1 a))
   (begin0
-    (shape-ref shape)
+    (shape-reference shape)
     (mark-deleted! shape)))
 
 (def-shape (scale [shape : Shape] [s : Real 1] [p : Loc (u0)])
   (do-ref ([r shape])
     (%scale-entity r p s))
   (begin0
-    (shape-ref shape)
+    (shape-reference shape)
     (mark-deleted! shape)))
 
 
@@ -978,18 +980,6 @@ The following example does not work as intended. Rotating the args to closed-spl
 (define (zoom-extents) : Void
   (%zoom-extents))
 
-#|
-(provide prompt-point)
-(define (prompt-point [str : String "Select point"])
-  (%startGetPoint str)
-  (let loop : Loc ([p : (Listof Real) (%getPoint)])
-    (if (equal? p '(12345 54321 98765))
-        (begin
-          (sleep 0.2)
-          (loop (%getPoint)))
-        (xyz (car p) (cadr p) (caddr p)))))
-|#
-
 (define (disable-update)
   ;Is there a way of disabling updates in AutoCAD
   #f)
@@ -1010,3 +1000,9 @@ The following example does not work as intended. Rotating the args to closed-spl
 (define (prompt-shape [str : String "Select shape"]) : Shape
   (shape<-ref
    (%get-entity str)))
+
+(define (select-shape [s : Shape]) : Void
+  (void))
+
+(define (select-shapes [ss : Shapes]) : Void
+  (void))
