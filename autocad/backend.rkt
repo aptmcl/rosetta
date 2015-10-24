@@ -1,5 +1,5 @@
 #lang typed/racket/base
-(require (except-in racket/math random-integer)
+(require racket/math
          racket/list
          racket/function)
 (require "../base/utils.rkt"
