@@ -4,7 +4,7 @@
          "../base/utils.rkt"
          "../base/coord.rkt"
          "../base/enums.rkt"
-         math)
+         (except-in math random-integer))
 
 (provide (all-defined-out) com-omit)
 
@@ -633,7 +633,7 @@
 
 |#
 ;;HACK: We need to provide com-omit to the view parameter
-(def-com ZoomExtents (#:opt (view (U String Any)) (all? Boolean)) Void)
+(def-com zoom-extents (#:opt (view String) (all? Boolean)) Void)
 #|
 (def zoom-selected (#:opt string Boolean) void)
 
