@@ -196,12 +196,20 @@
       (remainder (aleatorio) x)
       (* x (cast (/ (aleatorio) 2147483647.0) Float))))
 
+(provide random-integer)
+(define (random-integer [x : Integer]) : Integer
+  (remainder (aleatorio) x))
+
 ;This cannot be easily converted to a contract (and typed/untyped-utils is not helping)
 ;(: random-range (case-> (-> Integer Integer Integer) (-> Float Float Float)))
 ;so we use this instead
 (: random-range (-> Real Real Real))
 (define (random-range x0 x1)
   (+ x0 (random (- x1 x0))))
+
+(provide random-integer-range)
+(define (random-integer-range [x0 : Integer] [x1 : Integer]) : Integer
+  (+ x0 (random-integer (- x1 x0))))
 
 (provide maximize-combination)
 (define #:forall (T) (maximize-combination [op : (-> T T (Option T))] [rs : (Listof T)]) : (Listof T)
