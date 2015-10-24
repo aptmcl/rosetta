@@ -1,9 +1,9 @@
 #lang typed/racket/base
 (require (for-syntax racket/base))
 (require racket/function racket/string racket/match racket/port)
-(require math
+(require (except-in math random-integer)
          "../base/typed-com.rkt"
-         (except-in "../base/utils.rkt" random)
+         "../base/utils.rkt"
          "../base/coord.rkt"
          "ac-enums.rkt")
 
