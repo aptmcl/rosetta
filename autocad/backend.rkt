@@ -1002,7 +1002,11 @@ The following example does not work as intended. Rotating the args to closed-spl
    (%get-entity str)))
 
 (define (select-shape [s : Shape]) : Void
+  (%clear-selection-command)
+  (%select-shapes-command (shape-refs s))
   (void))
 
 (define (select-shapes [ss : Shapes]) : Void
+  (%clear-selection-command)
+  (%select-shapes-command (shapes-refs ss))
   (void))
