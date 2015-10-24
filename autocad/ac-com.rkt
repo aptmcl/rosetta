@@ -44,6 +44,7 @@
 (define-type 3DPolyline Com-Object)
 (define-type 3DSolid Com-Object)
 (define-type AcadMaterials Com-Object)
+(define-type AcadSelectionSets Com-Object)
 (define-type All Com-Object)
 (define-type Application Com-Object)
 (define-type Arc Com-Object)
@@ -66,6 +67,7 @@
 (define-type Profile Com-Object)
 (define-type Ray Com-Object)
 (define-type Region Com-Object)
+(define-type SelectionSet Com-Object)
 (define-type Spline Com-Object)
 (define-type Text Com-Object)
 (define-type Views Com-Object)
@@ -137,6 +139,7 @@
                                #'Spline
                                #'Text
                                #'AcadMaterials
+                               #'AcadSelectionSets
                                #'Object
                                #'Blocks
                                #'Database
@@ -148,6 +151,7 @@
         stx)))
 
 (define vbCr "\r\n")
+(define vbEsc "\e")
 
 ;;We upgrade types automatically, from the types that Rhino's COM requires and the types that Rosetta provides
 
@@ -307,7 +311,9 @@
 (ActiveMaterial property idh_activematerial.htm)
 (def-rw-property (ActiveProfile PreferencesProfiles) String)
 (def-rw-property (ActivePViewport Document) PViewport)
-(def-ro-property (ActiveSelectionSet Document) SelectionSet)
+|#
+(def-ro-property (active-selection-set Document) SelectionSet)
+#|
 (def-rw-property (ActiveSpace Document) acActiveSpace)
 (def-rw-property (ActiveTextStyle Document) TextStyle)
 (ActiveUCS property idh_activeucs.htm)
@@ -956,7 +962,9 @@
 (def-ro-property (SectionManager Database) AcadSectionManager)
 (def-rw-property (SegmentPerPolyline DatabasePreferences) Integer)
 (def-ro-property (Selection Preferences) PreferencesSelection)
-(SelectionSets property idh_selectionsets.htm)
+|#
+(def-rw-property (selection-sets Document) AcadSelectionSets)
+#|
 (def-rw-property (SerialNumber SecurityParams) String)
 (def-rw-property (ShadePlot PViewport) AcShadePlot)
 (ShadowDisplay property idh_shadowdisplay.htm)
@@ -1220,7 +1228,9 @@
 #|
 (def-com (AddFitPoint Spline) ((Index Integer) (FitPoint VarDouble3)) Void)
 (def-com (AddHatch ModelSpace) ((PatternType AcPatternType) (PatternName String) (Associativity Boolean) (HatchObjectType OPT-HatchObjectType)) Hatch)
-(def-com (AddItems SelectionSet) ((Items VarIdN)) Void)
+|#
+(def-com (add-items AcadSelectionSet) ([items VarIdN]) Void)
+#|
 (def-com (AddLeader ModelSpace) ((PointsArray VarDouble3N) (Annotation Object) (Type AcLeaderType)) Leader)
 |#
 (def-com ((add-lightweight-polyline AddLightWeightPolyline) ModelSpace) ((VerticesList VarDouble3N)) LightweightPolyline)
@@ -1288,8 +1298,8 @@
 ;;Note Boolean -> acadBoolean to avoid name clashes
 (def-com ((acad-boolean Boolean) 3DSolid) ((Operation AcBooleanType) (Obj Object)) Void)
 (def-com (check-interference 3DSolid) ((CreateInterferenceSolid Boolean)) 3DSolid)
+(def-com (clear SelectionSet) () Void)
 #|
-(def-com (Clear SelectionSet) () Void)
 (def-com (ClearSubSelection Table) () Void)
 (def-com (ClearTableStyleOverrides Table) ((flag Long)) Void)
 (def-com (ClipBoundary Raster) ((PointsArray (Variant (Arrayof (Array Double Double))))) Void)
@@ -1535,7 +1545,9 @@
 #|
 (GetXRecordData method idh_getxrecorddata.htm)
 (def-com (HandleToObject Document) ((Handle String)) Object)
-(def-com (Highlight All) ((HighlightFlag Boolean)) Void)
+|#
+(def-com (highlight All) ((on? Boolean)) Void)
+#|
 (HitTest method idh_hittest.htm)
 (HitTest method idh_table_hittest.htm)
 (Import method idh_import.htm)
@@ -1772,7 +1784,9 @@
 (def-com (UnloadARX Application) ((Name String)) Void)
 (def-com (UnloadDVB Application) ((Name String)) Void)
 (def-com (UnmergeCells Table) ((minRow Long) (maxRow Long) (minCol Long) (maxCol Long)) Void)
-(def-com (Update Application) () Void)
+|#
+(def-com (update All) () Void)
+#|
 (def-com (UpdateAllDataLinks Table) ((nDir AcDataLinkUpdateDirection) (nOption AcDataLinkUpdateDirectOption)) Void)
 (def-com (UpdateDataLink Table) ((nRow Integer) (nCol Integer) (nDir AcDataLinkUpdateDirection) (nOption AcDataLinkUpdateDirectOption)) Void)
 (def-com (UpdateEntry FileDependencies) ((Index Long)) Void)
@@ -2479,6 +2493,21 @@
            (point-string (p-p p n))))
   shape)
 
+
+(provide clear-selection-command)
+(define (clear-selection-command)
+  (send-command "(sssetfirst nil)\n"))
+
+(provide select-shape-command)
+(define (select-shape-command [s : Com-Object]) : Void
+  (send-command (format "(sssetfirst nil (ssadd ~A))\n" (handent s))))
+
+(provide select-shapes-command)
+(define (select-shapes-command [ss : Com-Objects]) : Void
+  (send-command
+   (format "((lambda (/ ss) (setq ss (ssadd)) (foreach s (list ~A) (ssadd s ss)) (sssetfirst nil ss)))\n"
+           (handents ss))))
+
 #|
 ;(provide slice-with-surface)
 (def-new-shapes-cmd slice-with-surface (solid surface)
@@ -2778,7 +2807,6 @@
                   (cx target) (cy target) (cz target)
                   (distance camera target)
                   lens))
-
 
 (provide open-dbx-doc)
 (define (open-dbx-doc [filename : String])
