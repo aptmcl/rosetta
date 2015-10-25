@@ -55,8 +55,9 @@
          sph +sph
          vsph +vsph
          sph-rho sph-phi sph-psi
-         p+v p-p v*r v/r
-         v+v
+         p+v p-v
+         p-p v*r v/r
+         v+v v-v
          +c -c *c /c
          intermediate-point ;;find better name?
          pi/6
@@ -425,6 +426,18 @@
              p
              world-cs))))
 
+(define (p-v [p : Loc] [v : Vec]) : Loc
+  (let-values (((c0 c1)
+                (if (=cs? p v)
+                    (values (Xyz-loc p) (Xyz-loc v))
+                    (values (world-loc p) (world-loc v)))))
+    (xyz (- (col-idx c0 0) (col-idx c1 0))
+         (- (col-idx c0 1) (col-idx c1 1))
+         (- (col-idx c0 2) (col-idx c1 2))
+         (if (=cs? p v)
+             p
+             world-cs))))
+
 (define (v+v [v0 : Vec] [v1 : Vec]) : Vec
   (let-values (((c0 c1)
                 (if (=cs? v0 v1)
@@ -437,6 +450,17 @@
               v0
               world-cs))))
 
+(define (v-v [v0 : Vec] [v1 : Vec]) : Vec
+  (let-values (((c0 c1)
+                (if (=cs? v0 v1)
+                    (values (Xyz-loc v0) (Xyz-loc v1))
+                    (values (world-loc v0) (world-loc v1)))))
+    (vxyz (- (col-idx c0 0) (col-idx c1 0))
+          (- (col-idx c0 1) (col-idx c1 1))
+          (- (col-idx c0 2) (col-idx c1 2))
+          (if (=cs? v0 v1)
+              v0
+              world-cs))))
 
 (define (v*r [v : Vec] [r : Real]) : Vec
   (let ((c (Xyz-loc v)))
