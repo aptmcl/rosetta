@@ -4,6 +4,7 @@
          "../base/coord.rkt"
          "../base/shapes.rkt")
 (require (prefix-in % "rh-com.rkt"))
+
 (provide (all-from-out "../base/coord.rkt"))
 (provide (all-from-out "../base/utils.rkt"))
 (provide (all-from-out "../base/shapes.rkt"))
@@ -30,91 +31,30 @@
          zoom-extents
 )
 
+(require racket/include)
+(include "../base/common.rkt")
+
+
 (define (current-backend-name) "Rhino5")
 
 ;;References, in Rhino, are Strings
 
 (define-type Ref String)
 (define ref? string?)
-(define-type Refs (Listof Ref))
 
-;;In Rhino, boolean operations might fail. We could represent these
-;;failures using a unique string but that would require dynamic tests.
-;;Given that we want to take advantage of the static type checker, we
-;;will represent those failed operations using a distinct type.
-
-(define-type Failed-Operation (U failed-union failed-subtraction))
-(define-type RefOp (U Ref Failed-Operation))
-;;When we flatten Refs, we get a list of Com-Objects 
-(define-type RefOps (Listof RefOp))
-
-(struct failed-union
-  ([refs : RefOps]))
-
-(struct failed-subtraction
-  ([refs : RefOps]))
-
-;;Shapes will contain non-flattened Refs
-(define-type Shape (Base-Shape RefOp))
-(define-type Shapes (Base-Shapes RefOp))
-(provide Shape Shapes)
-
-;;From one shape, we might want to retrieve its (unique) reference
-(define (shape-ref [shape : Shape]) : Ref
-  (let ((ref (shape-reference shape)))
-    (if (string? ref)
-        ref
-        (error 'shape-ref "Shape without definite reference ~a" shape))))
-
-;;or its multiple references
-(define (shape-refs [shape : Shape]) : Refs
-  (let rec : Refs ([ref : RefOp (shape-reference shape)])
-    (cond ((string? ref)
-           (list ref))
-          ((failed-union? ref)
-           (apply append (map rec (failed-union-refs ref))))
-          ((failed-subtraction? ref)
-           (apply append (map rec (failed-subtraction-refs ref)))))))
-
-;;From a list of shapes, we might want to retrieve all references
-(define (shapes-refs [shapes : Shapes]) : Refs
-  (if (null? shapes)
-      (list)
-      (append (shape-refs (car shapes))
-              (shapes-refs (cdr shapes)))))
-
-;;We also need to check if a particular ref is present
-(define (member-ref? [r0 : Ref] [r1 : RefOp]) : Boolean
-  (let rec : Boolean ([ref : RefOp r1])
-    (cond ((string? ref)
-           (eq? r0 ref))
-          ((failed-union? ref)
-           (ormap rec (failed-union-refs ref)))
-          ((failed-subtraction? ref)
-           (ormap rec (failed-subtraction-refs ref))))))
+(define (copy-ref [r : Ref]) : Ref
+  (%copy-object r))
 
 ;;The empty shapes
 (define-values (empty-shape-ref empty-shape-ref?)
   (let ((v : Ref "empty-shape"))
     (values (lambda () : Ref v)
             (lambda ([r : RefOp]) : Boolean (eq? r v)))))
+
 (define-values (universal-shape-ref universal-shape-ref?)
   (let ((v : Ref "universal-shape"))
     (values (lambda () : Ref v)
             (lambda ([r : RefOp]) : Boolean (eq? r v)))))
-#|
-(define empty-shape-str : Ref "empty-shape")
-(define (empty-shape-ref) : Ref empty-shape-str)
-(define (empty-shape-ref? [r : Ref]) : Boolean (eq? r empty-shape-str))
-(define universal-shape-str : Ref "universal-shape")
-(define (universal-shape-ref) : Ref universal-shape-str)
-(define (universal-shape-ref? [r : Ref]) : Boolean (eq? r universal-shape-str))
-|#
-
-(def-shape (empty-shape) (empty-shape-ref))
-(define (empty-shape? [s : Shape]) : Boolean (empty-shape-ref? (shape-reference s)))
-(def-shape (universal-shape) (universal-shape-ref))
-(define (universal-shape? [s : Shape]) : Boolean (universal-shape-ref? (shape-reference s)))
 
 ;;Now, the operations
 (define (delete-shape [shape : Shape]) : Void
@@ -125,11 +65,6 @@
 (define (delete-shapes [shapes : Shapes (list)]) : Void
   (%delete-objects (shapes-refs shapes))
   (for-each (inst mark-deleted! RefOp) shapes))
-
-(define (listify-ref [e : (U Ref (Listof Ref))]) : (Listof Ref)
-  (if (list? e)
-      e
-      (list e)))
 
 ;;TODO: Update this to follow the approach taken for autocad
 (define (shape<-ref [r : Ref]) ;HACK Bug in typed/racket : Shape
@@ -424,96 +359,6 @@
           (%add-edge-srf refs)))
     (delete-shape profile)))
 
-#|
-
-Boolean operations, in Rhino, can fail for a variety of reasons. Particularly, if
-there is no common point between the boundary representation of the solids, the
-operation will surely fail.
-
-As first example, consider the union of three spheres:
-
-(%boolean-union (list (%add-sphere (x -1) 1) (%add-sphere (x +1) 1) (%add-sphere (x 0) 1)))
-
-The result is that the sphere at (x -1) disappears. However, if we swap the order
-of arguments, so that the sphere at (x 0) is in the middle of the arguments,
-
-(%boolean-union (list (%add-sphere (x -1) 1) (%add-sphere (x 0) 1) (%add-sphere (x +1) 1)))
-
-we get the expected result. It seems that, as long as there is some common point between
-adjacent arguments, Rhino will compute the operation correctly.
-
-As another example, if we attempt to make a hollow sphere by subtracting a smaller
-sphere from a larger sphere, the operation will fail. Obviously, we can't see the
-interior of the hollow sphere, unless we slice it or subtract something that intersects
-both spheres.
-
-If we want to allow this, we need to use a kind of boolean algebra, so that, in the case
-of the sliced hollow sphere, we can start writing
-
-(slice (subtraction S0 S1))
-
-and, internally, we compute
-
-(subtraction (slice S0) S1)
-
-Similarly, if we want
-
-(subtraction (subtraction S0 S1) S2)
-
-and it doesn't work because S1 is entirely contained in S0, we can write instead
-
-(subtraction (subtraction S0 S2) S1)
-
-or even
-
-(subtraction S0 (union S1 S2))
-
-In order to implement this, we need to create shapes that represent failed operations.
-
-|#
-
-(define (single-ref-or [f : (-> RefOps RefOp)] [refs : RefOps]) : RefOp
-  (if (null? (cdr refs))
-      (car refs)
-      (f refs)))
-
-(define (single-ref-or-union [refs : RefOps]) : RefOp
-  (if (null? (cdr refs))
-      (car refs)
-      (failed-union refs)))
-
-(define (single-ref-or-empty-ref-or-union [refs : RefOps]) : RefOp
-  (let ((refs (remf empty-shape-ref? refs)))
-    (cond ((null? refs)
-           (empty-shape-ref))
-          ((null? (cdr refs))
-           (car refs))
-          (else
-           (failed-union refs)))))
-
-(define #:forall (T) (maximize-combination [op : (-> T T (Option T))] [rs : (Listof T)]) : (Listof T)
-  (define (combine [r0 : T] [rs : (Listof T)]) : (Listof T)
-    (if (null? rs)
-        (list r0)
-        (let ([r1 (car rs)]
-              [rs (cdr rs)])
-          (let ((r (op r0 r1)))
-            (if r
-                (cons r rs)
-                (cons r1 (combine r0 rs)))))))
-  (cond ((null? rs) (list))
-        ((null? (cdr rs)) rs)
-        (else
-         (let loop : (Listof T)
-           ([rs : (Listof T) rs] [combs : (Listof T) (list)] [n : Integer (length rs)])
-           (if (null? rs)
-               (if (= n (length combs)) ;;no changes
-                   combs
-                   (loop combs (list) (length combs)))
-               (let ([r1 (car rs)]
-                     [rs (cdr rs)])
-                 (loop rs (combine r1 combs) n)))))))
-
 (define (union-refs [rs : Refs]) : Refs
   (maximize-combination
    (lambda ([r0 : Ref] [r1 : Ref]) : (Option Ref)
@@ -524,293 +369,45 @@ In order to implement this, we need to create shapes that represent failed opera
               (error "Check this: boolean union returned more than one result")))))
    rs))
 
-(define (intersect-refs [rs : RefOps]) : RefOp
-  (if (null? (cdr rs))
-      (car rs)
-      (intersect-1-1 (car rs) (intersect-refs  (cdr rs)))))
+(define (intersect-ref [r0 : Ref] [r1 : Ref]) : RefOp
+  (let ((res (%boolean-intersection (list r0) (list r1) #t)))
+    (if (null? res)
+        (let ((c1 (show "Point 1:" (%point-in-surface r1))))
+          (if (or (%is-point-in-surface r0 c1) (%is-point-on-surface r0 c1))
+              ;;nothing in common and one point of r1 is inside r0 => r0 contains r1 => r1
+              (begin (%delete-object r0) r1)
+              ;;nothing in common and one point of r1 is not inside r0 => r0 does not contain r1
+              (let ((c0 (show "Point 2:" (%point-in-surface r0))))
+                (if (or (%is-point-in-surface r1 c0) (%is-point-on-surface r1 c0))
+                    ;;nothing in common and one point of r0 is inside r1 => r1 contains r0 => r0
+                    (begin (%delete-object r1) r0)
+                    ;;nothing in common and one point of r0 is not inside r1 => r0 does not contain r1 and r1 does not contain r0 => r0
+                    (begin (%delete-objects (list r0 r1)) (empty-shape-ref))))))
+        ;;r0 and r1 have something in common
+        (single-ref-or-union (show "Boolean intersection:" res)))))
 
+(define (subtract-ref [r0 : Ref] [r1 : Ref]) : RefOp
+  (let ((res (%boolean-difference (list r0) (list r1) #t)))
+    (if (null? res)
+        (let ((c1 (show "Point 1:" (%point-in-surface r1))))
+          (if (or (%is-point-in-surface r0 c1) (%is-point-on-surface r0 c1))
+              ;;nothing in common and one point of r1 is inside r0 => r0 contains r1
+              (show "R0 contains R1:" (failed-subtraction (list r0 r1)))
+              ;;nothing in common and one point of r1 is not inside r0 => r0 does not contain r1
+              (let ((c0 (show "Point 2:" (%point-in-surface r0))))
+                (if (or (%is-point-in-surface r1 c0) (%is-point-on-surface r1 c0))
+                    ;;nothing in common and one point of r0 is inside r1 => r1 contains r0 => empty shape
+                    (begin
+                      (%delete-objects (list r0 r1))
+                      (show "R0 is contained in R1, both disappear" (empty-shape-ref)))
+                    ;;nothing in common and one point of r0 is not inside r1 => r0 does not contain r1 and r1 does not contain r0 => r0
+                    (show "R0 is outside R1, delete R1:"
+                          (begin
+                            (%delete-object r1)
+                            r0))))))
+        ;;r0 and r1 have something in common
+        (single-ref-or-union (show "Boolean difference:" res)))))
 
-(define (intersect-1-1 [r0 : RefOp] [r1 : RefOp]) : RefOp
-  (show "intersect-1-1:" r0 r1)
-  (cond ((empty-shape-ref? r0)
-         (empty-shape-ref))
-        ((string? r0)
-         (cond ((empty-shape-ref? r1)
-                (empty-shape-ref))
-               ((string? r1)
-                (let ((res (%boolean-intersection (list r0) (list r1) #t)))
-                  (if (null? res)
-                      (let ((c1 (show "Point 1:" (%point-in-surface r1))))
-                        (if (or (%is-point-in-surface r0 c1) (%is-point-on-surface r0 c1))
-                            ;;nothing in common and one point of r1 is inside r0 => r0 contains r1 => r1
-                            (begin (%delete-object r0) r1)
-                            ;;nothing in common and one point of r1 is not inside r0 => r0 does not contain r1
-                            (let ((c0 (show "Point 2:" (%point-in-surface r0))))
-                              (if (or (%is-point-in-surface r1 c0) (%is-point-on-surface r1 c0))
-                                  ;;nothing in common and one point of r0 is inside r1 => r1 contains r0 => r0
-                                  (begin (%delete-object r1) r0)
-                                  ;;nothing in common and one point of r0 is not inside r1 => r0 does not contain r1 and r1 does not contain r0 => r0
-                                  (begin (%delete-objects (list r0 r1)) (empty-shape-ref))))))
-                      ;;r0 and r1 have something in common
-                      (single-ref-or-union (show "Boolean intersection:" res)))))
-               ((failed-union? r1)
-                (intersect-1-* r0 (failed-union-refs r1)))
-               ((failed-subtraction? r1)
-                (subtract-refs (intersect-1-1 r0 (car (failed-subtraction-refs r1)))
-                               (cdr (failed-subtraction-refs r1))))
-               (else
-                (error "I was not expecting this:" r0 r1))))
-        ((failed-union? r0)
-         (intersect-*-1 (failed-union-refs r0) r1))
-        ((failed-subtraction? r0)
-         (subtract-refs (intersect-1-1 (car (failed-subtraction-refs r0)) r1)
-                        (cdr (failed-subtraction-refs r0))))
-        (else
-         (error "Finish this" r0 r1))))
-
-(define (intersect-*-1 [rs : RefOps] [r : RefOp]) : RefOp
-  (show "intersect-*-1:" rs r)
-  (if (null? rs)
-      (empty-shape-ref)
-      (single-ref-or-empty-ref-or-union
-       (map (lambda ([r0 : RefOp] [r1 : RefOp])
-              (intersect-1-1 r0 r1))
-            rs
-            (copy-n-ref r (length rs))))))
-
-;;Intersection should symmetric, but we don't trust Rhino
-(define (intersect-1-* [r : RefOp] [rs : RefOps]) : RefOp
-  (show "intersect-1-*:" rs r)
-  (if (null? rs)
-      (empty-shape-ref)
-      (single-ref-or-empty-ref-or-union
-       (map (lambda ([r0 : RefOp] [r1 : RefOp])
-              (intersect-1-1 r0 r1))
-            (copy-n-ref r (length rs))
-            rs))))
-
-(def-shape* (union [shapes : Shape *])
-  (maybe-delete-shapes
-   shapes
-   (let ((shapes (filter-not empty-shape? (remove-duplicates shapes))))
-     (cond ((null? shapes)
-            (empty-shape-ref))
-           ((null? (cdr shapes))
-            (shape-reference (car shapes)))
-           ((ormap universal-shape? shapes)
-            (universal-shape-ref))
-           (else
-            (let*-values
-                ([(rs) (map (inst shape-reference RefOp) shapes)]
-                 [(failed-unions rs) (partition failed-union? rs)]
-                 [(failed-subtractions rs) (partition failed-subtraction? rs)]
-                 [(united)
-                  #;(union-refs ;;We don't actually unite them
-                     (cast (append rs (apply append (map failed-union-refs failed-unions)))
-                           Refs))
-                  (append rs (apply append (map failed-union-refs failed-unions)))])
-              (single-ref-or-union
-               (append united failed-subtractions))))))))
-
-(define (maybe-delete-shapes [ss : Shapes] [rs : RefOp]) : RefOp
-  (for ([s : Shape (in-list ss)])
-    (unless (for/or : Boolean ([r : Ref (in-list (shape-refs s))])
-              (member-ref? r rs))
-      (delete-shape s)))
-  rs)
-
-(def-shape* (intersection [shapes : Shape *])
-  (maybe-delete-shapes
-   shapes
-   (let ((ss (filter-not universal-shape? (remove-duplicates shapes))))
-     (cond ((null? ss)
-            (universal-shape-ref))
-           ((null? (cdr ss))
-            (shape-reference (car ss)))
-           ((ormap empty-shape? ss)
-            (delete-shapes ss)
-            (empty-shape-ref))
-           (else
-            (intersect-refs (map (inst shape-reference RefOp) ss)))))))
-
-(def-shape* (subtraction [shapes : Shape *])
-  (maybe-delete-shapes
-   shapes
-   (if (null? shapes)
-       (error "No shapes to subtract")
-       (let ((s (car shapes))
-             (ss (filter-not empty-shape? (cdr shapes))))
-         (cond ((null? ss)
-                (shape-reference s))
-               ((or (empty-shape? s)
-                    (ormap (lambda ([o : Shape])
-                             (or (universal-shape? o)
-                                 (eq? s o))) ;;Perhaps we should use a equal-shape? test
-                           ss))
-                (empty-shape-ref))
-               (else
-                (let ([r (shape-reference s)]
-                      [rs (map (inst shape-reference RefOp) ss)])
-                  (subtract-refs r rs))))))))
-
-(define #:forall (T) (show [msg : String] [a : T] . [as : Any *]) : T
-  #;#;#;#;
-  (display msg)
-  (display a)
-  (for-each display as)
-  (newline)
-  a)
-
-(define (subtract-refs [r : RefOp] [rs : RefOps]) : RefOp
-  (show "subtract-refs:" r rs)
-  (if (null? rs)
-      r
-      (let*-values ([(failed-unions rs) (partition failed-union? rs)]
-                    [(failed-subtractions rs) (partition failed-subtraction? rs)]
-                    [(rs) (append rs (apply append (map failed-union-refs failed-unions)))])
-        (assert failed-subtractions null?)
-        (subtract-1-1 r (single-ref-or-union rs)))))
-
-(define (subtract-1-1 [r0 : RefOp] [r1 : RefOp]) : RefOp
-  (show "subtract-1-1:" r0 r1)
-  (cond ((and (string? r0) (string? r1))
-         (let ((res (%boolean-difference (list r0) (list r1) #t)))
-           (if (null? res)
-               (let ((c1 (show "Point 1:" (%point-in-surface r1))))
-                 (if (or (%is-point-in-surface r0 c1) (%is-point-on-surface r0 c1))
-                     ;;nothing in common and one point of r1 is inside r0 => r0 contains r1
-                     (show "R0 contains R1:" (failed-subtraction (list r0 r1)))
-                     ;;nothing in common and one point of r1 is not inside r0 => r0 does not contain r1
-                     (let ((c0 (show "Point 2:" (%point-in-surface r0))))
-                       (if (or (%is-point-in-surface r1 c0) (%is-point-on-surface r1 c0))
-                           ;;nothing in common and one point of r0 is inside r1 => r1 contains r0 => empty shape
-                           (begin
-                             (%delete-objects (list r0 r1))
-                             (show "R0 is contained in R1, both disappear" (empty-shape-ref)))
-                           ;;nothing in common and one point of r0 is not inside r1 => r0 does not contain r1 and r1 does not contain r0 => r0
-                           (show "R0 is outside R1, delete R1:"
-                                 (begin
-                                   (%delete-object r1)
-                                   r0))))))
-               ;;r0 and r1 have something in common
-               (single-ref-or-union (show "Boolean difference:" res)))))
-        ((and (string? r0) (failed-union? r1))
-         (subtract-1-* r0 (failed-union-refs r1)))
-        ((and (string? r0) (failed-subtraction? r1))
-         (error "Finish this")
-         #;
-         (union-refs (subtract-1-1 r0 (car (failed-subtraction-refs r1)))
-                     (map (lambda ([r : RefOp])
-                            (intersection-ref r0 r))
-                          (cdr (failed-subtraction-refs r1)))))
-        ((and (failed-union? r0) (string? r1))
-         (single-ref-or-union
-          (subtract-*-1 (failed-union-refs r0) r1)))
-        ((and (failed-union? r0) (failed-union? r1))
-         (single-ref-or-union
-          (subtract-*-* (failed-union-refs r0) (failed-union-refs r1))))
-        ((and (failed-union? r0) (failed-subtraction? r1))
-         (error "Finish this")
-         #;
-         (let ((extra (map (lambda ([r : RefOp])
-                             (intersection-ref (copy-ref r0) r))
-                           (cdr (failed-subtraction-refs r1)))))
-           (union-refs (subtract-*-1 (failed-union-refs r0) (car (failed-subtraction-refs r1)))
-                       extra)))
-        ((and (failed-subtraction? r0) (string? r1))
-         ;;We attempt the subtraction, but we need to check the result
-         (let ((res (subtract-1-1 (car (failed-subtraction-refs r0)) r1)))
-           (cond ((failed-subtraction? res)
-                  (failed-subtraction (append (failed-subtraction-refs r0) (list r1))))
-                 (else
-                  (subtract-1-* res (cdr (failed-subtraction-refs r0)))))))
-        ((and (failed-subtraction? r0) (failed-union? r1))
-         (subtract-refs
-          (subtract-1-* (car (failed-subtraction-refs r0)) (failed-union-refs r1))
-          (cdr (failed-subtraction-refs r0))))
-        ((and (failed-subtraction? r0) (failed-subtraction? r1))
-         (subtract-refs
-          (subtract-1-* (car (failed-subtraction-refs r0)) (failed-subtraction-refs r1))
-          (cdr (failed-subtraction-refs r0))))
-        (else
-         (error "Finish this" r0 r1))))
-
-(define (subtract-*-1 [rs : RefOps] [r : RefOp]) : RefOps
-  (show "subtract-*-1:" rs r)
-  (if (null? rs)
-      (list)
-      (let ((res
-             (subtract-1-1
-              (car rs)
-              (if (null? (cdr rs)) r (copy-ref r)))))
-        (let ((rest (subtract-*-1 (cdr rs) r)))
-          (if res
-              (cons res rest)
-              rest)))))
-
-(define (copy-ref [r : RefOp]) : RefOp
-  (cond ((string? r)
-         (%copy-object r))
-        ((failed-union? r)
-         (failed-union (map copy-ref (failed-union-refs r))))
-        ((failed-subtraction? r)
-         (failed-subtraction (map copy-ref (failed-subtraction-refs r))))
-        (else
-         (error "Check this"))))
-
-(define (copy-n-ref [r : RefOp] [n : Index]) : RefOps
-  (if (= n 0)
-      (error "Can't copy a shape zero times.")
-      (let rec ([n n])
-        (if (= n 1)
-            (list r)
-            (cons (copy-ref r)
-                  (rec (- n 1)))))))
-
-(define (subtract-1-* [r : RefOp] [rs : RefOps]) : RefOp
-  (show "subtract-1-*:" r rs)
-  (if (null? rs)
-      r
-      (let ((res (subtract-1-1 r (car rs))))
-        (cond ((empty-shape-ref? res)
-               res)
-              (else
-               (subtract-1-* res (cdr rs)))))))
-
-(define (subtract-*-* [r0s : RefOps] [r1s : RefOps]) : RefOps
-  (show "subtract-*-*:" r0s r1s)
-  (cond ((null? r0s)
-         (list))
-        ((null? r1s)
-         r0s)
-        (else
-         (subtract-*-*
-          (subtract-*-1 r0s (car r1s))
-          (cdr r1s)))))
-
-(define-syntax-rule
-  (map-ref ([r expr]) body ...)
-  (let rec : RefOp ([r : RefOp (shape-reference expr)])
-    (cond ((string? r)
-           body ...)
-          ((failed-union? r)
-           (failed-union ;;Should we attempt union again?
-            (map rec (failed-union-refs r))))
-          ((failed-subtraction? r)
-           (subtract-refs
-            (rec (car (failed-subtraction-refs r)))
-            (map rec (cdr (failed-subtraction-refs r))))))))
-
-(define-syntax-rule
-  (do-ref ([r expr]) body ...)
-  (let ((s expr))
-    (let rec : Void ([r : RefOp (shape-reference s)])
-      (cond ((ref? r)
-             body ...)
-            ((failed-union? r)
-             (for-each rec (failed-union-refs r)))
-            ((failed-subtraction? r)
-             (for-each rec (failed-subtraction-refs r)))))))
 
 (define (revolve-borders [profile : Ref]
                          [axis : (List Loc Loc)]
