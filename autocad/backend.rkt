@@ -33,7 +33,7 @@
          zoom-extents)
 
 (require racket/include)
-(include "../base/common.rkt")
+(include "../base/common.rkc")
 
 (define (current-backend-name) "AutoCAD")
 
