@@ -1323,6 +1323,16 @@
 ;(CreateTypedArray Method idh_createtypedarray.htm)
 |#
 (def-com (delete All) () Void)
+
+(provide safe-delete)
+(define (safe-delete [obj : Com-Object]) : Boolean
+  (with-handlers ((exn:fail? (lambda ([e : exn]) ;;HACK: Typed Racket doesn't provide Exn
+                               (if (regexp-match? "Object was erased" (exn-message e))
+                                   #f
+                                   (raise e)))))
+    (delete obj)
+    #t))
+
 #|
 (def-com (DeleteCellContent Table) ((row Long) (col Long)) Void)
 (def-com (DeleteCellStyle TableStyle) ((StringCellStyle String)) Void)
@@ -1381,12 +1391,12 @@
 (def-com (GetBlockTableRecordId2 Table) ((nRow Integer) (nCol Integer) (nContent Integer)) Long_PTR)
 (def-com (GetBlockTableRecordId32 Table) ((nRow Integer) (nCol Integer) (nContent Integer)) Long)
 |#
-(def-com (get-bounding-box Shape) ([min-point Any] [max-point Any]) Void)
+(def-com (get-bounding-box Shape) ([min-point (Boxof VarDouble3)] [max-point (Boxof VarDouble3)]) Void)
 
 (provide bounding-box)
 (define (bounding-box [shape : Com-Object]) : (List Loc Loc)
-  (let ((min-point (box #f))
-        (max-point (box #f)))
+  (let ((min-point (box #(0.0 0.0 0.0)))
+        (max-point (box #(0.0 0.0 0.0))))
     (get-bounding-box shape min-point max-point)
     (list (vector-double-flonum->loc (cast (unbox min-point) VarDouble3))
           (vector-double-flonum->loc (cast (unbox max-point) VarDouble3)))))
@@ -1533,13 +1543,14 @@
 (def-com (GetWidth LightweightPolyline) ((Index Integer) (StartWidth Double) (EndWidth Double)) Void)
 (GetWindowToPlot method idh_getwindowtoplot.htm)
 |#
-(def-com (GetXdata All) ((AppName String) (XDataType Any) (XDataValue Any)) Void)
+(def-com (GetXdata All) ((AppName String) (XDataType (Boxof Any)) (XDataValue (Boxof Any))) Void)
 
 (provide get-x-data)
 (define (get-x-data [obj : Com-Object] [app-name : String]) : (Values Any Any)
-  (let ((b0 (box #f))
-        (b1 (box #f)))
-    (com-invoke obj "GetXData" app-name b0 b1)
+  (let ((b0 (box (cast #f Any)))
+        (b1 (box (cast #f Any))))
+    ;(com-invoke obj "GetXData" app-name b0 b1)
+    (GetXdata obj app-name b0 b1)
     (values (unbox b0) (unbox b1))))
 
 #|
@@ -1997,17 +2008,21 @@
 
 (def-cmd (erase-all) "_.erase _all" vbCr)
 
-(define (point-string [c : Xyz]) : String
+(define (loc-string [c : Loc]) : String
   (let ((c (loc-in-world c)))
     (format "~A,~A,~A" (cx c) (cy c) (cz c))))
 
+(define (vec-string [v : Vec]) : String
+  (let ((v (vec-in-world v)))
+    (format "~A,~A,~A" (cx v) (cy v) (cz v))))
+
 (def-cmd (dview-zoom-command [center : Loc] [target : Loc] [lens : Real] [distance : Real])
-  (format "_.dview  _z ~A _po ~A ~A _d ~A" lens (point-string target) (point-string center) distance)
+  (format "_.dview  _z ~A _po ~A ~A _d ~A" lens (loc-string target) (loc-string center) distance)
   vbCr)
 
 (def-new-shape-cmd (add-cone-frustum [c : Loc] [base-radius : Real] [top-radius : Real] [height : Real])
   "_.cone "
-  (point-string c)
+  (loc-string c)
   (format " ~A _T ~A ~A " base-radius top-radius height))
 
 (def-cmd (reset-ucs) "_.ucs _W ")
@@ -2209,22 +2224,25 @@
 
 (provide curve?)
 (define (curve? [obj : Com-Object])
-  (member (object-name obj)
-          '("AcDb3dPolyline" "AcDb2dPolyline"
-            "AcDbArc" "AcDbCircle" "AcDbEllipse"
-            "AcDbPolyline" "AcDbLine" "AcDbSpline")))
+  (and (member (object-name obj)
+               '("AcDb3dPolyline" "AcDb2dPolyline"
+                                  "AcDbArc" "AcDbCircle" "AcDbEllipse"
+                                  "AcDbPolyline" "AcDbLine" "AcDbSpline"))
+       #t))
 
 (provide acceptable-surface?)
 (define (acceptable-surface? [obj : Com-Object]) : Boolean
-  (not (null? (member (object-name obj) ;;HACK Convert to boolean
-                      '("AcDbSurface" "AcDbFace" "AcDbNurbSurface")))))
+  (and (member (object-name obj) ;;HACK Convert to boolean
+                '("AcDbSurface" "AcDbFace" "AcDbNurbSurface"))
+       #t))
 
 (provide loftable-surface?)
 (define (loftable-surface? [obj : Com-Object]) : Boolean
-  (not (null? (member (object-name obj) ;;HACK Convert to boolean
-                      '("AcDbSurface" "AcDbFace" "AcDbNurbSurface"
-                        "AcDbRegion" "AcDbLoftedSurface" "AcDbExtrudedSurface")))))
-
+  (and (member (object-name obj) ;;HACK Convert to boolean
+                '("AcDbSurface" "AcDbFace" "AcDbNurbSurface"
+                                "AcDbRegion" "AcDbLoftedSurface" "AcDbExtrudedSurface"))
+       #t))
+  
 (define (convert-3dpolyline [obj : Com-Object]) : (Listof Com-Object)
   (let ((type (object-name obj)))
     (cond ((string=? type "AcDb3dPolyline")
@@ -2340,7 +2358,7 @@
    "._loft _mo ~A ~A _po ~A~A"
    (if solid? "_so" "_su")
    (handent object)
-   (point-string point)
+   (loc-string point)
    vbCr))
 
 (provide loft-command)
@@ -2391,8 +2409,8 @@
   (format "._extrude _mo ~A ~A  _d ~A ~A "
           (if solid? "_so" "_su")
           (handents object)
-          (point-string start-point)
-          (point-string end-point)))
+          (loc-string start-point)
+          (loc-string end-point)))
 
 ;;Revolve
 
@@ -2402,8 +2420,8 @@
           (if solid? "_so" "_su")
           (handent object)
           vbCr
-          (point-string axis-p0)
-          (point-string axis-p1)
+          (loc-string axis-p0)
+          (loc-string axis-p1)
           (radians->degrees a0) (radians->degrees (- a1 a0))))
 
 (provide revolve-command)
@@ -2488,9 +2506,9 @@
    (format "_.slice ~A~A_zaxis ~A ~A ~A\n"
            (handent shape)
            vbCr
-           (point-string p)
-           (point-string (p+v p n))
-           (point-string (p-p p n))))
+           (loc-string p)
+           (loc-string (p+v p n))
+           (loc-string (p-v p n))))
   shape)
 
 
@@ -2746,7 +2764,7 @@
 
 
 (provide 2d-view)
-(define (2d-view [center : (Option Xyz) #f] [magnification : Real 1]) : (Values Loc Real)
+(define (2d-view [center : (Option Loc) #f] [magnification : Real 1]) : (Values Loc Real)
   (if center
       (begin
         (zoom-center center magnification)
