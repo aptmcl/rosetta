@@ -486,7 +486,6 @@
     (map-ref ([%profile profile])
       (let* ((plane (%curve-perp-frame %path (%curve-parameter %path 0.0))))
         (%transform-object %profile plane #f)
-        (%move-object %profile (%curve-start-point %path))
         (cond ((%is-curve %profile)
                (singleton-ref (%add-sweep1 %path (list %profile))))
               ((%is-surface %profile)
@@ -561,6 +560,14 @@
 
 (define (bounding-box [s : Shape]) : Locs
   (%bounding-box (shape-refs s)))
+
+(define (curve-domain [curve : Shape]) : (Values Real Real)
+  (let ((d (%curve-domain (shape-ref curve))))
+    (values (vector-ref d 0) (vector-ref d 1))))
+
+(define (curve-frame-at [curve : Shape] [t : Real]) : Loc
+  (%curve-perp-frame (shape-ref curve) t))
+
 
 (define (delete-all-shapes) : Void
   (%delete-objects (%all-objects #f #f #f))

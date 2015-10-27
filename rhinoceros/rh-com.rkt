@@ -88,11 +88,13 @@
 (define-type Booleans (Vectorof Boolean))
 (define-type Double Float)
 (define-type ArrDouble (Vectorof Float))
+(define-type Rh-Matrix Type-Described)
+(define-type Real-Matrix (Matrix Real))
 
 (define-syntax-rule (mf m i j) (real->double-flonum (matrix-ref m i j)))
 (define-syntax-rule (vf v i j) (vector-ref (vector-ref v i) j))
 
-(define (loc->plane [p : Xyz]) : Plane
+(define (loc->plane [p : Loc]) : Plane
   (let ((m (world-transformation p)))
     (type-describe
      (vector (vector (mf m 0 3) (mf m 1 3) (mf m 2 3))
@@ -100,6 +102,15 @@
              (vector (mf m 0 1) (mf m 1 1) (mf m 2 1))
              (vector (mf m 0 2) (mf m 1 2) (mf m 2 2)))
      '(array 4 (variant (array 3 double))))))
+
+(define (loc->rh-matrix [p : Loc]) : Rh-Matrix
+  (let ((m (world-transformation p)))
+    (type-describe
+     (vector (vector (mf m 0 0) (mf m 0 1) (mf m 0 2) (mf m 0 3))
+             (vector (mf m 1 0) (mf m 1 1) (mf m 1 2) (mf m 1 3))
+             (vector (mf m 2 0) (mf m 2 1) (mf m 2 2) (mf m 2 3))
+             (vector 0 0 0 1))
+     '(array 4 (array 4 any)))))
 
 (define (matrix->rh-matrix [m : Real-Matrix]) : Rh-Matrix
   (type-describe
@@ -114,6 +125,12 @@
            [(vf pl 2 0) (vf pl 2 1) (vf pl 2 2) 0]
            [(vf pl 3 0) (vf pl 3 1) (vf pl 3 2) 0]
            [(vf pl 0 0) (vf pl 0 1) (vf pl 0 2) 1]]))
+
+(define (rosetta-matrix<-nested-plane [pl : OutPlane]) : Loc
+  (u0 (Cs (matrix [[(vf pl 1 0) (vf pl 2 0) (vf pl 3 0) (vf pl 0 0)]
+                   [(vf pl 1 1) (vf pl 2 1) (vf pl 3 1) (vf pl 0 1)]
+                   [(vf pl 1 2) (vf pl 2 2) (vf pl 3 2) (vf pl 0 2)]
+                   [0           0           0           1]]))))
 
 #|
 ;;This is so wrong. This only works with curves with a single intersection.
@@ -143,9 +160,6 @@
       #f
       b))
 
-(define-type Rh-Matrix Type-Described)
-(define-type Real-Matrix (Matrix Real))
-
 ;;We upgrade types automatically, from the types that Rhino's COM requires and the types that Rosetta provides
 
 (with-upgrade-types ([BoolOrVoid Boolean]
@@ -158,8 +172,10 @@
                      [Ids Refs]
                      [IdsOrVoid Refs]
                      [ArrMeshIndexes MeshIndexes]
-                     [Rh-Matrix Real-Matrix]
-                     [OutPlane Real-Matrix]))
+                     ;[Rh-Matrix Real-Matrix]
+                     [Rh-Matrix Loc]
+                     ;[OutPlane Real-Matrix]
+                     [OutPlane Loc]))
 
 ;;In most cases, upgrading from one type to another requires a conversion function for the type values
 
@@ -170,7 +186,8 @@
      [Point     Loc          vector-double-flonum->loc]
      [Direction Vec          vector-double-flonum->vec]
      [Loc       Plane        loc->plane]
-     [OutPlane  Loc          matrix-double-flonum->loc]
+;     [OutPlane  Loc          matrix-double-flonum->loc]
+     [OutPlane  Loc          rosetta-matrix<-nested-plane]
      [OutPlane  Real-Matrix  matrix<-nested-plane]
      [Locs      Points       locs->vector-vector-double-flonum]
      [Points    Locs         vector-vector-double-flonum->locs]
@@ -180,6 +197,7 @@
      [IdsOrVoid Refs         ids-or-void->refs]
      [BoolOrVoid Boolean     boolean-or-void->boolean]
      [Real-Matrix Rh-Matrix  matrix->rh-matrix]
+     [Loc       Rh-Matrix    loc->rh-matrix]
      [MeshIndexes ArrMeshIndexes mesh-indexes->arr-mesh-indexes]))
 
 
@@ -352,14 +370,12 @@
 (def curve-Boolean-intersection (id id) ids)
 (def curve-Boolean-union (id id) ids)
 (def curve-curve-intersection (id #:opt id real) list<-intersection-array)
-(def curve-closest-point (id point #:opt integer) real)
-(def curve-domain (id) vector->list)
 |#
+(def-com curve-closest-point ([curve Id] [point Point] #:opt [segment Integer]) Real)
+(def-com curve-domain ([curve Id] #:opt [segment Integer]) (Vector Real Real))
 (def-com curve-end-point ([curve Id]) Point)
-#|
-(def curve-evaluate (id real #:opt integer) coords<-vector)
-(def curve-frame (id real) matrix<-nested-plane)
-|#
+(def-com curve-evaluate ([curve Id] [t Real] #:opt [derivative Integer]) (Vectorof Loc))
+(def-com curve-frame ([curve Id] [t Real]) OutPlane)
 (def-com curve-parameter ([curve Id] [t Double]) Double)
 (def-com curve-perp-frame ([curve Id] [t Double]) OutPlane)
 (def-com curve-normal ([curve Id]) Direction)
@@ -367,8 +383,8 @@
 #|(def curve-seam (id real) Boolean)
 |#
 (def-com curve-start-point ([curve Id]) Point)
+(def-com curve-tangent ([curve Id] [t Real] #:opt [segment Integer]) Vec)
 #|
-(def curve-tangent (id real #:opt integer) coord<-vector)
 (def delete-layer (name) Boolean)
 |#
 

@@ -13,6 +13,7 @@
  [com-invoke            (Com-Object String Any * -> Any)]
  [type-describe         (Any Any -> Type-Described)]
  [com-get-property      (Com-Object String String * -> Any)]
+ [com-get-property*     (Com-Object String Any * -> Any)]
  [com-set-property!     (case-> (Com-Object String Any -> Any)
                                 (Com-Object String String Any -> Any)
                                 (Com-Object String String String Any -> Any))]

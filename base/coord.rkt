@@ -2,7 +2,8 @@
 (require racket/math math/matrix)
 (require "utils.rkt")
 
-(provide Loc
+(provide Cs
+         Loc
          Vec
          Locs
          Vecs
@@ -98,7 +99,9 @@
          loc-from-o-n
          loc-from-o-phi
          loc-from-o-vx-vy
-         vf)
+         vf
+         vlength
+         perpendicular-vector)
 
 ;; Matrix operations
 
@@ -540,6 +543,10 @@
                  ((x1 y1 z1) v1))
       (+ (* x0 x1) (* y0 y1) (* z0 z1)))))
 
+(define (vlength [v : Vec]) : Real
+  (let ((x (cx v)) (y (cy v)) (z (cz v)))
+    (cast (sqrt (+ (* x x) (* y y) (* z z))) Real)))
+
 (define (u-vxyz [x : Real] [y : Real] [z : Real] [cs : Cs (current-cs)]) : Vec
   (let ((l (cast (sqrt (+ (* x x) (* y y) (* z z))) Real)))
     (vxyz (/ x l) (/ y l) (/ z l) cs)))
@@ -563,14 +570,17 @@
       (let ((vy (v*v vz vx)))
         (cs-from-o-vx-vy-vz o vx vy vz)))))
 
+(define (~zero? [x : Real]) : Boolean
+  (< (abs x) 1e-14))
+
 (define (perpendicular-vector [v : Vec]) : Vec
   (let-coords (((x y z) v))
-    (cond ((= z 0)
-           (vxyz 0 0 1 v))
-          ((= y 0)
-           (vxyz 0 -1 0 v))
-          ((= x 0)
+    (cond ((~zero? x)
            (vxyz 1 0 0 v))
+          ((~zero? y)
+           (vxyz 0 -1 0 v))
+          ((~zero? z)
+           (vxyz 0 0 1 v))
           (else
            (let ((x z)
                  (y z)

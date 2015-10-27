@@ -254,6 +254,12 @@ The following example does not work as intended. Rotating the args to closed-spl
 (define (curve-end-point [curve : Shape]) : Loc
   (%end-point (shape-ref curve)))
 
+(define (curve-domain [curve : Shape]) : (Values Real Real)
+  (let ((r (shape-ref curve)))
+    (values (%curve-start-param r) (%curve-end-param r))))
+
+(define (curve-frame-at [curve : Shape] [t : Real]) : Loc
+  (%curve-frame-at (shape-ref curve) t))
 
 (def-shape* (surface-polygon [pts : Loc *])
   (let ((com (%add-3d-poly (append pts (list (car pts))))))
@@ -349,7 +355,7 @@ The following example does not work as intended. Rotating the args to closed-spl
                 (if closed? closed-spline spline))
             (map point-position profiles))
            (delete-shapes profiles)))
-        ((andmap curve?? profiles)
+        ((andmap curve?? profiles) ;;HACK This is probably bogus due to TypedRacket optimizer
          (loft-curves profiles ruled? solid? closed?))
         ((andmap surface-region? profiles)
          (loft-surfaces profiles ruled? #t closed?))
@@ -589,7 +595,9 @@ The following example does not work as intended. Rotating the args to closed-spl
     (begin0
       (map-ref ([profile profile])
         (map-ref ([path path])
-          (%sweep-command profile #t path surface? rotation scale)))
+          (let ((frame (%curve-frame-at path (%curve-start-param path))))
+            (%transform profile frame)
+            (%sweep-command profile #f path surface? frame rotation scale))))
       (delete-shapes (list profile path)))))
 
 (def-shape (slice [shape : Shape] [p : Loc (u0)] [n : Vec (vz 1 p)])

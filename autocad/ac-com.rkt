@@ -97,7 +97,13 @@
   (cast (com-get-property (active-document) "Utility") Com-Object))
 
 (define-cached (autolisp-functions) : Com-Object
-  (cast (com-get-property (active-document) "Functions") Com-Object))
+  (vl-load-com)
+  (let ((lisp (get-interface-object "VL.Application.16")))
+    (cast (com-get-property
+           (cast (com-get-property lisp "ActiveDocument")
+                 Com-Object)
+           "Functions")
+          Com-Object)))
 
 (provide load-autocad-com)
 (define (load-autocad-com)
@@ -105,9 +111,7 @@
   (active-document)
   (active-modelspace)
   (utility)
-  (com-set-property! (application) "Visible" #t)
-  ;;start AutoLISP
-  (autolisp-functions))
+  (com-set-property! (application) "Visible" #t))
 
 (begin-for-syntax
   (require syntax/id-table)
@@ -1844,9 +1848,84 @@
   (hash-ref! autolisp-function-table
              name
              (lambda () : Com-Object
-               (item (autolisp-functions) name))))
+               (cast
+                (com-get-property*
+                 (autolisp-functions)
+                 "Item"
+                 (string-upcase (symbol->string name)))
+                Com-Object))))
 
-(def-com-method (al-nth funcall) (get-autolisp-function 'nth) ([i Integer] [l Com-Object]) Any)
+(define-syntax def-autolisp
+  (syntax-rules ()
+    [(def-autolisp ((name al-name) param ...) type)
+     (def-com-method (name funcall) (get-autolisp-function 'al-name) (param ...) type)]
+    [(def-autolisp (name param ...) type)
+     (def-autolisp ((name name) param ...) type)]))
+
+(def-autolisp ((al-nth nth) [i Integer] [l Com-Object]) Any)
+(def-autolisp ((al-length length) [l Com-Object]) Integer)
+(def-autolisp ((al-handent handent) [id String]) Com-Object)
+
+(define (loc<-al-com [c : Com-Object]) : Loc
+  (xyz (cast (al-nth 0 c) Real)
+       (cast (al-nth 1 c) Real)
+       (cast (al-nth 2 c) Real)))
+
+(define (vec<-al-com [c : Com-Object]) : Vec
+  (vxyz (cast (al-nth 0 c) Real)
+        (cast (al-nth 1 c) Real)
+        (cast (al-nth 2 c) Real)))
+
+(define (list<-al-com [c : Com-Object]) : (Listof Any)
+  (let ((n (al-length c)))
+    (for/list : (Listof Any) ((i (in-range n)))
+      (al-nth i c))))
+
+(def-autolisp (vlax-curve-getStartPoint [c Com-Object]) Com-Object)
+(provide curve-start-point)
+(define (curve-start-point [c : Com-Object]) : Loc
+  (loc<-al-com (vlax-curve-getStartPoint (al-handent (handle c)))))
+
+(def-autolisp (vlax-curve-getEndPoint [c Com-Object]) Com-Object)
+(provide curve-end-point)
+(define (curve-end-point [c : Com-Object]) : Loc
+  (loc<-al-com (vlax-curve-getEndPoint (al-handent (handle c)))))
+
+(def-autolisp (vlax-curve-getStartParam [c Com-Object]) Real)
+(provide curve-start-param)
+(define (curve-start-param [c : Com-Object]) : Real
+  (vlax-curve-getStartParam (al-handent (handle c))))
+
+(def-autolisp (vlax-curve-getEndParam [c Com-Object]) Real)
+(provide curve-end-param)
+(define (curve-end-param [c : Com-Object]) : Real
+  (vlax-curve-getEndParam (al-handent (handle c))))
+
+(def-autolisp (vlax-curve-getFirstDeriv [c Com-Object] [t Real]) Com-Object)
+(provide curve-tangent-at)
+(define (curve-tangent-at [c : Com-Object] [t : Real]) : Vec
+  (vec<-al-com (vlax-curve-getFirstDeriv (al-handent (handle c)) t)))
+
+(def-autolisp (vlax-curve-getSecondDeriv [c Com-Object] [t Real]) Com-Object)
+(provide curve-normal-at)
+(define (curve-normal-at [c : Com-Object] [t : Real]) : Vec
+  (vec<-al-com (vlax-curve-getSecondDeriv (al-handent (handle c)) t)))
+
+(def-autolisp (vlax-curve-getPointAtParam [c Com-Object] [t Real]) Com-Object)
+(provide curve-point-at)
+(define (curve-point-at [c : Com-Object] [t : Real]) : Loc
+  (loc<-al-com (vlax-curve-getPointAtParam (al-handent (handle c)) t)))
+
+(provide curve-frame-at)
+(define (curve-frame-at [c : Com-Object] [t : Real]) : Loc
+  (let ((o (curve-point-at c t))
+        (t (curve-tangent-at c t))
+        (n (curve-normal-at c t)))
+    (let ((n (if (< (vlength n) 1e-14) (v*r (perpendicular-vector t) -1) n)))
+      (loc-from-o-vx-vy
+       o
+       n
+       (v*v t n)))))
 
 #|
 
@@ -2239,8 +2318,13 @@
 (provide loftable-surface?)
 (define (loftable-surface? [obj : Com-Object]) : Boolean
   (and (member (object-name obj) ;;HACK Convert to boolean
-                '("AcDbSurface" "AcDbFace" "AcDbNurbSurface"
-                                "AcDbRegion" "AcDbLoftedSurface" "AcDbExtrudedSurface"))
+                '("AcDbSurface"
+                  "AcDbFace"
+                  "AcDbNurbSurface"
+                  "AcDbRegion"
+                  "AcDbLoftedSurface"
+                  "AcDbExtrudedSurface"
+                  "AcDbSweptSurface"))
        #t))
   
 (define (convert-3dpolyline [obj : Com-Object]) : (Listof Com-Object)
@@ -2387,12 +2471,24 @@
          (created-items (active-modelspace) prev))))))
 
 ;;Sweep
-
+#;
 (def-new-shapes-cmd (sweep-command [section : Com-Object] [perpendicular? : Boolean] [path : Com-Object] [solid? : Boolean] [rotation : Real] [scale : Real])
+  ;;Stupid autocad bug
   (format "._sweep _mo ~A ~A  _A ~A _B 0,0 ~A~A~A "
           (if solid? "_so" "_su")
           (handent section)
           (if perpendicular? "_Yes" "_No")
+          (if (= scale 1) "" (format "_S ~A " scale))
+          (if (= rotation 0) "" (format "_T ~A " (radians->degrees rotation)))
+          (handent path)))
+
+(def-new-shapes-cmd (sweep-command [section : Com-Object] [perpendicular? : Boolean] [path : Com-Object] [solid? : Boolean] [start : Loc] [rotation : Real] [scale : Real])
+  ;;Stupid autocad bug
+  (format "._sweep _mo ~A ~A  _A ~A _B ~A ~A~A~A "
+          (if solid? "_so" "_su")
+          (handent section)
+          (if perpendicular? "_Yes" "_No")
+          (loc-string start)
           (if (= scale 1) "" (format "_S ~A " scale))
           (if (= rotation 0) "" (format "_T ~A " (radians->degrees rotation)))
           (handent path)))
