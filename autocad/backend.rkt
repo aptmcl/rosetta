@@ -19,6 +19,13 @@
          delete-all-shapes
          curve-start-point
          curve-end-point
+         curve-domain
+         curve-length
+         ;curve-tangent-at
+         ;curve-normal-at
+         ;curve-point-at
+         curve-frame-at
+         curve-frame-at-length
          enable-update
          disable-update
          prompt-point
@@ -260,6 +267,12 @@ The following example does not work as intended. Rotating the args to closed-spl
 
 (define (curve-frame-at [curve : Shape] [t : Real]) : Loc
   (%curve-frame-at (shape-ref curve) t))
+
+(define (curve-frame-at-length [curve : Shape] [t : Real]) : Loc
+  (%curve-frame-at-length (shape-ref curve) t))
+
+(define (curve-length [curve : Shape]) : Real
+  (%curve-length (shape-ref curve)))
 
 (def-shape* (surface-polygon [pts : Loc *])
   (let ((com (%add-3d-poly (append pts (list (car pts))))))
