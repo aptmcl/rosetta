@@ -1882,50 +1882,69 @@
       (al-nth i c))))
 
 (def-autolisp (vlax-curve-getStartPoint [c Com-Object]) Com-Object)
-(provide curve-start-point)
+(def-autolisp (vlax-curve-getEndPoint [c Com-Object]) Com-Object)
+(def-autolisp (vlax-curve-getStartParam [c Com-Object]) Real)
+(def-autolisp (vlax-curve-getEndParam [c Com-Object]) Real)
+(def-autolisp (vlax-curve-getDistAtParam [c Com-Object] [t Real]) Real)
+(def-autolisp (vlax-curve-getParamAtDist [c Com-Object] [length Real]) Real)
+(def-autolisp (vlax-curve-getFirstDeriv [c Com-Object] [t Real]) Com-Object)
+(def-autolisp (vlax-curve-getSecondDeriv [c Com-Object] [t Real]) Com-Object)
+(def-autolisp (vlax-curve-getPointAtParam [c Com-Object] [t Real]) Com-Object)
+
 (define (curve-start-point [c : Com-Object]) : Loc
   (loc<-al-com (vlax-curve-getStartPoint (al-handent (handle c)))))
 
-(def-autolisp (vlax-curve-getEndPoint [c Com-Object]) Com-Object)
-(provide curve-end-point)
+(provide curve-start-point
+         curve-end-point
+         curve-start-param
+         curve-end-param
+         curve-length
+         curve-tangent-at
+         curve-normal-at
+         curve-point-at
+         curve-frame-at
+         curve-frame-at-length)
+
 (define (curve-end-point [c : Com-Object]) : Loc
   (loc<-al-com (vlax-curve-getEndPoint (al-handent (handle c)))))
 
-(def-autolisp (vlax-curve-getStartParam [c Com-Object]) Real)
-(provide curve-start-param)
 (define (curve-start-param [c : Com-Object]) : Real
   (vlax-curve-getStartParam (al-handent (handle c))))
 
-(def-autolisp (vlax-curve-getEndParam [c Com-Object]) Real)
-(provide curve-end-param)
 (define (curve-end-param [c : Com-Object]) : Real
   (vlax-curve-getEndParam (al-handent (handle c))))
 
-(def-autolisp (vlax-curve-getFirstDeriv [c Com-Object] [t Real]) Com-Object)
-(provide curve-tangent-at)
+(define (curve-length [c : Com-Object]) : Real
+  (vlax-curve-getDistAtParam (al-handent (handle c))
+                             (vlax-curve-getEndParam (al-handent (handle c)))))
+
+(define (curve-frame-at-length [c : Com-Object] [d : Real]) : Loc
+  (curve-frame-at c (vlax-curve-getParamAtDist c d)))
+
 (define (curve-tangent-at [c : Com-Object] [t : Real]) : Vec
   (vec<-al-com (vlax-curve-getFirstDeriv (al-handent (handle c)) t)))
 
-(def-autolisp (vlax-curve-getSecondDeriv [c Com-Object] [t Real]) Com-Object)
-(provide curve-normal-at)
 (define (curve-normal-at [c : Com-Object] [t : Real]) : Vec
   (vec<-al-com (vlax-curve-getSecondDeriv (al-handent (handle c)) t)))
 
-(def-autolisp (vlax-curve-getPointAtParam [c Com-Object] [t Real]) Com-Object)
-(provide curve-point-at)
 (define (curve-point-at [c : Com-Object] [t : Real]) : Loc
   (loc<-al-com (vlax-curve-getPointAtParam (al-handent (handle c)) t)))
 
-(provide curve-frame-at)
+(define (xvec-for [t : Vec] [n : Vec])
+  (define (~zero? [x : Real]) : Boolean
+    (< (abs x) 1e-14))
+  (if (~zero? (vlength n)) ;unusable normal
+      (vpol 1 (+ (sph-phi t) pi/2))
+      (v*r n -1)))
+
 (define (curve-frame-at [c : Com-Object] [t : Real]) : Loc
-  (let ((o (curve-point-at c t))
-        (t (curve-tangent-at c t))
-        (n (curve-normal-at c t)))
-    (let ((n (if (< (vlength n) 1e-14) (v*r (perpendicular-vector t) -1) n)))
-      (loc-from-o-vx-vy
-       o
-       n
-       (v*v t n)))))
+  (let* ((o (curve-point-at c t))
+         (tv (curve-tangent-at c t))
+         (nv (xvec-for tv (curve-normal-at c t))))
+    (loc-from-o-vx-vy
+     o
+     nv
+     (v*v nv (v*r tv -1)))))
 
 #|
 
@@ -1949,26 +1968,6 @@
 (def-autolisp (al-length "length"))
 (def-autolisp (al-nth "nth"))
 (def-autolisp (al-handent "handent"))
-
-(define (xyz<-al-com c)
-  (xyz (al-nth 0 c)
-       (al-nth 1 c)
-       (al-nth 2 c)))
-
-(define (list<-al-com c)
-  (let ((n (al-length c)))
-    (for/list ((i (in-range n)))
-      (al-nth i c))))
-
-(def-autolisp vlax-curve-getStartPoint)
-(provide curve-start-point)
-(define (curve-start-point c)
-  (xyz<-al-com (vlax-curve-getStartPoint (al-handent (handle c)))))
-
-(def-autolisp vlax-curve-getEndPoint)
-(provide curve-end-point)
-(define (curve-end-point c)
-  (xyz<-al-com (vlax-curve-getEndPoint (al-handent (handle c)))))
 
 ;;Defines an AutoLISP function
 (define-syntax (defun stx)
