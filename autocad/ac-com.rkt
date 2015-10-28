@@ -105,14 +105,6 @@
            "Functions")
           Com-Object)))
 
-(provide load-autocad-com)
-(define (load-autocad-com)
-  (application)
-  (active-document)
-  (active-modelspace)
-  (utility)
-  (com-set-property! (application) "Visible" #t))
-
 (begin-for-syntax
   (require syntax/id-table)
   (define com-obj (make-immutable-free-id-table 
@@ -2937,3 +2929,29 @@
       (let ((filtered-objs (if predicate (filter predicate objs) objs)))
         (unless (null? filtered-objs)
           (copy-objects doc filtered-objs (active-modelspace)))))))
+
+
+;;Finally, start everything
+
+(provide load-autocad-com)
+(define (load-autocad-com)
+  (application)
+  (active-document)
+  (active-modelspace)
+  (utility)
+  (com-set-property! (application) "Visible" #t)
+  (reset-ucs)
+  (delobj 0)
+  (osmode 0) 
+  ;(nomutt 1)
+  ;(cmdecho 0)
+  ;(expert 5)
+  
+  ;(objectsnap)
+  ;(surfaceassociativity 0)
+  ;(surfacemodelingmode 1)
+  ;(solidhist 0)
+  
+  ;(start-undo-mark)
+  ;(undo-off)
+)
