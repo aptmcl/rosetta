@@ -63,33 +63,12 @@
     (values (lambda () : RefOp v)
             (lambda ([r : RefOp]) : Boolean (eq? r v)))))
 
-(define (delete-basic-shape [shape : Shape]) : Void
-  (%safe-delete (shape-ref shape))
-  (void))
-
 ;;Now, the operations
 
-;;Due to sharing, we might try to delete a shape more than once
-(define (delete-shape [shape : Shape]) : Void
-  (when (realized? shape)
-    (cond ((union? shape)
-           (for-each delete-shape (union-shapes shape)))
-          ((subtraction? shape)
-           (for-each delete-shape (subtraction-shapes shape)))
-          (else
-           (delete-basic-shape shape)))
-    (mark-deleted! shape)))
+(define (delete-basic-shape [shape : Shape]) : Void
+  (for-each %safe-delete (shape-refs shape))
+  (void))
 
-(define (mark-shape-deleted! [shape : Shape]) : Void
-  (when (realized? shape)
-    (cond ((union? shape)
-           (for-each mark-shape-deleted! (union-shapes shape)))
-          ((subtraction? shape)
-           (for-each mark-shape-deleted! (subtraction-shapes shape))))
-    (mark-deleted! shape)))
-
-(define (delete-shapes [shapes : Shapes (list)]) : Void
-  (for-each delete-shape shapes))
 
 (define (delete-all-shapes) : Void
   (%erase-all)

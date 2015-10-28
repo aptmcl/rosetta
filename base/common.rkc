@@ -122,6 +122,32 @@
             (cons (copy-ref-op r)
                   (rec (- n 1)))))))
 
+;;Due to sharing, we might try to delete a shape more than once
+(define (delete-shape [shape : Shape]) : Void
+  (when (realized? shape)
+    (cond ((union? shape)
+           (for-each delete-shape (union-shapes shape)))
+          ((intersection? shape)
+           (for-each delete-shape (intersection-shapes shape)))
+          ((subtraction? shape)
+           (for-each delete-shape (subtraction-shapes shape)))
+          (else
+           (delete-basic-shape shape)))
+    (mark-deleted! shape)))
+
+(define (mark-shape-deleted! [shape : Shape]) : Void
+  (when (realized? shape)
+    (cond ((union? shape)
+           (for-each mark-shape-deleted! (union-shapes shape)))
+          ((intersection? shape)
+           (for-each mark-shape-deleted! (intersection-shapes shape)))
+          ((subtraction? shape)
+           (for-each mark-shape-deleted! (subtraction-shapes shape))))
+    (mark-deleted! shape)))
+
+(define (delete-shapes [shapes : Shapes (list)]) : Void
+  (for-each delete-shape shapes))
+
 #|
 
 Boolean operations can fail for a variety of reasons. Particularly, if

@@ -57,14 +57,9 @@
             (lambda ([r : RefOp]) : Boolean (eq? r v)))))
 
 ;;Now, the operations
-(define (delete-shape [shape : Shape]) : Void
-  (unless (or (empty-shape? shape) (universal-shape? shape))
-    (%delete-objects (shape-refs shape))
-    (mark-deleted! shape)))
-
-(define (delete-shapes [shapes : Shapes (list)]) : Void
-  (%delete-objects (shapes-refs shapes))
-  (for-each (inst mark-deleted! RefOp) shapes))
+(define (delete-basic-shape [shape : Shape]) : Void
+  (%delete-objects (shape-refs shape))
+  (void))
 
 ;;TODO: Update this to follow the approach taken for autocad
 (define (shape<-ref [r : Ref]) ;HACK Bug in typed/racket : Shape
