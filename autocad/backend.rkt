@@ -1,4 +1,4 @@
-#lang typed/racket/base
+#lang typed/racket/base #:no-optimize
 (require racket/math
          racket/list
          racket/function)
@@ -63,21 +63,37 @@
     (values (lambda () : RefOp v)
             (lambda ([r : RefOp]) : Boolean (eq? r v)))))
 
+(define (delete-basic-shape [shape : Shape]) : Void
+  (%safe-delete (shape-ref shape))
+  (void))
+
 ;;Now, the operations
+
+;;Due to sharing, we might try to delete a shape more than once
 (define (delete-shape [shape : Shape]) : Void
-  (unless (or (empty-shape? shape) (universal-shape? shape))
-    (for-each %safe-delete (shape-refs shape))
-    (mark-deleted! shape)
-    (void)))
+  (when (realized? shape)
+    (cond ((union? shape)
+           (for-each delete-shape (union-shapes shape)))
+          ((subtraction? shape)
+           (for-each delete-shape (subtraction-shapes shape)))
+          (else
+           (delete-basic-shape shape)))
+    (mark-deleted! shape)))
+
+(define (mark-shape-deleted! [shape : Shape]) : Void
+  (when (realized? shape)
+    (cond ((union? shape)
+           (for-each mark-shape-deleted! (union-shapes shape)))
+          ((subtraction? shape)
+           (for-each mark-shape-deleted! (subtraction-shapes shape))))
+    (mark-deleted! shape)))
 
 (define (delete-shapes [shapes : Shapes (list)]) : Void
-  (for-each %safe-delete (shapes-refs shapes))
-  (for-each (inst mark-deleted! RefOp) shapes))
+  (for-each delete-shape shapes))
 
 (define (delete-all-shapes) : Void
   (%erase-all)
   (void))
-
 
 (define (shape<-ref [r : Ref]) ;HACK Bug in typed/racket : Shape
   (define (coordinates [r : Ref])
@@ -248,8 +264,6 @@ The following example does not work as intended. Rotating the args to closed-spl
        (let ((v (v/r (v+v v0* v1*) 2)))
          (let ((v0 (or v0 v #;(pol (pol-rho v0*) (pol-phi v))))
                (v1 (or v1 v #;(pol (pol-rho v1*) (pol-phi v)))))
-           (%add-line (car cs) (p+v (car cs) v0))
-           (%add-line (car cs) (p+v (car cs) v1))
            (let ((sp (%add-spline (append cs (list (car cs))) v0 v1)))
              ;   (ac:closed sp)  ;;HACK SHOULDN'T WE CLOSE THIS?
              sp)))))))
@@ -617,7 +631,7 @@ The following example does not work as intended. Rotating the args to closed-spl
   (begin0
     (map-ref ([r shape])
              (%slice-command r p n))
-    (mark-deleted! shape)))
+    (mark-shape-deleted! shape)))
 
 (def-shape (triangle-face [p0 : Loc] [p1 : Loc] [p2 : Loc])
   (%add-3d-face p0 p1 p2 p2))
@@ -631,21 +645,21 @@ The following example does not work as intended. Rotating the args to closed-spl
       (%move r o v))
     (begin0
       (shape-reference shape)
-      (mark-deleted! shape))))
+      (mark-shape-deleted! shape))))
 
 (def-shape (rotate [shape : Shape] [a : Real pi/2] [p0 : Loc (u0)] [p1 : Loc (+z p0 1)])
   (do-ref ([r shape])
     (%rotate3d r p0 p1 a))
   (begin0
     (shape-reference shape)
-    (mark-deleted! shape)))
+    (mark-shape-deleted! shape)))
 
 (def-shape (scale [shape : Shape] [s : Real 1] [p : Loc (u0)])
   (do-ref ([r shape])
     (%scale-entity r p s))
   (begin0
     (shape-reference shape)
-    (mark-deleted! shape)))
+    (mark-shape-deleted! shape)))
 
 
 (provide bounding-box)
