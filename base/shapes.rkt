@@ -17,6 +17,7 @@
          allow-degenerate-radius?
          mark-deleted!
          shape-reference
+         realized?
          with-references
          rectangle-deltas
          rectangle-morph
