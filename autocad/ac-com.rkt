@@ -2931,10 +2931,9 @@
           (copy-objects doc filtered-objs (active-modelspace)))))))
 
 
-;;Finally, start everything
-
-(provide load-autocad-com)
-(define (load-autocad-com)
+;;Finally, to start everything
+(provide start)
+(define (start)
   (application)
   (active-document)
   (active-modelspace)
