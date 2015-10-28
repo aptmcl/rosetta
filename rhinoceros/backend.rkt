@@ -36,6 +36,8 @@
 
 
 (define (current-backend-name) "Rhino5")
+;;Start now
+(%start)
 
 ;;References, in Rhino, are Strings
 
@@ -454,14 +456,20 @@
     (single-ref-or-union (%join-curves (shapes-refs shapes) #t))
     (delete-shapes shapes)))
 
-
 (def-shape (mirror [shape : Shape] [p : Loc (u0)] [n : Vec (vz)] [copy? : Boolean #t])
-  (let ((p (loc-from-o-n p n)))
-    (begin0
-      (map-ref ([r shape])
-        (%mirror-object r p (+x p 1) copy?))
-      (unless copy?
-        (delete-shape shape)))))
+  ;;Stupid mirror bug
+  (%postpone-redraw
+   (let ((maximized? (%is-view-maximized "Perspective")))
+     (unless maximized?
+       (%maximize-restore-view "Perspective"))
+     (let ((xform (%xform-mirror p n)))
+       (begin0
+         (map-ref ([r shape])
+                  (%transform-object r xform copy?))
+         (unless copy?
+           (mark-shape-deleted! shape))
+         (unless maximized?
+           (%maximize-restore-view "Perspective")))))))
 
 (define (sweep-borders [profile : Ref] [path : Ref] [out? : Boolean]) : Refs
   (map (lambda ([border : Ref])

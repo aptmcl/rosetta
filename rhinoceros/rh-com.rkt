@@ -83,6 +83,10 @@
                               (Vector Float Float Float)
                               (Vector Float Float Float)
                               (Vector Float Float Float)))
+(define-type Xform (Vector (Vector Float Float Float Float)
+                           (Vector Float Float Float Float)
+                           (Vector Float Float Float Float)
+                           (Vector Float Float Float Float)))
 (define-type Points (Vectorof Point))
 (define-type Integers (Vectorof Integer))
 (define-type Booleans (Vectorof Boolean))
@@ -111,6 +115,12 @@
              (vector (mf m 2 0) (mf m 2 1) (mf m 2 2) (mf m 2 3))
              (vector 0 0 0 1))
      '(array 4 (array 4 any)))))
+
+(define (xform->loc [m : Xform]) : Loc
+  (u0 (Cs (matrix [[(vf m 0 0) (vf m 0 1) (vf m 0 2) (vf m 0 3)]
+                   [(vf m 1 0) (vf m 1 1) (vf m 1 2) (vf m 1 3)]
+                   [(vf m 2 0) (vf m 2 1) (vf m 2 2) (vf m 2 3)]
+                   [(vf m 3 0) (vf m 3 1) (vf m 3 2) (vf m 3 3)]]))))
 
 (define (matrix->rh-matrix [m : Real-Matrix]) : Rh-Matrix
   (type-describe
@@ -174,7 +184,8 @@
                      [ArrMeshIndexes MeshIndexes]
                      ;[Rh-Matrix Real-Matrix]
                      [Rh-Matrix Loc]
-                     ;[OutPlane Real-Matrix]
+                     [Real-Matrix Loc]
+                     [Xform Loc]
                      [OutPlane Loc]))
 
 ;;In most cases, upgrading from one type to another requires a conversion function for the type values
@@ -189,6 +200,7 @@
 ;     [OutPlane  Loc          matrix-double-flonum->loc]
      [OutPlane  Loc          rosetta-matrix<-nested-plane]
      [OutPlane  Real-Matrix  matrix<-nested-plane]
+     [Xform     Loc       xform->loc]
      [Locs      Points       locs->vector-vector-double-flonum]
      [Points    Locs         vector-vector-double-flonum->locs]
      [Locs      ArrDouble    locs->vector-3-double-flonums]
@@ -196,7 +208,7 @@
      [Ids       Refs         vector->list]
      [IdsOrVoid Refs         ids-or-void->refs]
      [BoolOrVoid Boolean     boolean-or-void->boolean]
-     [Real-Matrix Rh-Matrix  matrix->rh-matrix]
+;     [Real-Matrix Rh-Matrix  matrix->rh-matrix]
      [Loc       Rh-Matrix    loc->rh-matrix]
      [MeshIndexes ArrMeshIndexes mesh-indexes->arr-mesh-indexes]))
 
@@ -639,6 +651,9 @@
 (def view-size (#:opt string) vector->list)
 |#
 (def-com view-target (#:opt (view String) (target Point)) Point)
+
+(def-com xform-mirror ([point Point] [normal Point]) Xform)
+
 #|
 (def xform-change-basis (plane plane) identity #;matrix<-nested-plane)
 (def (xform-change-basis2 "XformChangeBasis") (identity identity identity identity identity identity) identity)
@@ -738,6 +753,7 @@ Call Rhino.Command("-_SelNone",False)
             (j0 (+ i0 n)))
        (vector i0 i1 j1 j0)))))
 
+(provide postpone-redraw)
 (define-syntax-rule
   (postpone-redraw expr ...)
   (begin
@@ -777,3 +793,7 @@ Call Rhino.Command("-_SelNone",False)
            #t)))
      (cap-planar-holes id)
      id)))
+
+(provide start)
+(define (start)
+  (rhino))
