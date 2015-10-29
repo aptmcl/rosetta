@@ -49,11 +49,13 @@
                  (λ (e)
                    (display "Starting Rhinoceros...")
                    (flush-output)
-                   (begin0
-                       (com-create-instance clsid)
-                     (displayln "done!")))))
+                   (let ((inst (com-create-instance clsid)))
+                     ;;(AddRef (com-object-get-iunknown r))
+                     (displayln "done!")
+                     inst))))
              (cast (com-get-active-object clsid) Com-Object))))
       (com-set-property! coclass "Visible" #t)
+      ;;(com-set-property! coclass "ReleaseWithoutClosing" 1)
       (let retry ([count 3])
         (let ((result (com-invoke coclass "GetScriptObject")))
           (if (void? result)
@@ -66,7 +68,9 @@
               (cast result Com-Object)))))))
 
 (define-cached (rhino) : Com-Object
-  (load-rhino-com '("Rhino5x64.Interface" "Rhino5.Interface" "Rhino4.Interface")))
+  (load-rhino-com
+   #;'("Rhino5x64.Application" "Rhino5.Application" "Rhino4.Application")
+   '("Rhino5x64.Interface" "Rhino5.Interface" "Rhino4.Interface")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;We need to convert from the basic types expected by Rhino's COM interface and the types used in Rosetta
