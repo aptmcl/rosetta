@@ -1883,9 +1883,6 @@
 (def-autolisp (vlax-curve-getSecondDeriv [c Com-Object] [t Real]) Com-Object)
 (def-autolisp (vlax-curve-getPointAtParam [c Com-Object] [t Real]) Com-Object)
 
-(define (curve-start-point [c : Com-Object]) : Loc
-  (loc<-al-com (vlax-curve-getStartPoint (al-handent (handle c)))))
-
 (provide curve-start-point
          curve-end-point
          curve-start-param
@@ -1896,6 +1893,9 @@
          curve-point-at
          curve-frame-at
          curve-frame-at-length)
+
+(define (curve-start-point [c : Com-Object]) : Loc
+  (loc<-al-com (vlax-curve-getStartPoint (al-handent (handle c)))))
 
 (define (curve-end-point [c : Com-Object]) : Loc
   (loc<-al-com (vlax-curve-getEndPoint (al-handent (handle c)))))

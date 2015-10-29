@@ -251,10 +251,10 @@ The following example does not work as intended. Rotating the args to closed-spl
 
 ;;Selectors
 (define (curve-start-point [curve : Shape]) : Loc
-  (%start-point (shape-ref curve)))
+  (%curve-start-point (shape-ref curve)))
 
 (define (curve-end-point [curve : Shape]) : Loc
-  (%end-point (shape-ref curve)))
+  (%curve-end-point (shape-ref curve)))
 
 (define (curve-domain [curve : Shape]) : (Values Real Real)
   (let ((r (shape-ref curve)))
