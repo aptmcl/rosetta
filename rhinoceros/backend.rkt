@@ -2,12 +2,14 @@
 (require racket/math racket/list racket/function)
 (require "../base/utils.rkt"
          "../base/coord.rkt"
-         "../base/shapes.rkt")
+         "../base/shapes.rkt"
+         "../util/geometry.rkt")
 (require (prefix-in % "rh-com.rkt"))
 
 (provide (all-from-out "../base/coord.rkt"))
 (provide (all-from-out "../base/utils.rkt"))
 (provide (all-from-out "../base/shapes.rkt"))
+(provide (all-from-out "../util/geometry.rkt"))
 (provide immediate-mode?
          current-backend-name
          all-shapes
@@ -37,7 +39,7 @@
 
 (define (current-backend-name) "Rhino5")
 ;;Start now
-(%start)
+;;(%start) NOT YET. For some strange reason, Rhino closes immediately after.
 
 ;;References, in Rhino, are Strings
 
@@ -215,7 +217,7 @@
   (let-values ([(cb ct)
                 (if (number? h/ct)
                     (values cb (+z cb h/ct))
-                    (let ((new-cb (loc-from-o-n cb (p-p h/ct cb))))
+                    (let ((new-cb (loc-from-o-vz cb (p-p h/ct cb))))
                       (values new-cb (+z new-cb (distance cb h/ct)))))])
     (%irregular-pyramid-frustum
      (regular-polygon-vertices edges cb rb a inscribed?)
@@ -225,7 +227,7 @@
   (let-values ([(cb ct)
                 (if (number? h/ct)
                     (values cb (+z cb h/ct))
-                    (let ((new-cb (loc-from-o-n cb (p-p h/ct cb))))
+                    (let ((new-cb (loc-from-o-vz cb (p-p h/ct cb))))
                       (values new-cb (+z new-cb (distance cb h/ct)))))])
     (%irregular-pyramid
      (regular-polygon-vertices edges cb rb a inscribed?)
@@ -235,7 +237,7 @@
   (let-values ([(cb ct)
                 (if (number? h/ct)
                     (values cb (+z cb h/ct))
-                    (let ((new-cb (loc-from-o-n cb (p-p h/ct cb))))
+                    (let ((new-cb (loc-from-o-vz cb (p-p h/ct cb))))
                       (values new-cb (+z new-cb (distance cb h/ct)))))])
     (%irregular-pyramid-frustum
      (regular-polygon-vertices edges cb r a inscribed?)
@@ -505,7 +507,7 @@
                (error "Continue this"))))))))
 
 (def-shape (slice [shape : Shape] [p : Loc (u0)] [n : Vec (vz 1 p)])
-  (let ([p (loc-from-o-n p n)])
+  (let ([p (loc-from-o-vz p n)])
     (begin0
       (let rec : RefOp ([r : RefOp (shape-reference shape)])
         (cond ((string? r)
