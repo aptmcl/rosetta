@@ -5,11 +5,13 @@
 (require "../base/utils.rkt"
          "../base/coord.rkt"
          "../base/shapes.rkt"
-         "../base/typed-com.rkt")
+         "../base/typed-com.rkt"
+         "../util/geometry.rkt")
 (require (prefix-in % "ac-com.rkt"))
 (provide (all-from-out "../base/coord.rkt"))
 (provide (all-from-out "../base/utils.rkt"))
 (provide (all-from-out "../base/shapes.rkt"))
+(provide (all-from-out "../util/geometry.rkt"))
 (provide immediate-mode?
          current-backend-name
          all-shapes
@@ -375,7 +377,7 @@ The following example does not work as intended. Rotating the args to closed-spl
                              ((point? (cadr profiles))
                               (values (cadr profiles) (car profiles)))
                              (else
-                              (error 'loft-shapes "cross sections are not either points or curves or surfaces" profiles)))])
+                              (error 'loft-shapes "cross sections are not either points or curves or surfaces ~A" profiles)))])
            (cond ((curve? s)
                   (loft-curve-point s p solid?))
                  ((surface-region? s)
@@ -385,28 +387,31 @@ The following example does not work as intended. Rotating the args to closed-spl
         (else
          (error 'loft-shapes "cross sections are neither points nor curves nor surfaces  ~A" profiles))))
 
+(def-shape (irregular-pyramid [cbs : Locs (list (ux) (uy) (uxy))] [ct : Loc (uz)])
+  (%irregular-pyramid cbs ct))
+
 (def-shape (regular-pyramid-frustum [edges : Integer 4] [cb : Loc (u0)] [rb : Real 1] [a : Real 0] [h/ct : (U Real Loc) 1] [rt : Real 1] [inscribed? : Boolean #f])
   (let-values ([(cb ct)
                 (if (number? h/ct)
                     (values cb (+z cb h/ct))
-                    (let ((new-cb (loc-from-o-n cb (p-p h/ct cb))))
+                    (let ((new-cb (loc-from-o-vz cb (p-p h/ct cb))))
                       (values new-cb (+z new-cb (distance cb h/ct)))))])
-    (shape-ref
-     (loft ;;don't use loft-curves because one of the polygons might be degenerate
-      (list (regular-polygon edges cb rb a inscribed?)
-            (regular-polygon edges ct rt a inscribed?))
-      #t
-      #t))))
+    (%irregular-pyramid-frustum
+     (regular-polygon-vertices edges cb rb a inscribed?)
+     (regular-polygon-vertices edges ct rt a inscribed?))))
 
 (def-shape (regular-pyramid [edges : Integer 4] [cb : Loc (u0)] [rb : Real 1] [a : Real 0] [h/ct : (U Real Loc) 1] [inscribed? : Boolean #f])
-  (shape-ref (regular-pyramid-frustum edges cb rb a h/ct 0 inscribed?)))
+  (let-values ([(cb ct)
+                (if (number? h/ct)
+                    (values cb (+z cb h/ct))
+                    (let ((new-cb (loc-from-o-vz cb (p-p h/ct cb))))
+                      (values new-cb (+z new-cb (distance cb h/ct)))))])
+    (%irregular-pyramid
+     (regular-polygon-vertices edges cb rb a inscribed?)
+     ct)))
 
 (def-shape (regular-prism [edges : Integer 4] [cb : Loc (u0)] [r : Real 1] [a : Real 0] [h/ct : (U Real Loc) 1] [inscribed? : Boolean #f])
   (shape-ref (regular-pyramid-frustum edges cb r a h/ct r inscribed?)))
-
-(def-shape (irregular-pyramid [cbs : Locs (list (ux) (uy) (uxy))] [ct : Loc (uz)])
-  (shape-ref (loft-curve-point (polygon cbs) (point ct) #t)))
-
 
 (def-shape (right-cuboid [cb : Loc (u0)] [width : Real 1] [height : Real 1] [h/ct : LocOrZ 1])
   (let-values ([(cb dz) (position-and-height cb h/ct)])
@@ -567,7 +572,7 @@ The following example does not work as intended. Rotating the args to closed-spl
     (for-each (inst mark-deleted! RefOp) shapes)))
 
 (def-shape (revolve [shape : Shape] [p : Loc (u0)] [n : Vec (vz 1)] [start-angle : Real 0] [amplitude : Real 2pi])
-  (let ((p (loc-from-o-n p n)))
+  (let ((p (loc-from-o-vz p n)))
     (begin0
       (map-ref ([r shape])
         (%revolve-command r p (+z p 1) start-angle (+ start-angle amplitude) (surface-region? shape)))
@@ -591,7 +596,7 @@ The following example does not work as intended. Rotating the args to closed-spl
      (delete-shape profile)))
 
 (def-shape (mirror [shape : Shape] [p : Loc (u0)] [n : Vec (vz)] [copy? : Boolean #t])
-  (let ((p (loc-from-o-n p n)))
+  (let ((p (loc-from-o-vz p n)))
     (begin0
       (map-ref ([r shape])
         (%mirror3d r p (+x p 1) (+y p 1)))
