@@ -35,6 +35,7 @@
          -vx
          -vy
          -vz
+         u-vxyz
          unitize
          v*v
          v.v
@@ -96,12 +97,42 @@
          z-rotating
          with-cs
 
+         cs-from-o-vx-vy-vz
+         cs-from-o-vx-vy
+         cs-from-o-vz
+         cs-from-pts
+         cs-from-o-n
+         cs-from-o-phi
+         loc-from-o-vx-vy
+         loc-from-o-vz
+         loc-from-pts
          loc-from-o-n
          loc-from-o-phi
-         loc-from-o-vx-vy
          vf
          vlength
          perpendicular-vector)
+
+;;The circle system
+(define pi/6 (/ pi 6))
+(define pi/5 (/ pi 5))
+(define pi/4 (/ pi 4))
+(define pi/3 (/ pi 3))
+(define pi/2 (/ pi 2))
+(define 3pi/2 (* 3 pi/2))
+(define 2pi (* 2 pi))
+(define 3pi (* 3 pi))
+(define 4pi (* 4 pi))
+
+(define -pi/6 (/ pi -6))
+(define -pi/5 (/ pi -5))
+(define -pi/4 (/ pi -4))
+(define -pi/3 (/ pi -3))
+(define -pi/2 (/ pi -2))
+(define -3pi/2 (* -3 pi/2))
+(define -pi (* -1 pi))
+(define -2pi (* -2 pi))
+(define -3pi (* -3 pi))
+(define -4pi (* -4 pi))
 
 ;; Matrix operations
 
@@ -395,6 +426,11 @@
 (define (vec-in-world [v : Vec]) : Vec
   (VXyz (Cs-transformation world-cs) (world-loc v)))
 
+(define (vec-in-cs [v : Vec] [cs : Cs]) : Vec
+  (VXyz (Cs-transformation cs)
+        (matrix* (matrix-inverse (Cs-transformation cs))
+                 (world-loc v))))
+
 (define (sqr-distance [p0 : Loc] [p1 : Loc]) : Real
   (let ((c0 (world-loc p0))
         (c1 (world-loc p1)))
@@ -554,7 +590,6 @@
 (define (unitize [v : Vec]) : Vec
   (u-vxyz (cx v) (cy v) (cz v) v))
 
-(provide cs-from-o-vx-vy-vz cs-from-o-vx-vy cs-from-o-n cs-from-pts cs-from-o-phi)
 (define (cs-from-o-vx-vy-vz [o : Loc] [ux : Vec] [uy : Vec] [uz : Vec]) : Cs
   (Cs (matrix [[(cx ux) (cx uy) (cx uz) (cx o)]
                [(cy ux) (cy uy) (cy uz) (cy o)]
@@ -570,9 +605,23 @@
       (let ((vy (v*v vz vx)))
         (cs-from-o-vx-vy-vz o vx vy vz)))))
 
+;;HACK We should not need this but Typed Racket asks for it.
+(: vpol (->* (Real Real) (Cs) Vec))
+
+(define (cs-from-o-vz [o : Loc] [n : Vec])
+  (if (and (=cs? o n) (= (cx n) 0) (= (cy n) 0)) ;n is o's Z?
+      o
+      (let ((o (loc-in-world o))
+            (n (vec-in-world n)))
+        (let ((vx (vpol 1 (+ (sph-phi n) pi/2))))
+          (let ((vy (unitize (v*v vx n))))
+            (let ((vz (unitize n)))
+              (cs-from-o-vx-vy-vz o vx vy vz)))))))
+
 (define (~zero? [x : Real]) : Boolean
   (< (abs x) 1e-14))
 
+;;Is this still needed?
 (define (perpendicular-vector [v : Vec]) : Vec
   (let-coords (((x y z) v))
     (cond ((~zero? x)
@@ -587,15 +636,6 @@
                  (z (- (+ x y))))
              (vxyz x y z v))))))
 
-(define (cs-from-o-n [o : Loc] [n : Vec])
-  (let ((o (loc-in-world o))
-        (n (vec-in-world n)))
-    (let ((v (perpendicular-vector n)))
-      (let ((vx (unitize (v*v n v))))
-        (let ((vy (unitize (v*v n vx))))
-          (let ((vz (unitize n)))
-            (cs-from-o-vx-vy-vz o vx vy vz)))))))
-
 (define (cs-from-pts [p0 : Loc] [p1 : Loc] [p2 : Loc] [p3 : Loc]) : Cs
   (let ((p0 (loc-in-world p0))
         (p1 (loc-in-world p1))
@@ -608,6 +648,10 @@
             (cs-from-o-vx-vy p0 n0 n1)
             (cs-from-o-vx-vy p0 n1 n0))))))
 
+;;Should we eliminate cs-from-o-n?
+(define (cs-from-o-n [o : Loc] [n : Vec])
+  (cs-from-o-vz o n))
+
 (define (cs-from-o-phi [o : Loc] [phi : Real]) : Cs
   (let ((o (loc-in-world o))
         (vx (vec-in-world (vcyl 1 phi 0 o)))
@@ -615,14 +659,21 @@
     (let ((vz (v*v vx vy)))
       (cs-from-o-vx-vy-vz o vx vy vz))))
 
+(define (loc-from-o-vx-vy [o : Loc] [vx : Vec] [vy : Vec]) : Loc
+  (u0 (cs-from-o-vx-vy o vx vy)))
+
+(define (loc-from-o-vz [o : Loc] [vz : Vec]) : Loc
+  (u0 (cs-from-o-vz o vz)))
+
+(define (loc-from-pts [p0 : Loc] [p1 : Loc] [p2 : Loc] [p3 : Loc]) : Loc
+  (u0 (cs-from-pts p0 p1 p2 p3)))
+
+;;Should we eliminate loc-from-o-n?
 (define (loc-from-o-n [o : Loc] [n : Vec]) : Loc
   (u0 (cs-from-o-n o n)))
 
 (define (loc-from-o-phi [o : Loc] [phi : Real]) : Loc
   (u0 (cs-from-o-phi o phi)))
-
-(define (loc-from-o-vx-vy [o : Loc] [vx : Vec] [vy : Vec]) : Loc
-  (u0 (cs-from-o-vx-vy o vx vy)))
 
 ;;;
 
@@ -732,29 +783,6 @@
 
 (define (intermediate-point [p0 : Loc] [p1 : Loc] [t : Real 1/2]) : Loc
   (p+v p0 (v*r (p-p p1 p0) t)))
-
-
-;;The circle system
-(define pi/6 (/ pi 6))
-(define pi/5 (/ pi 5))
-(define pi/4 (/ pi 4))
-(define pi/3 (/ pi 3))
-(define pi/2 (/ pi 2))
-(define 3pi/2 (* 3 pi/2))
-(define 2pi (* 2 pi))
-(define 3pi (* 3 pi))
-(define 4pi (* 4 pi))
-
-(define -pi/6 (/ pi -6))
-(define -pi/5 (/ pi -5))
-(define -pi/4 (/ pi -4))
-(define -pi/3 (/ pi -3))
-(define -pi/2 (/ pi -2))
-(define -3pi/2 (* -3 pi/2))
-(define -pi (* -1 pi))
-(define -2pi (* -2 pi))
-(define -3pi (* -3 pi))
-(define -4pi (* -4 pi))
 
 (define (coterminal [radians : Real]) : Real
   (let ((k (truncate (/ radians 2pi))))
