@@ -1927,7 +1927,7 @@
     (< (abs x) 1e-14))
   (if (~zero? (vlength n)) ;unusable normal
       (vpol 1 (+ (sph-phi t) pi/2))
-      (v*r n -1)))
+      n))
 
 (define (curve-frame-at [c : Com-Object] [t : Real]) : Loc
   (let* ((o (curve-point-at c t))
@@ -2398,6 +2398,66 @@
 
 ; loft
 |#
+
+(provide irregular-pyramid-frustum)
+(define (irregular-pyramid [cbs : Locs] [ct : Loc])
+  (let ([pts0 (map loc-in-world cbs)]
+        [pt1 (loc-in-world ct)])
+    (let ((pts1 (append (cdr pts0) (list (car pts0)))))
+      (let ((faces
+             (append
+              ;;sides
+              (for/list : (Listof Ref)
+                ([pt00 : Loc (in-list pts0)]
+                 [pt01 : Loc (in-list pts1)])
+                (add-3d-face pt00 pt01 pt1 pt1))
+              ;;base
+              (let ((pt (car pts0)))
+                (for/list : (Listof Ref)
+                  ([pt00 : Loc (in-list (cdr pts0))]
+                   [pt01 : Loc (in-list (cdr pts1))])
+                  (add-3d-face pt pt00 pt01 pt01))))))
+        (let ((regions (add-region faces)))
+          (for-each delete faces)
+          (begin0
+            (surfsculp-command regions)
+            (for-each delete regions)))))))
+
+
+(provide irregular-pyramid-frustum)
+(define (irregular-pyramid-frustum [pts0 : Locs] [pts1 : Locs]) : Ref
+  (let ([pts0 (map loc-in-world pts0)]
+        [pts1 (map loc-in-world pts1)])
+    (let ([pts0r (append (cdr pts0) (list (car pts0)))]
+          [pts1r (append (cdr pts1) (list (car pts1)))])
+      (let ((faces
+             (append
+              ;;sides
+              (for/list : (Listof Ref)
+                ([pt00 : Loc (in-list pts0)]
+                 [pt01 : Loc (in-list pts0r)]
+                 [pt10 : Loc (in-list pts1)]
+                 [pt11 : Loc (in-list pts1r)])
+                (add-3d-face pt00 pt01 pt11 pt10))
+              ;;top
+              (let ((pt (car pts0)))
+                (for/list : (Listof Ref)
+                  ([pt00 : Loc (in-list (cdr pts0))]
+                   [pt01 : Loc (in-list (cdr pts0r))])
+                  (add-3d-face pt pt00 pt01 pt01)))
+              ;;bottom
+              (let ((pt (car pts1)))
+                (for/list : (Listof Ref)
+                  ([pt00 : Loc (in-list (cdr pts1))]
+                   [pt01 : Loc (in-list (cdr pts1r))])
+                  (add-3d-face pt pt00 pt01 pt01))))))
+        (let ((regions (add-region faces)))
+          (for-each delete faces)
+          (begin0
+            (surfsculp-command regions)
+            (for-each delete regions)))))))
+
+
 (provide loftparam-no-twist
          loftparam-align-direction
          loftparam-simplify
@@ -2535,6 +2595,11 @@
     (format "._convtosolid ~A~A"
             (handent object)
             vbCr)))
+
+(def-new-shape-cmd (surfsculp-command [objects : Com-Objects])
+  (format "._surfsculpt ~A~A"
+            (handents objects)
+            vbCr))
 
 #|
 ;;Thicken
