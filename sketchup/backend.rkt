@@ -3,11 +3,13 @@
 (require "../base/utils.rkt"
          "../base/coord.rkt"
          "../base/shapes.rkt"
+         "../util/geometry.rkt"
          (prefix-in % "primops.rkt"))
 
 (provide (all-from-out "../base/coord.rkt"))
 (provide (all-from-out "../base/utils.rkt"))
 (provide (all-from-out "../base/shapes.rkt"))
+(provide (all-from-out "../util/geometry.rkt"))
 (provide immediate-mode?
          current-backend-name
          all-shapes
@@ -222,7 +224,7 @@
   (let-values ([(cb ct)
                 (if (number? h/ct)
                     (values cb (+z cb h/ct))
-                    (let ((new-cb (loc-from-o-n cb (p-p h/ct cb))))
+                    (let ((new-cb (loc-from-o-vz cb (p-p h/ct cb))))
                       (values new-cb (+z new-cb (distance cb h/ct)))))])
     (let ((pbs (regular-polygon-vertices edges cb rb a inscribed?))
           (pts (regular-polygon-vertices edges ct rt a inscribed?)))
@@ -233,7 +235,7 @@
   (let-values ([(cb ct)
                 (if (number? h/ct)
                     (values cb (+z cb h/ct))
-                    (values (loc-from-o-n cb (p-p h/ct cb)) h/ct))])
+                    (values (loc-from-o-vz cb (p-p h/ct cb)) h/ct))])
     (let ((pbs (regular-polygon-vertices edges cb rb a inscribed?)))
       (%addPyramid (map loc->list-real pbs)
                    (loc->list-real ct)))))
@@ -242,7 +244,7 @@
   (let-values ([(cb ct)
                 (if (number? h/ct)
                     (values cb (+z cb h/ct))
-                    (let ((new-cb (loc-from-o-n cb (p-p h/ct cb))))
+                    (let ((new-cb (loc-from-o-vz cb (p-p h/ct cb))))
                       (values new-cb (+z new-cb (distance cb h/ct)))))])
     (let ((pbs (regular-polygon-vertices edges cb r a inscribed?))
           (pts (regular-polygon-vertices edges ct r a inscribed?)))
@@ -258,7 +260,7 @@
   (let-values ([(cb length)
                 (if (number? h/ct)
                     (values cb h/ct)
-                    (values (loc-from-o-n cb (p-p h/ct cb)) (distance cb h/ct)))])
+                    (values (loc-from-o-vz cb (p-p h/ct cb)) (distance cb h/ct)))])
     (let ((c (+xy cb (/ width -2) (/ height -2))))
       (uncurry-xform c (%addBoxTrans width height length)))))
 
