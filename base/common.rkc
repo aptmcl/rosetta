@@ -444,12 +444,5 @@ In order to implement this, we need to create shapes that represent failed opera
           (subtract-*-1 r0s (car r1s))
           (cdr r1s)))))
 
-;;;
-
-(provide union-mirror)
-(define (union-mirror [shape : Shape] [p : Loc (u0)] [n : Vec (vz)])
-  (union shape (mirror shape p n)))
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;END OF COMMON PART

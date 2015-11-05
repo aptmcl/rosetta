@@ -562,6 +562,10 @@
          (unless maximized?
            (%maximize-restore-view "Perspective")))))))
 
+(provide union-mirror)
+(define (union-mirror [shape : Shape] [p : Loc (u0)] [n : Vec (vz)])
+  (union shape (mirror shape p n)))
+
 (define (bounding-box [s : Shape]) : Locs
   (%bounding-box (shape-refs s)))
 

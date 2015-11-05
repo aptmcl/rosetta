@@ -595,14 +595,6 @@ The following example does not work as intended. Rotating the args to closed-spl
          (%extrude-command-direction (shape-refs profile) (u0 world-cs) dir (surface-region? profile))))
      (delete-shape profile)))
 
-(def-shape (mirror [shape : Shape] [p : Loc (u0)] [n : Vec (vz)] [copy? : Boolean #t])
-  (let ((p (loc-from-o-vz p n)))
-    (begin0
-      (map-ref ([r shape])
-        (%mirror3d r p (+x p 1) (+y p 1)))
-      (unless copy?
-        (delete-shape shape)))))
-
 (def-shape (sweep [path : (Curve-Shape RefOp)] [profile : (Extrudable-Shape RefOp)] [rotation : Real 0] [scale : Real 1])
   (let ((surface? (surface-region? profile)))
     (begin0
@@ -647,6 +639,17 @@ The following example does not work as intended. Rotating the args to closed-spl
     (shape-reference shape)
     (mark-shape-deleted! shape)))
 
+(def-shape (mirror [shape : Shape] [p : Loc (u0)] [n : Vec (vz)] [copy? : Boolean #t])
+  (let ((p (loc-from-o-vz p n)))
+    (begin0
+      (map-ref ([r shape])
+        (%mirror3d r p (+x p 1) (+y p 1)))
+      (unless copy?
+        (delete-shape shape)))))
+
+(provide union-mirror)
+(define (union-mirror [shape : Shape] [p : Loc (u0)] [n : Vec (vz)])
+  (union shape (mirror shape p n)))
 
 (provide bounding-box)
 (define (bounding-box [s : Shape]) : Locs

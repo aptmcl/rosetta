@@ -422,6 +422,10 @@
                    (set! %s0 (%addSubtraction %s0 (shape-reference s1))))
                  %s0))))))
 
+(provide union-mirror)
+(define (union-mirror [shape : Shape] [p : Loc (u0)] [n : Vec (vz)])
+  (union shape (mirror shape p n)))
+
 (def-shape (slice [shape : Shape] [p : Loc (u0)] [n : Vec (vz 1)])
   (let ((p (loc-in-world p))
         (n (vec-in-world n)))
