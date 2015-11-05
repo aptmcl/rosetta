@@ -39,10 +39,12 @@
          unitize
          v*v
          v.v
-         loc-in
          loc-in-world
          loc-in-cs
+         loc-in
          vec-in-world
+         vec-in-cs
+         vec-in
          =c?
          loc=?
          loc?
@@ -430,6 +432,10 @@
   (VXyz (Cs-transformation cs)
         (matrix* (matrix-inverse (Cs-transformation cs))
                  (world-loc v))))
+
+(define (vec-in [v : Vec] [q : Loc]) : Vec
+  (vec-in-cs v q))
+
 
 (define (sqr-distance [p0 : Loc] [p1 : Loc]) : Real
   (let ((c0 (world-loc p0))
