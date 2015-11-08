@@ -43,7 +43,7 @@
            #true
            ((+ i 1)))]])))
 
-(define (division/proc [a : Real] [b : Real] [n : Integer] [last? : Boolean #t])
+(define (division/proc [a : Real] [b : Real] [n : Integer] [last? : Boolean #t]) : (Listof Real)
   (if last?
       (for/list : (Listof Real) ([t (division a b n #t)])
         t)
