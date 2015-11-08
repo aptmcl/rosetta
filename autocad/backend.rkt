@@ -22,24 +22,26 @@
          curve-start-location
          curve-end-location
          curve-domain
-         curve-length
-         ;curve-tangent-at
-         ;curve-normal-at
-         ;curve-point-at
+         curve-end-location
          curve-frame-at
          curve-frame-at-length
+         curve-length
+         curve-start-location
          enable-update
          disable-update
+         map-curve-division
+         map-curve-length-division
          prompt-point
          prompt-integer
          prompt-real
          prompt-shape
+         render-view
          view
          view-top
-         render-view
          select-shape
          select-shapes
-         zoom-extents)
+         zoom-extents
+)
 
 (require racket/include)
 (include "../base/common.rkc")

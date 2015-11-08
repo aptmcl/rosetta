@@ -19,8 +19,16 @@
          delete-all-shapes
          curve-start-location
          curve-end-location
+         curve-domain
+         curve-end-location
+         curve-frame-at
+         curve-frame-at-length
+         curve-length
+         curve-start-location
          enable-update
          disable-update
+         map-curve-division
+         map-curve-length-division
          prompt-point
          prompt-integer
          prompt-real
