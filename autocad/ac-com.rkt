@@ -1861,12 +1861,14 @@
 (define (loc<-al-com [c : Com-Object]) : Loc
   (xyz (cast (al-nth 0 c) Real)
        (cast (al-nth 1 c) Real)
-       (cast (al-nth 2 c) Real)))
+       (cast (al-nth 2 c) Real)
+       world-cs))
 
 (define (vec<-al-com [c : Com-Object]) : Vec
   (vxyz (cast (al-nth 0 c) Real)
         (cast (al-nth 1 c) Real)
-        (cast (al-nth 2 c) Real)))
+        (cast (al-nth 2 c) Real)
+        world-cs))
 
 (define (list<-al-com [c : Com-Object]) : (Listof Any)
   (let ((n (al-length c)))
@@ -2710,7 +2712,7 @@
            vbCr)))
 
 ;; (define (gen-section pt1 pt2 com)
-;;   (let ((plane (xyz 0 0 1)))
+;;   (let ((plane (xyz 0 0 1 world-cs)))
 ;;     (let ((s (add-section pt1 pt2 plane)))
 ;;       (com-set-property! s "TopHeight" 3)
 ;;       (com-set-property! s "BottomHeight" 1)
@@ -2958,8 +2960,8 @@
   (begin0
     (match (with-input-from-string (cast (alisp-get-view) String) read) ;HACK: Move type to function def.
       [(list (list xa ya za) (list xb yb zb) l)
-       (values (xyz (cast xa Real) (cast ya Real) (cast za Real))
-               (xyz (cast xb Real) (cast yb Real) (cast zb Real))
+       (values (xyz (cast xa Real) (cast ya Real) (cast za Real) world-cs)
+               (xyz (cast xb Real) (cast yb Real) (cast zb Real) world-cs)
                (cast l Real))])
     (send-command (format "-VIEW _D foo\n"))))
 
