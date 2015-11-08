@@ -273,13 +273,14 @@ The following example does not work as intended. Rotating the args to closed-spl
 (define (curve-length [curve : Shape]) : Real
   (%curve-length (shape-ref curve)))
 
-(define (map-curve-division [f : (-> Loc Any)] [curve : Shape] [n : Integer] [last? : Boolean #t])
+;;HACK These two functions require the default initialization on last? but Typed Racket has a bug.
+(define #:forall (A) (map-curve-division [f : (-> Loc A)] [curve : Shape] [n : Integer] [last? : Boolean]) : (Listof A)
   (let-values ([(start end) (curve-domain curve)])
     (map-division (lambda ([t : Real])
                     (f (curve-frame-at curve t)))
                   start end n last?)))
 
-(define (map-curve-length-division [f : (-> Loc Any)] [curve : Shape] [n : Integer] [last? : Boolean #t])
+(define #:forall (T) (map-curve-length-division [f : (-> Loc T)] [curve : Shape] [n : Integer] [last? : Boolean]) : (Listof T)
   (map-division (lambda ([t : Real])
                   (f (curve-frame-at-length curve t)))
                 0.0 (curve-length curve) n last?))

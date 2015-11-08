@@ -590,7 +590,8 @@
   (let ((r (shape-ref curve)))
     (%curve-perp-frame r (%curve-closest-point r (%curve-arc-length-point r l)))))
 
-(define (map-curve-division [f : (-> Loc Any)] [curve : Shape] [n : Integer] [last? : Boolean #t])
+;;HACK These two functions require the default initialization on last? but Typed Racket has a bug.
+(define #:forall (T) (map-curve-division [f : (-> Loc T)] [curve : Shape] [n : Integer] [last? : Boolean]) : (Listof T)
   (let* ((r (shape-ref curve))
          (d (%curve-domain r))
          (start (vector-ref d 0))
@@ -599,12 +600,12 @@
                     (f (%curve-perp-frame r t)))
                   start end n last?)))
 
-(define (map-curve-length-division [f : (-> Loc Any)] [curve : Shape] [n : Integer] [last? : Boolean #t])
+(define #:forall (T) (map-curve-length-division [f : (-> Loc T)] [curve : Shape] [n : Integer] [last? : Boolean]) : (Listof T)
   (let ((r (shape-ref curve)))
     (let ((params (%divide-curve-length r (/ (%curve-length r) n) #f #f)))
       (let ((limit (- (vector-length params) (if last? 0 1))))
-        (for/list : (Listof Any) ((i : Integer (in-range 0 limit)) ;;HACK needed to prevent a bug in Typed Racket
-                                  (t : Real (in-vector params)))
+        (for/list : (Listof T) ((i : Integer (in-range 0 limit)) ;;HACK needed to prevent a bug in Typed Racket
+                                (t : Real (in-vector params)))
           (f (%curve-perp-frame r t)))))))
 
 (define (delete-all-shapes) : Void
