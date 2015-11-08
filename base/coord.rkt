@@ -615,14 +615,15 @@
 (: vpol (->* (Real Real) (Cs) Vec))
 
 (define (cs-from-o-vz [o : Loc] [n : Vec])
-  (if (and (=cs? o n) (= (cx n) 0) (= (cy n) 0)) ;n is o's Z?
-      o
-      (let ((o (loc-in-world o))
-            (n (vec-in-world n)))
-        (let ((vx (vpol 1 (+ (sph-phi n) pi/2))))
-          (let ((vy (unitize (v*v vx n))))
-            (let ((vz (unitize n)))
-              (cs-from-o-vx-vy-vz o vx vy vz)))))))
+  (let ((o (loc-in-world o))
+        (n (vec-in-world n)))
+    (let*
+        #;((v (perpendicular-vector n))
+           (vx (unitize (v*v n v))))
+      ((vx (vpol 1 (+ (sph-phi n) pi/2))))
+      (let ((vy (unitize (v*v n vx))))
+        (let ((vz (unitize n)))
+          (cs-from-o-vx-vy-vz o vx vy vz))))))
 
 (define (~zero? [x : Real]) : Boolean
   (< (abs x) 1e-14))
