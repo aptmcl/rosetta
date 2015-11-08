@@ -898,7 +898,8 @@
     (xyz
      (vector-ref v (+ i 0))
      (vector-ref v (+ i 1))
-     (vector-ref v (+ i 2)))))
+     (vector-ref v (+ i 2))
+     world-cs)))
 
 (provide locs->vector-2-double-flonums)
 (define (locs->vector-2-double-flonums [cs : (Listof Loc)]) : (Vectorof Float)
@@ -917,7 +918,8 @@
 (define (vector-2-double-flonums->locs [v : (Vectorof Float)]) : (Listof Loc)
   (for/list ((i (in-range 0 (vector-length v) 2)))
     (xy (vector-ref v (+ i 0))
-        (vector-ref v (+ i 1)))))
+        (vector-ref v (+ i 1))
+        world-cs)))
 
 
 ;;vector of vector of doubles
