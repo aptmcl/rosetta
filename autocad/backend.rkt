@@ -19,8 +19,8 @@
          delete-shape
          delete-shapes
          delete-all-shapes
-         curve-start-point
-         curve-end-point
+         curve-start-location
+         curve-end-location
          curve-domain
          curve-length
          ;curve-tangent-at
@@ -252,10 +252,10 @@ The following example does not work as intended. Rotating the args to closed-spl
              sp)))))))
 
 ;;Selectors
-(define (curve-start-point [curve : Shape]) : Loc
+(define (curve-start-location [curve : Shape]) : Loc
   (%curve-start-point (shape-ref curve)))
 
-(define (curve-end-point [curve : Shape]) : Loc
+(define (curve-end-location [curve : Shape]) : Loc
   (%curve-end-point (shape-ref curve)))
 
 (define (curve-domain [curve : Shape]) : (Values Real Real)
@@ -270,6 +270,17 @@ The following example does not work as intended. Rotating the args to closed-spl
 
 (define (curve-length [curve : Shape]) : Real
   (%curve-length (shape-ref curve)))
+
+(define (map-curve-division [f : (-> Loc Any)] [curve : Shape] [n : Integer] [last? : Boolean #t])
+  (let-values ([(start end) (curve-domain curve)])
+    (map-division (lambda ([t : Real])
+                    (f (curve-frame-at curve t)))
+                  start end n last?)))
+
+(define (map-curve-length-division [f : (-> Loc Any)] [curve : Shape] [n : Integer] [last? : Boolean #t])
+  (map-division (lambda ([t : Real])
+                  (f (curve-frame-at-length curve t)))
+                0.0 (curve-length curve) n last?))
 
 (def-shape* (surface-polygon [pts : Loc *])
   (let ((com (%add-3d-poly (append pts (list (car pts))))))

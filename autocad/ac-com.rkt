@@ -1911,7 +1911,7 @@
                              (vlax-curve-getEndParam (al-handent (handle c)))))
 
 (define (curve-frame-at-length [c : Com-Object] [d : Real]) : Loc
-  (curve-frame-at c (vlax-curve-getParamAtDist c d)))
+  (curve-frame-at c (vlax-curve-getParamAtDist (al-handent (handle c)) d)))
 
 (define (curve-tangent-at [c : Com-Object] [t : Real]) : Vec
   (vec<-al-com (vlax-curve-getFirstDeriv (al-handent (handle c)) t)))

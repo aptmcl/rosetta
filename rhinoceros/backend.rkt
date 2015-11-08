@@ -17,8 +17,8 @@
          delete-shape
          delete-shapes
          delete-all-shapes
-         curve-start-point
-         curve-end-point
+         curve-start-location
+         curve-end-location
          enable-update
          disable-update
          prompt-point
@@ -173,14 +173,6 @@
    3
    %knot-style-chord-length-spacing
    #f))
-
-;;Selectors
-(define (curve-start-point [curve : Shape]) : Loc
-  (%curve-start-point (shape-ref curve)))
-
-(define (curve-end-point [curve : Shape]) : Loc
-  (%curve-end-point (shape-ref curve)))
-
 
 (def-shape* (surface-polygon [pts : Loc *])
   (if (or (null? (cdddr pts))
@@ -569,6 +561,13 @@
 (define (bounding-box [s : Shape]) : Locs
   (%bounding-box (shape-refs s)))
 
+;;Selectors
+(define (curve-start-location [curve : Shape]) : Loc
+  (%curve-start-point (shape-ref curve)))
+
+(define (curve-end-location [curve : Shape]) : Loc
+  (%curve-end-point (shape-ref curve)))
+
 (define (curve-domain [curve : Shape]) : (Values Real Real)
   (let ((d (%curve-domain (shape-ref curve))))
     (values (vector-ref d 0) (vector-ref d 1))))
@@ -576,6 +575,29 @@
 (define (curve-frame-at [curve : Shape] [t : Real]) : Loc
   (%curve-perp-frame (shape-ref curve) t))
 
+(define (curve-length [curve : Shape]) : Real
+  (%curve-length (shape-ref curve)))
+
+(define (curve-frame-at-length [curve : Shape] [l : Real]) : Loc
+  (let ((r (shape-ref curve)))
+    (%curve-perp-frame r (%curve-closest-point r (%curve-arc-length-point r l)))))
+
+(define (map-curve-division [f : (-> Loc Any)] [curve : Shape] [n : Integer] [last? : Boolean #t])
+  (let* ((r (shape-ref curve))
+         (d (%curve-domain r))
+         (start (vector-ref d 0))
+         (end (vector-ref d 1)))
+    (map-division (lambda ([t : Real])
+                    (f (%curve-perp-frame r t)))
+                  start end n last?)))
+
+(define (map-curve-length-division [f : (-> Loc Any)] [curve : Shape] [n : Integer] [last? : Boolean #t])
+  (let ((r (shape-ref curve)))
+    (let ((params (%divide-curve-length r (/ (%curve-length r) n) #f #f)))
+      (let ((limit (- (vector-length params) (if last? 0 1))))
+        (for/list : (Listof Any) ((i : Integer (in-range 0 limit)) ;;HACK needed to prevent a bug in Typed Racket
+                                  (t : Real (in-vector params)))
+          (f (%curve-perp-frame r t)))))))
 
 (define (delete-all-shapes) : Void
   (%delete-objects (%all-objects #f #f #f))

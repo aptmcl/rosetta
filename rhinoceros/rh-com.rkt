@@ -203,8 +203,8 @@
      [Loc       Plane        loc->plane]
 ;     [OutPlane  Loc          matrix-double-flonum->loc]
      [OutPlane  Loc          rosetta-matrix<-nested-plane]
-     [OutPlane  Real-Matrix  matrix<-nested-plane]
-     [Xform     Loc       xform->loc]
+;     [OutPlane  Real-Matrix  matrix<-nested-plane]
+     [Xform     Loc          xform->loc]
      [Locs      Points       locs->vector-vector-double-flonum]
      [Points    Locs         vector-vector-double-flonum->locs]
      [Locs      ArrDouble    locs->vector-3-double-flonums]
@@ -381,25 +381,72 @@
 (def current-layer (#:opt name) name)
 |#
 (def-com current-view (#:opt [name String]) String)
+(def-com curve-arc-length-point ([curve Id] [l Real]) Loc)
 #|
-(def curve-Boolean-difference (id id) ids)
-(def curve-Boolean-intersection (id id) ids)
-(def curve-Boolean-union (id id) ids)
-(def curve-curve-intersection (id #:opt id real) list<-intersection-array)
+(def-com CurveArea
+(def-com CurveAreaCentroid
+(def-com CurveArrows
+(def-com CurveBooleanDifference
+(def-com CurveBooleanIntersection
+(def-com CurveBooleanUnion
+(def-com CurveBrepIntersect
+(def-com CurveClosestObject
 |#
 (def-com curve-closest-point ([curve Id] [point Point] #:opt [segment Integer]) Real)
+#|
+(def-com CurveContourPoints
+(def-com CurveCurvature
+(def-com CurveCurveIntersection 
+(def-com CurveDegree
+(def-com CurveDeviation
+(def-com CurveDim
+(def-com CurveDirectionsMatch
+(def-com CurveDiscontinuity
+|#
 (def-com curve-domain ([curve Id] #:opt [segment Integer]) (Vector Real Real))
+#|
+(def-com CurveEditPoints
+|#
 (def-com curve-end-point ([curve Id]) Point)
 (def-com curve-evaluate ([curve Id] [t Real] #:opt [derivative Integer]) (Vectorof Loc))
+#|
+CurveFilletPoints
+|#
 (def-com curve-frame ([curve Id] [t Real]) OutPlane)
+#|
+CurveKnotCount
+CurveKnots
+|#
+(def-com curve-length ([curve Id]) Real)
+#|
+CurveMidPoint
+|#
+(def-com curve-normal ([curve Id]) Direction)
+#|
+CurveNormalizedParameter
+|#
 (def-com curve-parameter ([curve Id] [t Double]) Double)
 (def-com curve-perp-frame ([curve Id] [t Double]) OutPlane)
-(def-com curve-normal ([curve Id]) Direction)
+#|CurvePlane
+CurvePointCount
+|#
 (def-com curve-points ([curve Id]) Points)
-#|(def curve-seam (id real) Boolean)
+#|
+CurveRadius
+CurveRailFrames
+(def curve-seam (id real) Boolean)
 |#
 (def-com curve-start-point ([curve Id]) Point)
+#|
+CurveSurfaceIntersection
+|#
 (def-com curve-tangent ([curve Id] [t Real] #:opt [segment Integer]) Vec)
+#|
+CurveWeights
+DivideCurve
+DivideCurveEquidistant
+|#
+(def-com divide-curve-length ([curve Id] [distance Real] #:opt [create? Boolean] [points? Boolean]) (Vectorof Real))
 #|
 (def delete-layer (name) Boolean)
 |#
@@ -487,6 +534,9 @@
 ;(def-com MoveObjects ([shapes Ids] [start Point] #:opt [end Point]) Ids)
 (def-com move-object ([shape Id] [translation Point]) Id)
 (def-com move-objects ([shapes Ids] [translation Point]) Ids)
+
+;;How do we access the COM-OBJECT if Rhino only returns Strings?
+(def-com-method normalized-length-parameter curve ([curve Com-Object] [t Real]) Real)
 #|
 (def object-layer (id #:opt name) name)
 (def offset-curve (id point real #:opt point integer) ids)
