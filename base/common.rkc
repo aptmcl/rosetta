@@ -1,6 +1,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;COMMON PART
 
-(provide Shape Shapes)
+(provide Shape Shapes Ref)
 
 ;;References
 (define-type Refs (Listof Ref))
