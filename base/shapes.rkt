@@ -6,9 +6,6 @@
 (require "utils.rkt")
 (provide Loc
          Vec
-         LocOrZ
-         VecOrZ
-         loc<-
          def-base-shape
          def-shape
          def-shape*
@@ -235,7 +232,7 @@
 
 (define-syntax (def-base-shape stx)
   (syntax-case stx ()
-    [(_ ((name constructor-name) param ...) body ...)
+    [(_ type ((name constructor-name) param ...))
      (with-syntax* ([R (datum->syntax stx 'R)]
                     [([param-name param-type] ...)
                      (map (lambda (p)
@@ -259,10 +256,14 @@
                  (when (immediate-mode?)
                    (realizer))
                  s))))))]
-    [(def (name param ...) body ...)
+    [(def type (name param ...))
      (with-syntax ([constructor-name (build-name #'name "new-~A")])
        (syntax/loc stx
-         (def ((name constructor-name) param ...) body ...)))]))
+         (def type ((name constructor-name) param ...))))]
+    [(def (name param ...))
+     (with-syntax ([type #'shape])
+       (syntax/loc stx
+         (def type (name param ...))))]))
 
 (define-syntax (def-shape stx)
   (syntax-case stx (:)
@@ -348,64 +349,69 @@
                param)))
        (syntax->list params)))
 
-(define-type LocOrZ (U Loc Real))
-(define-type VecOrZ (U Vec Real))
-
-(: loc<- (LocOrZ -> Loc))
-(define (loc<- a)
-  (if (number? a)
-      (xyz 0 0 a)
-      a))
-
-
 (def-base-shape (empty-shape))
 (def-base-shape (universal-shape))
 
-(def-base-shape (point [position : Loc (u0)]))
-(def-base-shape (circle [center : Loc (u0)] [radius : Real 1]))
-(def-base-shape (surface-circle [center : Loc (u0)] [radius : Real 1]))
-(def-base-shape (arc [center : Loc (u0)] [radius : Real 1] [start-angle : Real 0] [amplitude : Real pi]))
-(def-base-shape (surface-arc [center : Loc (u0)] [radius : Real 1] [start-angle : Real 0] [amplitude : Real pi]))
-(def-base-shape (elliptic-arc [center : Loc (u0)] [radius-x : Real 1] [radius-y : Real 1] [start-angle : Real 0] [amplitude : Real pi]))
-(def-base-shape (ellipse [center : Loc (u0)] [radius-x : Real 1] [radius-y : Real 1]))
-(def-base-shape (line [pts : (Listof Loc) (list (u0) (ux))]))
+(struct (R) 0D-shape shape
+  ())
+
+(struct (R) 1D-shape shape
+  ())
+
+(struct (R) 2D-shape shape
+  ())
+
+(struct (R) 3D-shape shape
+  ())
+
+(def-base-shape 0D-shape (point [position : Loc (u0)]))
+
+(def-base-shape 1D-shape (line [pts : (Listof Loc) (list (u0) (ux))]))
 #|
 (def-base-shape (bounding-box s))
 (def-base-shape (closed shape))
 |#
-(def-base-shape (closed-line [pts : (Listof Loc) (list (u0) (ux) (uy))]))
-(def-base-shape (spline [pts : (Listof Loc) (list (u0) (ux) (uy))]))
+(def-base-shape 1D-shape (closed-line [pts : (Listof Loc) (list (u0) (ux) (uy))]))
+(def-base-shape 1D-shape (spline [pts : (Listof Loc) (list (u0) (ux) (uy))]))
 ;;TODO IN ALL BACKENDS
-(def-base-shape (spline* [pts : (Listof Loc) (list (u0) (ux) (uy))] [v0 : (U Boolean Vec) #f] [v1 : (U Boolean Vec) #f]))
-(def-base-shape (closed-spline [pts : (Listof Loc)]))
-(def-base-shape (polygon [pts : (Listof Loc) (list (u0) (ux) (uy))]))
-(def-base-shape (surface-polygon [pts : (Listof Loc) (list (u0) (ux) (uy))]))
-(def-base-shape (regular-polygon [edges : Integer 3] [center : Loc (u0)] [radius : Real 1] [angle : Real 0] [inscribed? : Boolean #f]))
-(def-base-shape (surface-regular-polygon [edges : Integer 3] [center : Loc (u0)] [radius : Real 1] [angle : Real 0] [inscribed? : Boolean #f]))
-(def-base-shape (rectangle [c : Loc (u0)] [dx/c1 : (U Real Loc) 1] [dy : Real 1]))
-(def-base-shape (surface-rectangle [c : Loc (u0)] [dx/c1 : (U Real Loc) 1] [dy : Real 1]))
+(def-base-shape 1D-shape (spline* [pts : (Listof Loc) (list (u0) (ux) (uy))] [v0 : (U Boolean Vec) #f] [v1 : (U Boolean Vec) #f]))
+(def-base-shape 1D-shape (closed-spline [pts : (Listof Loc)]))
+(def-base-shape 1D-shape (circle [center : Loc (u0)] [radius : Real 1]))
+(def-base-shape 1D-shape (arc [center : Loc (u0)] [radius : Real 1] [start-angle : Real 0] [amplitude : Real pi]))
+(def-base-shape 1D-shape (elliptic-arc [center : Loc (u0)] [radius-x : Real 1] [radius-y : Real 1] [start-angle : Real 0] [amplitude : Real pi]))
+(def-base-shape 1D-shape (ellipse [center : Loc (u0)] [radius-x : Real 1] [radius-y : Real 1]))
+(def-base-shape 1D-shape (polygon [pts : (Listof Loc) (list (u0) (ux) (uy))]))
+(def-base-shape 1D-shape (regular-polygon [edges : Integer 3] [center : Loc (u0)] [radius : Real 1] [angle : Real 0] [inscribed? : Boolean #f]))
+(def-base-shape 1D-shape (rectangle [c : Loc (u0)] [dx/c1 : (U Real Loc) 1] [dy : Real 1]))
+
+(def-base-shape 2D-shape (surface-circle [center : Loc (u0)] [radius : Real 1]))
+(def-base-shape 2D-shape (surface-arc [center : Loc (u0)] [radius : Real 1] [start-angle : Real 0] [amplitude : Real pi]))
+(def-base-shape 2D-shape (surface-polygon [pts : (Listof Loc) (list (u0) (ux) (uy))]))
+(def-base-shape 2D-shape (surface-regular-polygon [edges : Integer 3] [center : Loc (u0)] [radius : Real 1] [angle : Real 0] [inscribed? : Boolean #f]))
+(def-base-shape 2D-shape (surface-rectangle [c : Loc (u0)] [dx/c1 : (U Real Loc) 1] [dy : Real 1]))
 (def-base-shape (text [str : String ""] [c : Loc (u0)] [h : Real 1]))
 (def-base-shape (text-centered [str : String ""] [c : Loc (u0)] [h : Real 1]))
-(def-base-shape (sphere [c : Loc (u0)] [r : Real 1]))
-(def-base-shape (torus [c : Loc (u0)] [re : Real 1] [ri : Real 1/2]))
-(def-base-shape (cuboid [b0 : Loc (u0)]
-                        [b1 : Loc (+x b0 1)]
-                        [b2 : Loc (+y b1 1)]
-                        [b3 : Loc (+y b0 1)]
-                        [t0 : Loc (+z b0 1)]
-                        [t1 : Loc (+x t0 1)]
-                        [t2 : Loc (+y t1 1)]
-                        [t3 : Loc (+y t0 1)]))
-(def-base-shape (regular-pyramid-frustum [edges : Integer 4] [cb : Loc (u0)] [rb : Real 1] [a : Real 0] [h/ct : (U Real Loc) 1] [rt : Real 1] [inscribed? : Boolean #f]))
-(def-base-shape (regular-pyramid [edges : Integer 3] [cb : Loc (u0)] [rb : Real 1] [a : Real 0] [h/ct : LocOrZ 1] [inscribed? : Boolean #f]))
-(def-base-shape (irregular-pyramid [cbs : Locs (list (ux) (uy) (uxy))] [ct : Loc (uz)]))
-(def-base-shape (regular-prism [edges : Integer 3] [cb : Loc (u0)] [r : Real 1] [a : Real 0] [h/ct : LocOrZ 1] [inscribed? : Boolean #f]))
-(def-base-shape (irregular-prism [cbs : Locs (list (ux) (uy) (uxy))] [h/ct : LocOrZ 1] [solid? : Boolean #t]))
-(def-base-shape (right-cuboid [cb : Loc (u0)] [width : Real 1] [height : Real 1] [h/ct : LocOrZ 1]))
-(def-base-shape (box [c : Loc (u0)] [dx/c1 : LocOrZ 1] [dy : Real (if (number? dx/c1) dx/c1 1)] [dz : Real dy]))
-(def-base-shape (cone [cb : Loc (u0)] [r : Real 1] [h/ct : LocOrZ 1]))
-(def-base-shape (cone-frustum [cb : Loc (u0)] [rb : Real 1] [h/ct : LocOrZ 1] [rt : Real 1]))
-(def-base-shape (cylinder [cb : Loc (u0)] [r : Real 1] [h/ct : LocOrZ 1]))
+(def-base-shape 3D-shape (sphere [c : Loc (u0)] [r : Real 1]))
+(def-base-shape 3D-shape (torus [c : Loc (u0)] [re : Real 1] [ri : Real 1/2]))
+(def-base-shape 3D-shape
+  (cuboid [b0 : Loc (u0)]
+          [b1 : Loc (+x b0 1)]
+          [b2 : Loc (+y b1 1)]
+          [b3 : Loc (+y b0 1)]
+          [t0 : Loc (+z b0 1)]
+          [t1 : Loc (+x t0 1)]
+          [t2 : Loc (+y t1 1)]
+          [t3 : Loc (+y t0 1)]))
+(def-base-shape 3D-shape (regular-pyramid-frustum [edges : Integer 4] [cb : Loc (u0)] [rb : Real 1] [a : Real 0] [h/ct : (U Real Loc) 1] [rt : Real 1] [inscribed? : Boolean #f]))
+(def-base-shape 3D-shape (regular-pyramid [edges : Integer 3] [cb : Loc (u0)] [rb : Real 1] [a : Real 0] [h/ct : LocOrZ 1] [inscribed? : Boolean #f]))
+(def-base-shape 3D-shape (irregular-pyramid [cbs : Locs (list (ux) (uy) (uxy))] [ct : Loc (uz)]))
+(def-base-shape 3D-shape (regular-prism [edges : Integer 3] [cb : Loc (u0)] [r : Real 1] [a : Real 0] [h/ct : LocOrZ 1] [inscribed? : Boolean #f]))
+(def-base-shape 3D-shape (irregular-prism [cbs : Locs (list (ux) (uy) (uxy))] [h/ct : LocOrZ 1] [solid? : Boolean #t]))
+(def-base-shape 3D-shape (right-cuboid [cb : Loc (u0)] [width : Real 1] [height : Real 1] [h/ct : LocOrZ 1]))
+(def-base-shape 3D-shape (box [c : Loc (u0)] [dx/c1 : LocOrZ 1] [dy : Real (if (number? dx/c1) dx/c1 1)] [dz : Real dy]))
+(def-base-shape 3D-shape (cone [cb : Loc (u0)] [r : Real 1] [h/ct : LocOrZ 1]))
+(def-base-shape 3D-shape (cone-frustum [cb : Loc (u0)] [rb : Real 1] [h/ct : LocOrZ 1] [rt : Real 1]))
+(def-base-shape 3D-shape (cylinder [cb : Loc (u0)] [r : Real 1] [h/ct : LocOrZ 1]))
 
 (def-base-shape (extrusion [profile : (Extrudable-Shape R)] [dir : VecOrZ 1]))
 (def-base-shape (move [shape : (shape R)] [v : Vec]))
@@ -417,7 +423,7 @@
 (def-base-shape (offset shape distance))
 (def-base-shape (offset-curve shape direction distance normal))
 |#
-(def-base-shape (revolve [shape : (shape R)] [p0 : Loc (u0)] [p1 : Loc (+z p0 1)] [start-angle : Real 0] [amplitude : Real 2*pi]))
+(def-base-shape (revolve [shape : (shape R)] [p0 : Loc (u0)] [v : Vec (vz 1)] [start-angle : Real 0] [amplitude : Real 2pi]))
 #|
 (def-base-shape (thicken shape [h 1]))
 |#
@@ -426,11 +432,11 @@
 (def-base-shape (inner-solid shapes))
 (def-base-shape (solid shapes))
 |#
-(def-base-shape (surface [profile : (Curve-Shape R)]))
+(def-base-shape 2D-shape (surface [profile : (Curve-Shape R)]))
 #|
 (def-base-shape (planar-surface shapes))
 |#
-(def-base-shape (surface-grid [points : (Listof (Listof Loc))] [closed-u? : Boolean #f] [closed-v? : Boolean #f]))
+(def-base-shape 2D-shape (surface-grid [points : (Listof (Listof Loc))] [closed-u? : Boolean #f] [closed-v? : Boolean #f]))
 #|
 (def-base-shape (mesh-grid [points : (Listof (List Loc))] [closed-u? : Boolean #f] [closed-v? : Boolean #f]))
 |#
@@ -460,8 +466,8 @@
 (def-base-shape (intersection [shapes : (Base-Shapes R)]))
 (def-base-shape (subtraction [shapes : (Base-Shapes R)]))
 
-(def-base-shape (triangle-face [p0 : Loc] [p1 : Loc] [p2 : Loc]))
-(def-base-shape (quadrangle-face [p0 : Loc] [p1 : Loc] [p2 : Loc] [p3 : Loc]))
+(def-base-shape 2D-shape (triangle-face [p0 : Loc] [p1 : Loc] [p2 : Loc]))
+(def-base-shape 2D-shape (quadrangle-face [p0 : Loc] [p1 : Loc] [p2 : Loc] [p3 : Loc]))
 (def-base-shape (unknown))
 
 (define #:forall (R)
