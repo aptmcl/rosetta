@@ -2192,7 +2192,7 @@
 (def-autocad-variable cmdecho)
 (def-autocad-variable lenslength Real)
 (def-autocad-variable acadver String)
-(def-autocad-variable clayer)
+(def-autocad-variable clayer String)
 (def-autocad-variable osmode)
 (def-autocad-variable expert)
 (def-autocad-variable filedia)
