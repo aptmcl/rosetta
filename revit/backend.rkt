@@ -4,9 +4,7 @@
          racket/function)
 (require "../base/utils.rkt"
          "../base/coord.rkt"
-         "../base/shapes.rkt"
-         "../base/typed-com.rkt")
-;(require (prefix-in % "ac-com.rkt"))
+         "../base/shapes.rkt")
 (provide (all-from-out "../base/coord.rkt"))
 (provide (all-from-out "../base/utils.rkt"))
 (provide (all-from-out "../base/shapes.rkt"))
@@ -39,6 +37,16 @@
          select-shapes
          zoom-extents
 |#)
+
+(define-type Ref Any)
+
+(require/typed "racketSide.rkt"
+               [(boxb %boxb) (-> Loc Real Real Real Ref)]
+               [(connect-to-revit-family %connect-to-revit-family) (-> Void)])
+ 
+;(require (prefix-in % "racketSide.rkt"))
+
+(provide (rename-out [%connect-to-revit-family connect-to-revit-family]))
 
 #|
 (require racket/include)
@@ -422,6 +430,7 @@ The following example does not work as intended. Rotating the args to closed-spl
          (%transform
           (%add-cylinder (+z (u0 world-cs) (/ h 2.0)) r h)
           c))))
+|#
 
 (def-shape (box [c : Loc (u0)] [dx/c1 : LocOrZ 1] [dy : Real (if (number? dx/c1) dx/c1 1)] [dz : Real dy])
   (let-values ([(dx dy dz)
@@ -430,11 +439,11 @@ The following example does not work as intended. Rotating the args to closed-spl
                     (let ((v (p-p (loc-in dx/c1 c) c)))
                       (values (cx v) (cy v) (cz v))))])
     (or #;(degenerate-box c dx dy dz)
-        (%transform
-         (%add-box (xyz (/ dx 2) (/ dy 2) (/ dz 2))
-                   (abs dx) (abs dy) (abs dz))
-         c))))
+        (begin #;%transform
+         (%boxb c dx dy dz)
+         #;c))))
 
+#|
 (def-shape (cone [cb : Loc (u0)] [r : Real 1] [h/ct : LocOrZ 1])
   (let-values ([(c h) (position-and-height cb h/ct)])
     (or #;(axial-morph c r h
