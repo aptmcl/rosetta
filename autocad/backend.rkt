@@ -273,14 +273,17 @@ The following example does not work as intended. Rotating the args to closed-spl
 (define (curve-length [curve : Shape]) : Real
   (%curve-length (shape-ref curve)))
 
-;;HACK These two functions require the default initialization on last? but Typed Racket has a bug.
-(define #:forall (A) (map-curve-division [f : (-> Loc A)] [curve : Shape] [n : Integer] [last? : Boolean]) : (Listof A)
+;;HACK These two functions require the default initialization on last? but Typed Racket has a bug and prevents the use of #:forall (A)
+(: map-curve-division (All (A) (->* ((-> Loc A) Shape Integer) (Boolean) (Listof A))))
+(: map-curve-length-division (All (A) (->* ((-> Loc A) Shape Integer) (Boolean) (Listof A))))
+
+(define (map-curve-division [f : (-> Loc A)] [curve : Shape] [n : Integer] [last? : Boolean #f]) : (Listof A)
   (let-values ([(start end) (curve-domain curve)])
     (map-division (lambda ([t : Real])
                     (f (curve-frame-at curve t)))
                   start end n last?)))
 
-(define #:forall (T) (map-curve-length-division [f : (-> Loc T)] [curve : Shape] [n : Integer] [last? : Boolean]) : (Listof T)
+(define (map-curve-length-division [f : (-> Loc A)] [curve : Shape] [n : Integer] [last? : Boolean #f]) : (Listof A)
   (map-division (lambda ([t : Real])
                   (f (curve-frame-at-length curve t)))
                 0.0 (curve-length curve) n last?))
@@ -687,6 +690,45 @@ The following example does not work as intended. Rotating the args to closed-spl
                     p1 (+x p1 dx) (+xy p1 dx dy) (+y p1 dy))))
           (loop (combine bb (%bounding-box (car rs)))
                 (cdr rs))))))
+
+;;Layers&Materials
+(define-type Layer String)
+(define-type Material String)
+
+(define (create-layer [name : String]) : Layer
+  (%add-layer name)
+  name)
+
+(define current-layer
+  (case-lambda
+    [()
+     (%clayer)]
+    [([new-layer : Layer])
+     (%clayer new-layer)]))
+
+(define shape-layer
+  (case-lambda
+    [([shape : Shape])
+     (%get-layer (%layer (shape-ref shape)))]
+    [([shape : Shape] [new-layer : Layer])
+     (do-ref ([r shape])
+       (%layer r new-layer))
+     (void)]))
+
+(define (create-material [name : String]) : Material
+  (%add-material name)
+  name)
+
+(define shape-material
+  (case-lambda
+    [([shape : Shape])
+     (%material (shape-ref shape))]
+    [([shape : Shape] [new-material : Material])
+     (do-ref ([r shape])
+       (%material r new-material))
+     (void)]))
+
+;;
 
 (provide fast-view)
 (define (fast-view) : Void
