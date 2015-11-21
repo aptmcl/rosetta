@@ -7,6 +7,8 @@
          Vec
          Locs
          Vecs
+         LocOrZ
+         VecOrZ
          world-loc
          world-transformation
          world-cs
@@ -48,6 +50,7 @@
          =c?
          loc=?
          loc?
+         loc<-
          +x +y +z +xy +xz +yz +xyz
          +vx +vy +vz +vxy +vxz +vyz +vxyz
          pol +pol
@@ -344,6 +347,14 @@
 (define (+yz [p : Loc] [dy : Real] [dz : Real]) : Loc
   (+xyz p 0 dy dz))
 
+(define-type LocOrZ (U Loc Real))
+(define-type VecOrZ (U Vec Real))
+
+(: loc<- (LocOrZ -> Loc))
+(define (loc<- a)
+  (if (number? a)
+      (xyz 0 0 a)
+      a))
 
 ;;Vector in Cartesian Coordinates
 
