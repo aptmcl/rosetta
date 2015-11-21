@@ -225,7 +225,8 @@
                  (cast (com-get-property obj prop-name) type)))
                (([obj : obj-type] [arg : upgraded-type])
                 (com-set-property!
-                 obj prop-name (convert-to-type upgraded-type type arg))))))))]
+                 obj prop-name (convert-to-type upgraded-type type arg))
+                (void)))))))]
     [(def (name com) type)
      (with-syntax ([comName (UpperCamelCaseSymbol #'name)])
        (syntax/loc stx
