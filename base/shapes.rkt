@@ -366,12 +366,12 @@
 
 (def-base-shape 0D-shape (point [position : Loc (u0)]))
 
-(def-base-shape 1D-shape (line [pts : (Listof Loc) (list (u0) (ux))]))
+(def-base-shape 1D-shape (line [vertices : (Listof Loc) (list (u0) (ux))]))
 #|
 (def-base-shape (bounding-box s))
 (def-base-shape (closed shape))
 |#
-(def-base-shape 1D-shape (closed-line [pts : (Listof Loc) (list (u0) (ux) (uy))]))
+(def-base-shape 1D-shape (closed-line [vertices : (Listof Loc) (list (u0) (ux) (uy))]))
 (def-base-shape 1D-shape (spline [pts : (Listof Loc) (list (u0) (ux) (uy))]))
 ;;TODO IN ALL BACKENDS
 (def-base-shape 1D-shape (spline* [pts : (Listof Loc) (list (u0) (ux) (uy))] [v0 : (U Boolean Vec) #f] [v1 : (U Boolean Vec) #f]))
@@ -380,13 +380,13 @@
 (def-base-shape 1D-shape (arc [center : Loc (u0)] [radius : Real 1] [start-angle : Real 0] [amplitude : Real pi]))
 (def-base-shape 1D-shape (elliptic-arc [center : Loc (u0)] [radius-x : Real 1] [radius-y : Real 1] [start-angle : Real 0] [amplitude : Real pi]))
 (def-base-shape 1D-shape (ellipse [center : Loc (u0)] [radius-x : Real 1] [radius-y : Real 1]))
-(def-base-shape 1D-shape (polygon [pts : (Listof Loc) (list (u0) (ux) (uy))]))
+(def-base-shape 1D-shape (polygon [vertices : (Listof Loc) (list (u0) (ux) (uy))]))
 (def-base-shape 1D-shape (regular-polygon [edges : Integer 3] [center : Loc (u0)] [radius : Real 1] [angle : Real 0] [inscribed? : Boolean #f]))
 (def-base-shape 1D-shape (rectangle [c : Loc (u0)] [dx/c1 : (U Real Loc) 1] [dy : Real 1]))
 
 (def-base-shape 2D-shape (surface-circle [center : Loc (u0)] [radius : Real 1]))
 (def-base-shape 2D-shape (surface-arc [center : Loc (u0)] [radius : Real 1] [start-angle : Real 0] [amplitude : Real pi]))
-(def-base-shape 2D-shape (surface-polygon [pts : (Listof Loc) (list (u0) (ux) (uy))]))
+(def-base-shape 2D-shape (surface-polygon [vertices : (Listof Loc) (list (u0) (ux) (uy))]))
 (def-base-shape 2D-shape (surface-regular-polygon [edges : Integer 3] [center : Loc (u0)] [radius : Real 1] [angle : Real 0] [inscribed? : Boolean #f]))
 (def-base-shape 2D-shape (surface-rectangle [c : Loc (u0)] [dx/c1 : (U Real Loc) 1] [dy : Real 1]))
 (def-base-shape (text [str : String ""] [c : Loc (u0)] [h : Real 1]))
@@ -513,3 +513,9 @@
       (closed-spline? s)
       (circle? s)
       (arc? s)))
+
+;;Mass modeling
+;;These are operations more suitable for BIM
+
+(def-base-shape 3D-shape (polygonal-mass [points : Locs] [height : Real]))
+(def-base-shape 3D-shape (rectangular-mass [center : Loc] [width : Real] [length : Real] [height : Real]))
