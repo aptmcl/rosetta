@@ -797,3 +797,9 @@ The following example does not work as intended. Rotating the args to closed-spl
   (%clear-selection-command)
   (%select-shapes-command (shapes-refs ss))
   (void))
+
+(def-shape (polygonal-mass [pts : Locs] [height : Real])
+  (let ((com (%add-3d-poly (append pts (list (car pts))))))
+    (%closed com #t)
+    (single-ref-or-union
+     (%extrude-command-length (list com) height #t))))

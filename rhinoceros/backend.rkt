@@ -727,3 +727,8 @@ Command: _viewcapturetofile
   (begin0
     expr
     (save-film-frame)))
+
+(def-shape (polygonal-mass [pts : Locs] [height : Real])
+  (%irregular-pyramid-frustum
+   pts
+   (map (lambda ([pt : Loc]) (+z pt height)) pts)))
