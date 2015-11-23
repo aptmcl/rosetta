@@ -2401,7 +2401,7 @@
 ; loft
 |#
 
-(provide irregular-pyramid-frustum)
+(provide irregular-pyramid)
 (define (irregular-pyramid [cbs : Locs] [ct : Loc])
   (let ([pts0 (map loc-in-world cbs)]
         [pt1 (loc-in-world ct)])

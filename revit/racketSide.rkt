@@ -57,26 +57,14 @@
 (define server-addr "localhost")
 
 (define (connect-to-revit)
-  (let rec((n 10))
-    (with-handlers ((exn:fail? (lambda (e)
-                                 (displayln "Reinicie o Revit")
-                                 (sleep 10)
-                                 (if (> n 0)
-                                     (rec (- n 1))
-                                     (raise e)))))
-      (call-with-values(lambda () (tcp-connect server-addr 53800))
-                       (lambda (a b)
-                         (set! input a)
-                         (set! output b)
-                         (file-stream-buffer-mode input 'none)
-                         (file-stream-buffer-mode output 'none)))
-      (set! current-level (make-parameter (get-level 0 "Level 1")))
-      (delete-level "Level 2"))))
+  (connect-to-revit-family)
+  (set! current-level (make-parameter (get-level 0 "Level 1")))
+  (delete-level "Level 2"))
 
 (define (connect-to-revit-family)
   (let rec((n 10))
     (with-handlers ((exn:fail? (lambda (e)
-                                 (displayln "Reinicie o Revit")
+                                 (displayln "Please, start the Revit->Rosetta plugin.")
                                  (sleep 10)
                                  (if (> n 0)
                                      (rec (- n 1))
@@ -86,7 +74,14 @@
                          (set! input a)
                          (set! output b)
                          (file-stream-buffer-mode input 'none)
-                         (file-stream-buffer-mode output 'none))))))
+                         (file-stream-buffer-mode output 'none)
+                         ;;I'm not sure this is the correct place to do this.
+                         ;;I just know it must run before closing the socket
+                         (plumber-add-flush! (current-plumber)
+                                             (lambda (e)
+                                               (plumber-flush-handle-remove! e)
+                                               (disconnect-from-revit)))))))
+  (void))
 
 (define (close-ports)
   (close-input-port input)
@@ -94,74 +89,87 @@
 
 ;;Rosetta functions
 
+(define-syntax-rule
+  (send/no-rcv name body ...)
+  (begin
+    (write-sized serialize (namestrc* #:name name) output)
+    (write-sized serialize body output) ...))
+
+(define-syntax-rule
+  (send/rcv-id name body ...)
+  (begin
+    (send/no-rcv name body ...)
+    (read-sized (cut deserialize (idstrc*) <>) input)))
+
+(define-syntax-rule
+  (send/rcv-polyid name body ...)
+  (begin
+    (send/no-rcv name body ...)
+    (polyidstrc-ids (read-sized (cut deserialize (polyidstrc*) <>) input))))
+
 (define (box p0 p1)
   (let ((h (- (cz p1) (cz p0)))
         (c (- (cy p1) (cy p0))))
-    (write-sized serialize (namestrc* #:name "box") output)
-    (write-sized serialize (boxstrc* #:p0coordx (cx p0)
-                                      #:p0coordy (cy p0)
-                                      #:p0coordz (cz p0)
-                                      #:p1coordx (cx p0)
-                                      #:p1coordy (+ (cy p0) c)
-                                      #:p1coordz (cz p0)
-                                      #:p2coordx (cx p1)
-                                      #:p2coordy (cy p1)
-                                      #:p2coordz (- (cz p1) h)
-                                      #:p3coordx (cx p1)
-                                      #:p3coordy (- (cy p1) c)
-                                      #:p3coordz (- (cz p1) h)
-                                      #:height h) output)
-    (read-sized (cut deserialize (idstrc*) <>) input)))
+    (send/rcv-id "box"
+                 (boxstrc* #:p0coordx (cx p0)
+                           #:p0coordy (cy p0)
+                           #:p0coordz (cz p0)
+                           #:p1coordx (cx p0)
+                           #:p1coordy (+ (cy p0) c)
+                           #:p1coordz (cz p0)
+                           #:p2coordx (cx p1)
+                           #:p2coordy (cy p1)
+                           #:p2coordz (- (cz p1) h)
+                           #:p3coordx (cx p1)
+                           #:p3coordy (- (cy p1) c)
+                           #:p3coordz (- (cz p1) h)
+                           #:height h))))
 
 (define (boxb p l c h)
-  (write-sized serialize (namestrc* #:name "box") output)
-  (write-sized serialize (boxstrc* #:p0coordx (cx p)
-                                    #:p0coordy (cy p)
-                                    #:p0coordz (cz p)
-                                    #:p1coordx (cx p)
-                                    #:p1coordy (+ (cy p) c)
-                                    #:p1coordz (cz p)
-                                    #:p2coordx (+ (cx p) l)
-                                    #:p2coordy (+ (cy p) c)
-                                    #:p2coordz (cz p)
-                                    #:p3coordx (+ (cx p) l)
-                                    #:p3coordy (cy p)
-                                    #:p3coordz (cz p)
-                                    #:height h) output)
-  (read-sized (cut deserialize (idstrc*) <>) input))
+  (send/rcv-id "box"
+               (boxstrc* #:p0coordx (cx p)
+                         #:p0coordy (cy p)
+                         #:p0coordz (cz p)
+                         #:p1coordx (cx p)
+                         #:p1coordy (+ (cy p) c)
+                         #:p1coordz (cz p)
+                         #:p2coordx (+ (cx p) l)
+                         #:p2coordy (+ (cy p) c)
+                         #:p2coordz (cz p)
+                         #:p3coordx (+ (cx p) l)
+                         #:p3coordy (cy p)
+                         #:p3coordz (cz p)
+                         #:height h)))
 
 (define (cylinder p r h)
-  (write-sized serialize (namestrc* #:name "cylinder") output)
-  (write-sized serialize (cylinderstrc* #:p0coordx (cx p)
-                                         #:p0coordy (cy p)
-                                         #:p0coordz (cz p)
-                                         #:radius r
-                                         #:height h) output)
-  (read-sized (cut deserialize (idstrc*) <>) input))
+  (send/rcv-id "cylinder"
+               (cylinderstrc* #:p0coordx (cx p)
+                              #:p0coordy (cy p)
+                              #:p0coordz (cz p)
+                              #:radius r
+                              #:height h)))
 
 (define (cylinderb p0 r p1)
-  (write-sized serialize (namestrc* #:name "cylinderb") output)
-  (write-sized serialize (cylinderbstrc* #:p0coordx (cx p0)
-                                          #:p0coordy (cy p0)
-                                          #:p0coordz (cz p0)
-                                          #:radius r
-                                          #:p1coordx (cx p1)
-                                          #:p1coordy (cy p1)
-                                          #:p1coordz (cz p1)) output)
-  (read-sized (cut deserialize (idstrc*) <>) input))
+  (send/rcv-id "cylinderb"
+               (cylinderbstrc* #:p0coordx (cx p0)
+                               #:p0coordy (cy p0)
+                               #:p0coordz (cz p0)
+                               #:radius r
+                               #:p1coordx (cx p1)
+                               #:p1coordy (cy p1)
+                               #:p1coordz (cz p1))))
 
 (define (sphere p r)
-  (write-sized serialize (namestrc* #:name "sphere") output)
-  (write-sized serialize (spherestrc* #:p0coordx (- (cx p) r)
-                                       #:p0coordy (cy p)
-                                       #:p0coordz (cz p)
-                                       #:p1coordx (+ (cx p) r)
-                                       #:p1coordy (cy p)
-                                       #:p1coordz (cz p)
-                                       #:p2coordx (cx p)
-                                       #:p2coordy (+ (cy p) r)
-                                       #:p2coordz (cz p)) output)
-  (polyidstrc-ids (read-sized (cut deserialize (polyidstrc*) <>) input)))
+  (send/rcv-polyid "sphere"
+                   (spherestrc* #:p0coordx (- (cx p) r)
+                                #:p0coordy (cy p)
+                                #:p0coordz (cz p)
+                                #:p1coordx (+ (cx p) r)
+                                #:p1coordy (cy p)
+                                #:p1coordz (cz p)
+                                #:p2coordx (cx p)
+                                #:p2coordy (+ (cy p) r)
+                                #:p2coordz (cz p))))
 
 (define (union id1 id2 . ids)
   (let ((l (list)))
@@ -180,208 +188,184 @@
   (write-sized serialize (namestrc* #:name "test") output))
 
 (define (wall p0 p1 level)
-  (write-sized serialize (namestrc* #:name "wall") output)
-  (write-sized serialize (wallstrc* #:p0coordx (cx p0)
-                                    #:p0coordy (cy p0)
-                                    #:p0coordz (cz p0)
-                                    #:p1coordx (cx p1)
-                                    #:p1coordy (cy p1)
-                                    #:p1coordz (cz p1)
-                                    #:level level) output)
-  (read-sized (cut deserialize (idstrc*) <>) input))
+  (send/rcv-id "wall"
+               (wallstrc* #:p0coordx (cx p0)
+                          #:p0coordy (cy p0)
+                          #:p0coordz (cz p0)
+                          #:p1coordx (cx p1)
+                          #:p1coordy (cy p1)
+                          #:p1coordz (cz p1)
+                          #:level level)))
 
 (define (wall-h p0 p1 h level)
-  (write-sized serialize (namestrc* #:name "wallH") output)
-  (write-sized serialize (wallheightstrc* #:p0coordx (cx p0)
-                                    #:p0coordy (cy p0)
-                                    #:p0coordz (cz p0)
-                                    #:p1coordx (cx p1)
-                                    #:p1coordy (cy p1)
-                                    #:p1coordz (cz p1)
-                                    #:height h
-                                    #:level level) output)
-  (read-sized (cut deserialize (idstrc*) <>) input))
+  (send/rcv-id "wallH"
+               (wallheightstrc* #:p0coordx (cx p0)
+                                #:p0coordy (cy p0)
+                                #:p0coordz (cz p0)
+                                #:p1coordx (cx p1)
+                                #:p1coordy (cy p1)
+                                #:p1coordz (cz p1)
+                                #:height h
+                                #:level level)))
 
 (define (wall-l p0 p1 levelb levelt)
-  (write-sized serialize (namestrc* #:name "wallL") output)
-  (write-sized serialize (walllevelstrc* #:p0coordx (cx p0)
-                                         #:p0coordy (cy p0)
-                                         #:p0coordz (cz p0)
-                                         #:p1coordx (cx p1)
-                                         #:p1coordy (cy p1)
-                                         #:p1coordz (cz p1)
-                                         #:levelb levelb
-                                         #:levelt levelt) output)
-  (read-sized (cut deserialize (idstrc*) <>) input))
+  (send/rcv-id "wallL"
+               (walllevelstrc* #:p0coordx (cx p0)
+                               #:p0coordy (cy p0)
+                               #:p0coordz (cz p0)
+                               #:p1coordx (cx p1)
+                               #:p1coordy (cy p1)
+                               #:p1coordz (cz p1)
+                               #:levelb levelb
+                               #:levelt levelt)))
 
 (define (poly-wall pts levelb levelt)
   (let ((l (convert-list pts)))
-    (write-sized serialize (namestrc* #:name "polyWall") output)
-    (write-sized serialize (polywallstrc* #:pts l
-                                          #:levelb levelb
-                                          #:levelt levelt) output)
+    (send/no-rcv "polyWall"
+                 (polywallstrc* #:pts l
+                                #:levelb levelb
+                                #:levelt levelt))
+    ;;AML This seems inconsistent, as it doesn't process the result through polyidstrc-ids
     (read-sized (cut deserialize (polyidstrc*) <>) input)))
 
 
 (define (curtain-wall p0 p1 p2 p3 level)
-  (write-sized serialize (namestrc* #:name "curtainWall") output)
-  (write-sized serialize (curtainwallstrc* #:p0coordx (cx p0)
-                                           #:p0coordy (cy p0)
-                                           #:p0coordz (cz p0)
-                                           #:p1coordx (cx p1)
-                                           #:p1coordy (cy p1)
-                                           #:p1coordz (cz p1)
-                                           #:p2coordx (cx p2)
-                                           #:p2coordy (cy p2)
-                                           #:p2coordz (cz p2)
-                                           #:p3coordx (cx p3)
-                                           #:p3coordy (cy p3)
-                                           #:p3coordz (cz p3)
-                                           #:level level) output)
-  (read-sized (cut deserialize (idstrc*) <>) input))
+  (send/rcv-id "curtainWall"
+               (curtainwallstrc* #:p0coordx (cx p0)
+                                 #:p0coordy (cy p0)
+                                 #:p0coordz (cz p0)
+                                 #:p1coordx (cx p1)
+                                 #:p1coordy (cy p1)
+                                 #:p1coordz (cz p1)
+                                 #:p2coordx (cx p2)
+                                 #:p2coordy (cy p2)
+                                 #:p2coordz (cz p2)
+                                 #:p3coordx (cx p3)
+                                 #:p3coordy (cy p3)
+                                 #:p3coordz (cz p3)
+                                 #:level level)))
 
 (define (mass-wall p0 p1 p2 p3 height level)
-  (write-sized serialize (namestrc* #:name "massWall") output)
-  (write-sized serialize (masswallstrc* #:bottomleftcornerx (cx p0)
-                                        #:bottomleftcornery (cy p0)
-                                        #:bottomleftcornerz (cz p0)
-                                        #:topleftcornerx (cx p1)
-                                        #:topleftcornery (cy p1)
-                                        #:topleftcornerz (cz p1)
-                                        #:bottomrightcornerx (cx p3)
-                                        #:bottomrightcornery (cy p3)
-                                        #:bottomrightcornerz (cz p3)
-                                        #:toprightcornerx (cx p2)
-                                        #:toprightcornery (cy p2)
-                                        #:toprightcornerz (cz p2)
-                                        #:height height
-                                        #:level-id level) output)
-  (read-sized (cut deserialize (idstrc*) <>) input))
-
-
+  (send/rcv-id "massWall"
+               (masswallstrc* #:bottomleftcornerx (cx p0)
+                              #:bottomleftcornery (cy p0)
+                              #:bottomleftcornerz (cz p0)
+                              #:topleftcornerx (cx p1)
+                              #:topleftcornery (cy p1)
+                              #:topleftcornerz (cz p1)
+                              #:bottomrightcornerx (cx p3)
+                              #:bottomrightcornery (cy p3)
+                              #:bottomrightcornerz (cz p3)
+                              #:toprightcornerx (cx p2)
+                              #:toprightcornery (cy p2)
+                              #:toprightcornerz (cz p2)
+                              #:height height
+                              #:level-id level)))
 
 (define (insert-door id loc)
-  (write-sized serialize (namestrc* #:name "insertDoor") output)
-  (write-sized serialize (insertdoorstrc* #:hostid (idstrc-id id)
-                                          #:p0coordx (cx loc)
-                                          #:p0coordy (cy loc)
-                                          #:p0coordz (cz loc))output)
-  (read-sized (cut deserialize (idstrc*) <>) input))
+  (send/rcv-id "insertDoor"
+               (insertdoorstrc* #:hostid (idstrc-id id)
+                                #:p0coordx (cx loc)
+                                #:p0coordy (cy loc)
+                                #:p0coordz (cz loc))))
 
 (define (insert-door-relative id deltaX deltaY)
-  (write-sized serialize (namestrc* #:name "insertDoor1") output)
-  (write-sized serialize (insertdoorbstrc* #:hostid (idstrc-id id)
-                                          #:deltax deltaX
-                                          #:deltay deltaY) output)
-  (read-sized (cut deserialize (idstrc*) <>) input))
+  (send/rcv-id "insertDoor1"
+               (insertdoorbstrc* #:hostid (idstrc-id id)
+                                 #:deltax deltaX
+                                 #:deltay deltaY)))
 
 (define (insert-window id deltaX deltaY)
-  (write-sized serialize (namestrc* #:name "insertWindow") output)
-  (write-sized serialize (insertwindowstrc* #:hostid (idstrc-id id)
+  (send/rcv-id "insertWindow"
+               (insertwindowstrc* #:hostid (idstrc-id id)
                                           #:deltax deltaX
-                                          #:deltay deltaY) output)
-  (read-sized (cut deserialize (idstrc*) <>) input))
+                                          #:deltay deltaY)))
 
 (define (delete-element elem)
-  (write-sized serialize (namestrc* #:name "deleteElement") output)
-  (write-sized serialize elem output))
+  (send/no-rcv "deleteElement" elem))
 
 (define (create-level height name)
-  (write-sized serialize (namestrc* #:name "createLevel") output)
-  (write-sized serialize (levelstrc* #:h height #:name name) output)
-  (read-sized (cut deserialize (idstrc*) <>) input))
+  (send/rcv-id "createLevel"
+               (levelstrc* #:h height #:name name)))
 
 (define (upper-level #:level [level (current-level)]
                      #:height [height (default-level-to-level-height)])
-  (write-sized serialize (namestrc* #:name "upperLevel") output)
-  (write-sized serialize (upperlevelstrc* #:current level 
-                                          #:elevation height) output)
-  (read-sized (cut deserialize (idstrc*) <>) input))
+  (send/rcv-id "upperLevel"
+               (upperlevelstrc* #:current level 
+                                #:elevation height)))
 
 (define (get-level height name)
-  (write-sized serialize (namestrc* #:name "getLevel") output)
-  (write-sized serialize (levelstrc* #:h height #:name name) output)
-  (read-sized (cut deserialize (idstrc*) <>) input))
+  (send/rcv-id "getLevel"
+               (levelstrc* #:h height #:name name)))
 
 (define (delete-level name)
-  (write-sized serialize (namestrc* #:name "deleteLevel") output)
-  (write-sized serialize (namestrc* #:name name) output))
+  (send/no-rcv "deleteLevel" (namestrc* #:name name)))
 
 (define (create-round-floor center radius level)
-  (write-sized serialize (namestrc* #:name "createRoundFloor") output)
-  (write-sized serialize (roundfloorstrc* #:radius radius
-                                          #:center-x (cx center)
-                                          #:center-y (cy center)
-                                          #:center-z (cz center)
-                                          #:level level)output)
-  (read-sized (cut deserialize (idstrc*) <>) input))
+  (send/rcv-id "createRoundFloor"
+               (roundfloorstrc* #:radius radius
+                                #:center-x (cx center)
+                                #:center-y (cy center)
+                                #:center-z (cz center)
+                                #:level level)))
 
 (define (create-floor p0 p1 level)
-  (write-sized serialize (namestrc* #:name "createFloor") output)
-  (write-sized serialize (floorstrc* #:p0coordx (cx p0)
-                                     #:p0coordy (cy p0)
-                                     #:p0coordz (cz p0)
-                                     #:p1coordx (cx p1)
-                                     #:p1coordy (cy p1)
-                                     #:p1coordz (cz p1)
-                                     #:level level) output)
-  (read-sized (cut deserialize (idstrc*) <>) input))
+  (send/rcv-id "createFloor"
+               (floorstrc* #:p0coordx (cx p0)
+                           #:p0coordy (cy p0)
+                           #:p0coordz (cz p0)
+                           #:p1coordx (cx p1)
+                           #:p1coordy (cy p1)
+                           #:p1coordz (cz p1)
+                           #:level level)))
 
 (define (column p0 blevel tlevel)
-  (write-sized serialize (namestrc* #:name "createColumn") output)
-  (write-sized serialize (columnstrc* #:p0coordx (cx p0)
-                                      #:p0coordy (cy p0)
-                                      #:p0coordz (cz p0)
-                                      #:baselevel blevel
-                                      #:toplevel tlevel) output)
-  (read-sized (cut deserialize (idstrc*) <>) input))
+  (send/rcv-id "createColumn"
+               (columnstrc* #:p0coordx (cx p0)
+                            #:p0coordy (cy p0)
+                            #:p0coordz (cz p0)
+                            #:baselevel blevel
+                            #:toplevel tlevel)))
 
 (define (create-floor-opening p0 p1 floor)
-  (write-sized serialize (namestrc* #:name "createOpening") output)
-  (write-sized serialize (flooropeningstrc* #:p0coordx (cx p0)
-                                            #:p0coordy (cy p0)
-                                            #:p0coordz (cz p0)
-                                            #:p1coordx (cx p1)
-                                            #:p1coordy (cy p1)
-                                            #:p1coordz (cz p1)
-                                            #:floorid (idstrc-id floor)) output))
+  (send/no-rcv "createOpening"
+               (flooropeningstrc* #:p0coordx (cx p0)
+                                  #:p0coordy (cy p0)
+                                  #:p0coordz (cz p0)
+                                  #:p1coordx (cx p1)
+                                  #:p1coordy (cy p1)
+                                  #:p1coordz (cz p1)
+                                  #:floorid (idstrc-id floor)) output))
 
 
 (define (floor-from-points lista level)
   (let ((l (convert-list lista)))
-    (write-sized serialize (namestrc* #:name "createFloorFromPoints") output)
-    (write-sized serialize (polylinefloorstrc* #:floor level 
-                                               #:points l) output)
-    (read-sized (cut deserialize (idstrc*) <>) input)))
+    (send/rcv-id "createFloorFromPoints"
+                 (polylinefloorstrc* #:floor level 
+                                     #:points l))))
 
 (define (create-stairs-run blevel tlevel bp0 bp1 tp0 tp1)
-  (write-sized serialize (namestrc* #:name "stairsRun") output)
-  (write-sized serialize (stairrunstrc* #:bottom-level blevel
-                                        #:top-level tlevel
-                                        #:bottomp0coordx (cx bp0)
-                                        #:bottomp0coordy (cy bp0)
-                                        #:bottomp0coordz (cz bp0)
-                                        #:bottomp1coordx (cx bp1)
-                                        #:bottomp1coordy (cy bp1)
-                                        #:bottomp1coordz (cz bp1)
-                                        #:topp0coordx (cx tp0)
-                                        #:topp0coordy (cy tp0)
-                                        #:topp0coordz (cz tp0)
-                                        #:topp1coordx (cx tp1)
-                                        #:topp1coordy (cy tp1)
-                                        #:topp1coordz (cz tp1)) output)
-  (read-sized (cut deserialize (idstrc*) <>) input))
-
-
+  (send/no-rcv "stairsRun"
+               (stairrunstrc* #:bottom-level blevel
+                              #:top-level tlevel
+                              #:bottomp0coordx (cx bp0)
+                              #:bottomp0coordy (cy bp0)
+                              #:bottomp0coordz (cz bp0)
+                              #:bottomp1coordx (cx bp1)
+                              #:bottomp1coordy (cy bp1)
+                              #:bottomp1coordz (cz bp1)
+                              #:topp0coordx (cx tp0)
+                              #:topp0coordy (cy tp0)
+                              #:topp0coordz (cz tp0)
+                              #:topp1coordx (cx tp1)
+                              #:topp1coordy (cy tp1)
+                              #:topp1coordz (cz tp1))))
 
 (define (intersect-wall-floor idw idf)
-  (write-sized serialize (namestrc* #:name "intersectWF") output)
-  (write-sized serialize idw output)
-  (write-sized serialize idf output)
- (read-sized (cut deserialize (idstrc*) <>) input))
+  (send/rcv-id "intersectWF" idw idf))
 
 (define (disconnect-from-revit)
-  (write-sized serialize (namestrc* #:name "disconnect") output)
+  (send/no-rcv "disconnect")
   (close-ports))
 
 ;;;;;;;;New 2.0 Operator ;;;;;;;;;;;;;;;
@@ -389,137 +373,120 @@
 
 (define (create-wall guide #:bottom-level[bottom-level (current-level)] #:top-level[top-level (upper-level #:level bottom-level)])
   (let ((pts (convert-list guide)))
-    (write-sized serialize (namestrc* #:name "polyWall") output)
-    (write-sized serialize (polywallstrc* #:pts pts
-                                          #:levelb bottom-level
-                                          #:levelt top-level) output)
+    (send/no-rcv "polyWall"
+                 (polywallstrc* #:pts pts
+                                #:levelb bottom-level
+                                #:levelt top-level))
     (polyidstrc-ids (read-sized (cut deserialize (polyidstrc*) <>) input))))
 
 (define (create-slab guide #:bottom-level [bottom-level (current-level)])
   (let ((pts (convert-list guide)))
-    (write-sized serialize (namestrc* #:name "createFloorFromPoints") output)
-    (write-sized serialize (polylinefloorstrc* #:floor bottom-level 
-                                               #:points pts) output)
-    (read-sized (cut deserialize (idstrc*) <>) input)))
+    (send/rcv-id "createFloorFromPoints"
+                 (polylinefloorstrc* #:floor bottom-level 
+                                     #:points pts))))
 
 
 (define (create-roof guide #:bottom-level[bottom-level (current-level)])
- (let ((pts (convert-list guide)))
-    (write-sized serialize (namestrc* #:name "createRoof") output)
-    (write-sized serialize (polylinefloorstrc* #:floor bottom-level 
-                                               #:points pts) output)
-    (read-sized (cut deserialize (idstrc*) <>) input)))
+  (let ((pts (convert-list guide)))
+    (send/rcv-id "createRoof"
+                 (polylinefloorstrc* #:floor bottom-level 
+                                     #:points pts))))
 
 (define (create-walls-from-slab slab-id height #:bottom-level[bottom-level (current-level)])
-  (write-sized serialize (namestrc* #:name "wallsFromSlabs") output)
-  (write-sized serialize (wallsfromslabsstrc* #:slabid slab-id
-                                              #:blevel bottom-level
-                                              #:height height) output)
+  (send/no-rcv "wallsFromSlabs"
+               (wallsfromslabsstrc* #:slabid slab-id
+                                    #:blevel bottom-level
+                                    #:height height))
   (polyidstrc-ids (read-sized (cut deserialize (polyidstrc*) <>) input)))
 
 (define (create-hole-slab slab-id points)
   (let ((pts (convert-list points)))
-    (write-sized serialize (namestrc* #:name "holeSlab") output)
-    (write-sized serialize (holeslabstrc* #:slabid slab-id
-                                          #:pts pts) output)))
+    (send/no-rcv "holeSlab"
+                 (holeslabstrc* #:slabid slab-id
+                                #:pts pts))))
 
 (define (create-column center #:bottom-level[bottom-level (current-level)] #:top-level[top-level (upper-level #:level bottom-level)])
-  (write-sized serialize (namestrc* #:name "createColumn") output)
-  (write-sized serialize (columnstrc* #:p0coordx (cx center)
-                                      #:p0coordy (cy center)
-                                      #:p0coordz (cz center)
-                                      #:baselevel bottom-level
-                                      #:toplevel top-level) output)
-  (read-sized (cut deserialize (idstrc*) <>) input))
-
+  (send/rcv-id "createColumn"
+               (columnstrc* #:p0coordx (cx center)
+                            #:p0coordy (cy center)
+                            #:p0coordz (cz center)
+                            #:baselevel bottom-level
+                            #:toplevel top-level)))
 
 (define (intersect-wall idw idf)
-  (write-sized serialize (namestrc* #:name "intersectWF") output)
-  (write-sized serialize idw output)
-  (write-sized serialize idf output)
- (read-sized (cut deserialize (idstrc*) <>) input))
-
+  (send/rcv-id "intersectWF" idw idf))
 
 (define (current-level-elevation)
-  (write-sized serialize (namestrc* #:name "levelElevation") output)
-  (write-sized serialize (current-level) output)
+  (send/no-rcv "levelElevation"
+               (current-level))
   (doublestrc-height (read-sized (cut deserialize (doublestrc*) <>) input)))
 
 (define (create-railings slabid)
-  (write-sized serialize (namestrc* #:name "createRailings") output)
-  (write-sized serialize (railingsstrc* #:slabid slabid) output))
+  (send/no-rcv "createRailings"
+               (railingsstrc* #:slabid slabid) output))
 
 (define (get-wall-volume wallid)
-  (write-sized serialize (namestrc* #:name "getWallVolume") output)
-  (write-sized serialize wallid output)
+  (send/no-rcv "getWallVolume" wallid)
   (doublevolumestrc-volume (read-sized (cut deserialize (doublevolumestrc*) <>) input)))
 
 (define (create-stairs blevel tlevel bp tp)
-  (write-sized serialize (namestrc* #:name "createStairs") output)
-  (write-sized serialize (stairstrc* #:bottom-level blevel
-                                     #:top-level tlevel
-                                     #:bottomp0coordx (cx bp)
-                                     #:bottomp0coordy (cy bp)
-                                     #:bottomp0coordz (cz bp)
-                                     #:topp0coordx (cx tp)
-                                     #:topp0coordy (cy tp)
-                                     #:topp0coordz (cz tp)) output)
-  (read-sized (cut deserialize (idstrc*) <>) input))
+  (send/rcv-id "createStairs"
+               (stairstrc* #:bottom-level blevel
+                           #:top-level tlevel
+                           #:bottomp0coordx (cx bp)
+                           #:bottomp0coordy (cy bp)
+                           #:bottomp0coordz (cz bp)
+                           #:topp0coordx (cx tp)
+                           #:topp0coordy (cy tp)
+                           #:topp0coordz (cz tp))))
 
 (define (levels-info)
-  (write-sized serialize (namestrc* #:name "getLevelsInfo") output)
+  (send/no-rcv "getLevelsInfo")
   (polylevelstrc-levels (read-sized (cut deserialize (polylevelstrc*) <>) input)))
 
 (define (walls-info)
-  (write-sized serialize (namestrc* #:name "getWallsInfo") output)
+  (send/no-rcv "getWallsInfo")
   (polywallinfostrc-walls (read-sized (cut deserialize (polywallinfostrc*) <>) input)))
 
 (define (create-topo-surface points)
   (let ((pts (convert-list points)))
-    (write-sized serialize (namestrc* #:name "createTopoSurface") output)
-    (write-sized serialize (toposurfacestrc* #:pts pts) output)
-    (read-sized (cut deserialize (idstrc*) <>) input)))
+    (send/rcv-id "createTopoSurface"
+                 (toposurfacestrc* #:pts pts))))
 
 (define (create-building-pad points level)
   (let ((pts (convert-list points)))
-    (write-sized serialize (namestrc* #:name "createBuildingPad") output)
-    (write-sized serialize (buildingpadstrc* #:pts pts
-                                             #:level-id level) output)
-    (read-sized (cut deserialize (idstrc*) <>) input)))
+    (send/rcv-id "createBuildingPad"
+                 (buildingpadstrc* #:pts pts
+                                   #:level-id level))))
 
 (define (get-level-by-name name)
-  (write-sized serialize (namestrc* #:name "getLevelByName") output)
-  (write-sized serialize (namestrc* #:name name) output)
-  (read-sized (cut deserialize (idstrc*) <>) input))
+  (send/rcv-id "getLevelByName"
+               (namestrc* #:name name)))
 
 (define (highlight-element id)
-  (write-sized serialize (namestrc* #:name "highlightElement") output)
-  (write-sized serialize id output))
+  (send/no-rcv "highlightElement" id))
 
 (define (get-selected-element)
-  (write-sized serialize (namestrc* #:name "getSelectedElement") output)
-  (polyidstrc-ids (read-sized (cut deserialize (polyidstrc*) <>) input)))
+  (send/rcv-polyid "getSelectedElement"))
 
 (define (mass-sweep profile1 path profile2)
   (let ((prof1 (convert-list profile1))
         (prof2 (convert-list profile2))
         (pth (convert-list path)))
-    (write-sized serialize (namestrc* #:name "createMassSweep") output)
-    (write-sized serialize (masssweepstrc* #:profile1 prof1
-                                          #:path pth
-                                          #:profile2 prof2) output)
-    (read-sized (cut deserialize (idstrc*) <>) input)))
+    (send/rcv-id "createMassSweep"
+                 (masssweepstrc* #:profile1 prof1
+                                 #:path pth
+                                 #:profile2 prof2))))
 
 (define (extrusion-mass points elevation)
   (let ((pts (convert-list points)))
-    (write-sized serialize (namestrc* #:name "createExtrusionMass") output)
-    (write-sized serialize (extrusionstrc* #:pts pts
-                                           #:elevation elevation) output)
-    (read-sized (cut deserialize (idstrc*) <>) input)))
+    (send/rcv-id "createExtrusionMass"
+                 (extrusionstrc* #:pts pts
+                                 #:elevation elevation))))
 
 (define (import-dwg file)
-  (write-sized serialize (namestrc* #:name "importDWG") output)
-  (write-sized serialize (namestrc* #:name file) output))
+  (send/no-rcv "importDWG")
+  (send/no-rcv file))
 
 ;;;;;;;;Auxiliary Funtions;;;;;;;;;;;;;;
 
@@ -558,8 +525,7 @@
                                        #:toprightcornerx (cx toprightp)
                                        #:toprightcornery (cy toprightp)
                                        #:toprightcornerz (cz toprightp)
-                                       #:stairsrunid stairsId) output)
-  (read-sized (cut deserialize (idstrc*) <>) input))
+                                       #:stairsrunid stairsId)))
 
 #;(define (finish-wall-face-interior wall)
   (write-sized serialize (namestrc* #:name "wallFinishFaceInterior") output)
@@ -582,5 +548,4 @@
                                         #:toprightcornerx (cx p2)
                                         #:toprightcornery (cy p2)
                                         #:toprightcornerz (cz p2)
-                                        #:level-id level) output)
-  (read-sized (cut deserialize (idstrc*) <>) input))
+                                        #:level-id level)))
