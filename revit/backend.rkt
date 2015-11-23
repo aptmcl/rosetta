@@ -9,8 +9,8 @@
 (provide (all-from-out "../base/utils.rkt"))
 (provide (all-from-out "../base/shapes.rkt"))
 (provide immediate-mode?
-#|         current-backend-name
-         all-shapes
+         current-backend-name
+#|         all-shapes
          bounding-box
          delete-shape
          delete-shapes
@@ -42,8 +42,9 @@
 
 (require/typed "racketSide.rkt"
                [(boxb %boxb) (-> Loc Real Real Real Ref)]
+               [(extrusion-mass %extrusion-mass) (-> Locs Real Ref)]
                [(connect-to-revit-family %connect-to-revit-family) (-> Void)])
- 
+
 ;(require (prefix-in % "racketSide.rkt"))
 
 (provide (rename-out [%connect-to-revit-family connect-to-revit-family]))
@@ -52,7 +53,10 @@
 (require racket/include)
 (include "../base/common.rkc")
 
+|#
 (define (current-backend-name) "Revit")
+
+#|
 ;;Start now
 (%start)
 
@@ -745,3 +749,8 @@ The following example does not work as intended. Rotating the args to closed-spl
   (%select-shapes-command (shapes-refs ss))
   (void))
 |#
+
+(def-shape (polygonal-mass [points : Locs] [height : Real])
+  (%extrusion-mass (append points (list (car points))) height))
+
+;(def-shape (rectangular-mass [center : Loc] [width : Real] [length : Real] [height : Real]))
