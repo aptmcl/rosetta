@@ -284,9 +284,9 @@
 (define (delete-element elem)
   (send/no-rcv "deleteElement" elem))
 
-(define (create-level height name)
+(define (create-level #:height [height 0])
   (send/rcv-id "createLevel"
-               (levelstrc* #:h height #:name name)))
+               (doublestrc* #:height height)))
 
 (define (upper-level #:level [level (current-level)]
                      #:height [height (default-level-to-level-height)])
