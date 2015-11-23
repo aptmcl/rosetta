@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<RevitAddIns>
+  <AddIn Type="Application">
+    <Assembly>C:\Autodesk\RosettaToRevit.dll</Assembly>
+    <AddInId>604b1052-f742-4951-8576-c261d1993108</AddInId>
+    <FullClassName>RosettaToRevit.RosettaApp</FullClassName>
+    <Name>Rosetta</Name>
+    <VendorId>NAME</VendorId>
+    <VendorDescription>IST</VendorDescription>
+  </AddIn>
+</RevitAddIns>
