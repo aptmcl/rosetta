@@ -346,7 +346,8 @@
 
 (define (disconnect-from-revit)
   (send/no-rcv "disconnect")
-  (close-ports))
+  (close-ports)
+  (void))
 
 ;;;;;;;;New 2.0 Operator ;;;;;;;;;;;;;;;
 
