@@ -798,6 +798,8 @@ The following example does not work as intended. Rotating the args to closed-spl
   (%select-shapes-command (shapes-refs ss))
   (void))
 
+;;Mass modeling
+
 (def-shape (polygonal-mass [pts : Locs] [height : Real])
   (let ((com (%add-3d-poly (append pts (list (car pts))))))
     (%closed com #t)
