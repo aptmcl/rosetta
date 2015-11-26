@@ -1,5 +1,5 @@
 #lang typed/racket/base
-(require (for-syntax racket/base))
+(require (for-syntax racket/base racket/list))
 (require racket/function racket/string racket/match racket/port)
 (require (except-in math random-integer)
          "../base/typed-com.rkt"
@@ -65,11 +65,13 @@
 (define-type PolygonMesh Com-Object)
 (define-type Polyline Com-Object)
 (define-type Profile Com-Object)
+(define-type PViewport Com-Object)
 (define-type Ray Com-Object)
 (define-type Region Com-Object)
 (define-type SelectionSet Com-Object)
 (define-type Spline Com-Object)
 (define-type Text Com-Object)
+(define-type Viewport Com-Object)
 (define-type Views Com-Object)
 
 (define-type VarIdN (Variant (Vectorof Id)))
@@ -129,11 +131,13 @@
                                #'PolyfaceMesh
                                #'Polyline
                                #'Profile
+                               #'PViewport
                                #'Ray
                                #'Id
                                #'Region
                                #'Spline
                                #'Text
+                               #'Viewport
                                #'AcadMaterials
                                #'AcadSelectionSets
                                #'Object
@@ -306,15 +310,16 @@
 (def-rw-property (ActiveLinetype Document) Linetype)
 (ActiveMaterial property idh_activematerial.htm)
 (def-rw-property (ActiveProfile PreferencesProfiles) String)
-(def-rw-property (ActivePViewport Document) PViewport)
 |#
+(def-rw-property (active-p-viewport Document) PViewport)
 (def-ro-property (active-selection-set Document) SelectionSet)
 #|
 (def-rw-property (ActiveSpace Document) acActiveSpace)
 (def-rw-property (ActiveTextStyle Document) TextStyle)
 (ActiveUCS property idh_activeucs.htm)
-(def-rw-property (ActiveViewport Document) Viewport)
-(def-rw-property (ADCInsertUnitsDefaultSource PreferencesUser) AcInsertUnits)
+|#
+(def-rw-property (active-viewport Document) Viewport)
+#|(def-rw-property (ADCInsertUnitsDefaultSource PreferencesUser) AcInsertUnits)
 (def-rw-property (ADCInsertUnitsDefaultTarget PreferencesUser) AcInsertUnits)
 (def-ro-property (AdjustForBackground DwfUnderlay) Long)
 (def-ro-property (AffectsGraphics FileDependency) Boolean)
@@ -738,7 +743,9 @@
 (def-rw-property (LeaderType MLeader) AcMLeaderType)
 (def-rw-property (Left Toolbar) Integer)
 (def-ro-property (Length Line) Double)
-(def-rw-property (LensLength PViewport) Double)
+|#
+(def-rw-property (lens-length PViewport) Double)
+#|
 (def-rw-property (Limits Document) Double)
 (def-rw-property (LinearScaleFactor DimAligned) Double)
 (def-rw-property (LineSpacingDistance MText) Double)
@@ -1857,6 +1864,8 @@
 (def-autolisp ((al-nth nth) [i Integer] [l Com-Object]) Any)
 (def-autolisp ((al-length length) [l Com-Object]) Integer)
 (def-autolisp ((al-handent handent) [id String]) Com-Object)
+(def-autolisp ((al-eval eval) [e Com-Object]) Any)
+(def-autolisp ((al-read read) [s String]) Com-Object)
 
 (define (loc<-al-com [c : Com-Object]) : Loc
   (xyz (cast (al-nth 0 c) Real)
@@ -1874,6 +1883,9 @@
   (let ((n (al-length c)))
     (for/list : (Listof Any) ((i (in-range n)))
       (al-nth i c))))
+
+;(def-autolisp (entget [c Com-Object]) Com-Object)
+;(def-autolisp (assoc [k Com-Object] [l Com-Object]) Com-Object)
 
 (def-autolisp (vlax-curve-getStartPoint [c Com-Object]) Com-Object)
 (def-autolisp (vlax-curve-getEndPoint [c Com-Object]) Com-Object)
@@ -1963,29 +1975,43 @@
 (def-autolisp (al-nth "nth"))
 (def-autolisp (al-handent "handent"))
 
-;;Defines an AutoLISP function
-(define-syntax (defun stx)
-  (syntax-case stx ()
-    ((defun name params body ...)
-     (with-syntax ([name-str (symbol->string (syntax-e #'name))]
-                   [real-params
-                    (takef (syntax->list #'params)
-                           (lambda ([stx : Syntax]) : Boolean
-                             (not (eq? (syntax->datum stx) '/))))])
-       (syntax/loc stx
-         (define name
-           (let ((form (syntax->datum #'(defun name params body ...))))
-             (lambda real-params
-               (al-eval (al-read (format "~S" form)))
-               (let ((ref (com-get-property* autolisp-functions "Item" name-str)))
-                 (set! name (lambda args
-                              (apply com-invoke ref "funcall" args)))
-                 (name . real-params))))))))))
 
 |#
+
+(define-type AutoLISP-Type (U Real String))
+
+;;Defines an AutoLISP function
+(provide defun)
+(define-syntax (defun stx)
+  (syntax-case stx ()
+    ((def name params body ...)
+     (with-syntax ([name-str (string-upcase (symbol->string (syntax-e #'name)))]
+                   [real-params
+                    (takef (syntax->list #'params)
+                           (lambda (stx)
+                             (not (eq? (syntax->datum stx) '/))))]
+                   [str (format "~S"
+                                (syntax->datum
+                                 #'(defun name params
+                                     (vl-princ-to-string
+                                      (progn
+                                       body ...)))))])
+       (syntax/loc stx
+         (define name : (-> AutoLISP-Type * Any)
+           (lambda args
+             (al-eval (al-read str))
+             (let ((ref (cast (com-get-property* (autolisp-functions) "Item" name-str) Com-Object)))
+               (define new-func : (-> AutoLISP-Type * Any)
+                 (lambda args
+                   (with-input-from-string
+                    (cast (apply com-invoke ref "funcall" args) String)
+                    read)))
+               (set! name new-func)
+               (apply name args)))))))))
+
 ;;Extras
 
-(define-syntax (defun stx)
+#;(define-syntax (defun stx)
   (syntax-case stx ()
     ((defun name params body ...)
      #'(define name (lambda all (void))))))
@@ -2900,23 +2926,6 @@
       (filedia prev-filedia)))
   (void))
 
-
-
-(provide view-parameters)
-(define (view-parameters) : (List Loc Loc Real)
-  (send-command "-VIEW _S foo\n")
-  (let ((view (last-item (views (active-document)))))
-    (begin0
-        (list (direction view)
-              (target view)
-              ;(lens-length (active-viewport active-document))
-              (let-values (((types data) (get-x-data view "ACAD")))
-                (cast data Real)))
-      ;;(delete view)
-      (send-command "-VIEW _D foo\n")
-      )))
-
-
 (provide 2d-view)
 (define (2d-view [center : (Option Loc) #f] [magnification : Real 1]) : (Values Loc Real)
   (if center
@@ -2949,16 +2958,15 @@
 (defun alisp-get-view (/ params)
   (setq params (tblsearch "VIEW" "foo"))
   (setq params (cddr params))
-  (vl-princ-to-string
-   (list (mapcar '+ (cdr (assoc 12 params)) (cdr (assoc 11 params)))
-         (cdr (assoc 12 params))
-         (cdr (assoc 42 params)))))
+  (list (mapcar '+ (cdr (assoc 12 params)) (cdr (assoc 11 params)))
+        (cdr (assoc 12 params))
+        (cdr (assoc 42 params))))
 
 (provide get-view)
 (define (get-view) : (Values Loc Loc Real)
   (send-command (format "-VIEW _S foo\n"))
   (begin0
-    (match (with-input-from-string (cast (alisp-get-view) String) read) ;HACK: Move type to function def.
+    (match (alisp-get-view)
       [(list (list xa ya za) (list xb yb zb) l)
        (values (xyz (cast xa Real) (cast ya Real) (cast za Real) world-cs)
                (xyz (cast xb Real) (cast yb Real) (cast zb Real) world-cs)
