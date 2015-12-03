@@ -78,25 +78,56 @@
 
 ; initialization
 
-(define-cached (application) : Com-Object
-  (let ((clsid (progid->clsid "AutoCAD.Application")))
-    (with-handlers ((exn?
-                     (λ (e)
-                       (display "Starting AutoCAD...")
-                       (flush-output)
-                       (begin0
-                           (com-create-instance clsid)
-                         (displayln "done!")))))
-      (com-get-active-object clsid))))
+(define (initialize) : Void
+  (let* ((app
+          (let ((clsid (progid->clsid "AutoCAD.Application")))
+            (with-handlers ((exn?
+                             (λ (e)
+                               (display "Starting AutoCAD...")
+                               (flush-output)
+                               (begin0
+                                 (com-create-instance clsid)
+                                 (displayln "done!")))))
+              (com-get-active-object clsid))))
+         (doc (cast (com-get-property app "ActiveDocument") Com-Object))
+         (mod (cast (com-get-property doc "ModelSpace") Com-Object))
+         (utl (cast (com-get-property doc "Utility") Com-Object)))
+    (set! application (lambda () app))
+    (set! active-document (lambda () doc))
+    (set! active-modelspace (lambda () mod))
+    (set! utility (lambda () utl))
+    (com-set-property! app "Visible" #t)
+    (reset-ucs)
+    (delobj 0)
+    (osmode 0) 
+    ;(nomutt 1)
+    ;(cmdecho 0)
+    ;(expert 5)
+    
+    ;(objectsnap)
+    ;(surfaceassociativity 0)
+    ;(surfacemodelingmode 1)
+    ;(solidhist 0)
+    
+    ;(start-undo-mark)
+    ;(undo-off)
+    ))
 
-(define-cached (active-document) : Com-Object
-  (cast (com-get-property (application) "ActiveDocument") Com-Object))
+(define (application) : Com-Object
+  (initialize)
+  (application))
 
-(define-cached (active-modelspace) : Com-Object
-  (cast (com-get-property (active-document) "ModelSpace") Com-Object))
+(define (active-document) : Com-Object
+  (initialize)
+  (active-document))
 
-(define-cached (utility) : Com-Object
-  (cast (com-get-property (active-document) "Utility") Com-Object))
+(define (active-modelspace) : Com-Object
+  (initialize)
+  (active-modelspace))
+
+(define (utility) : Com-Object
+  (initialize)
+  (utility))
 
 (define-cached (autolisp-functions) : Com-Object
   (vl-load-com)
@@ -3004,28 +3035,3 @@
       (let ((filtered-objs (if predicate (filter predicate objs) objs)))
         (unless (null? filtered-objs)
           (copy-objects doc filtered-objs (active-modelspace)))))))
-
-
-;;Finally, to start everything
-(provide start)
-(define (start)
-  (application)
-  (active-document)
-  (active-modelspace)
-  (utility)
-  (com-set-property! (application) "Visible" #t)
-  (reset-ucs)
-  (delobj 0)
-  (osmode 0) 
-  ;(nomutt 1)
-  ;(cmdecho 0)
-  ;(expert 5)
-  
-  ;(objectsnap)
-  ;(surfaceassociativity 0)
-  ;(surfacemodelingmode 1)
-  ;(solidhist 0)
-  
-  ;(start-undo-mark)
-  ;(undo-off)
-)
