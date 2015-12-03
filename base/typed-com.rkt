@@ -1,8 +1,9 @@
 #lang typed/racket/base
 (require (for-syntax racket/base))
+(require typed/racket/unsafe)
 
 (require/typed/provide
- "com.rkt"
+ ffi/com
  [#:opaque Com-Object com-object?]
  [#:opaque CLSID clsid?]
  [#:opaque Type-Described type-described?]
@@ -189,8 +190,8 @@
                            (format "com-invoke-~a-~a" (syntax->datum #'(type ...)))))])
            (quasisyntax/loc stx
              (begin
-               (require/typed
-                "../base/com.rkt"
+               (unsafe-require/typed
+                ffi/com
                 [(com-invoke com-invoke-typed) (Com-Object String req-type ... -> rtype)])
                (provide name)
                #,(if needs-com-param?
