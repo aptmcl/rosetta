@@ -47,8 +47,6 @@
 (include "../base/common.rkc")
 
 (define (current-backend-name) "AutoCAD")
-;;Start now
-(%start)
 
 ;;References, in AutoCAD, are Com-Objects
 
