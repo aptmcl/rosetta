@@ -3,7 +3,7 @@
 (require typed/racket/unsafe)
 
 (require/typed/provide
- ffi/com
+ "com.rkt"
  [#:opaque Com-Object com-object?]
  [#:opaque CLSID clsid?]
  [#:opaque Type-Described type-described?]
