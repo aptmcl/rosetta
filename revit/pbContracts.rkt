@@ -110,6 +110,7 @@
 (define-message-type polywallinfostrc ((repeated struct:wallinfostrc walls 1)))
 (define-message-type idstrc ((required primitive:int32 id 1)))
 (define-message-type doublestrc ((required primitive:double height 1)))
+(define-message-type boolstrc ((required primitive:bool answer 1)))
 (define-message-type doublevolumestrc ((required primitive:double volume 1)))
 (define-message-type polyidstrc ((repeated struct:idstrc ids 1)))
 (define-message-type polylevelstrc ((repeated struct:levelstrc levels 1)))

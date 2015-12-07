@@ -57,11 +57,6 @@
 (define server-addr "localhost")
 
 (define (connect-to-revit)
-  (connect-to-revit-family)
-  (set! current-level (make-parameter (get-level 0 "Level 1")))
-  (delete-level "Level 2"))
-
-(define (connect-to-revit-family)
   (let rec((n 10))
     (with-handlers ((exn:fail? (lambda (e)
                                  (displayln "Please, start the Revit->Rosetta plugin.")
@@ -80,8 +75,15 @@
                          (plumber-add-flush! (current-plumber)
                                              (lambda (e)
                                                (plumber-flush-handle-remove! e)
-                                               (disconnect-from-revit)))))))
+                                               (disconnect-from-revit)))))
+      (when (project-document?)
+        (set! current-level (make-parameter (get-level 0 "Level 1")))
+        (delete-level "Level 2"))))
   (void))
+
+(define (project-document?)
+  (write-sized serialize (namestrc* #:name "isProject") output)
+  (boolstrc-answer (read-sized (cut deserialize (boolstrc*) <>) input)))
 
 (define (close-ports)
   (close-input-port input)
