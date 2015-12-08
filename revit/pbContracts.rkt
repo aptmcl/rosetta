@@ -269,5 +269,21 @@
 (define-message-type
  extrusionstrc
  ((repeated primitive:double pts 1) (required primitive:double elevation 2)))
+(define-message-type
+ movestrc
+ ((required struct:idstrc element 1)
+  (required primitive:double vectorx 2)
+  (required primitive:double vectory 3)
+  (required primitive:double vectorz 4)))
+(define-message-type
+ rotatestrc
+ ((required struct:idstrc element 1)
+  (required primitive:double angle 2)
+  (required primitive:double p0x 3)
+  (required primitive:double p0y 4)
+  (required primitive:double p0z 5)
+  (required primitive:double p1x 6)
+  (required primitive:double p1y 7)
+  (required primitive:double p1z 8)))
 
 (provide (all-defined-out))
