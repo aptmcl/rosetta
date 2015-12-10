@@ -472,20 +472,20 @@
 (define (move-element element vector)
   (send/no-rcv "moveElement"
                (movestrc* #:element element
-                                    #:vectorx (cx vector)
-                                    #:vectory (cy vector)
-                                    #:vectorz (cz vector))))
+                          #:vectorx (cx vector)
+                          #:vectory (cy vector)
+                          #:vectorz (cz vector))))
 
-(define (rotate-element angle p0 p1)
+(define (rotate-element element angle p0 p1)
   (send/no-rcv "rotateElement"
                (rotatestrc* #:element element
-                                      #:angle angle
-                                      #:p0x (cx p0)
-                                      #:p0y (cy p0)
-                                      #:p0z (cz p0)
-                                      #:p1x (cx p1)
-                                      #:p1y (cy p1)
-                                      #:p1z (cz p1))))
+                            #:angle angle
+                            #:p0x (cx p0)
+                            #:p0y (cy p0)
+                            #:p0z (cz p0)
+                            #:p1x (cx p1)
+                            #:p1y (cy p1)
+                            #:p1z (cz p1))))
 
 ;;;;;;;;Auxiliary Funtions;;;;;;;;;;;;;;
 
