@@ -345,7 +345,7 @@
                    re ri))))
 
 (def-shape* (surface [profiles : (Curve-Shape Ref) *])
-  (%addSurface (shapes-refs profile)))
+  (%addSurface (shapes-refs profiles)))
 
 (def-shape* (join-curves [shapes : (Curve-Shape Ref) *])
   (%joinCurves (shapes-refs shapes)))
