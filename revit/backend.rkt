@@ -43,12 +43,10 @@
 (require/typed "racketSide.rkt"
                [(boxb %boxb) (-> Loc Real Real Real Ref)]
                [(extrusion-mass %extrusion-mass) (-> Locs Real Ref)]
-               [(connect-to-revit-family %connect-to-revit-family) (-> Void)]
                [(disconnect-from-revit %disconnect-from-revit) (-> Void)])
 
 ;(require (prefix-in % "racketSide.rkt"))
 
-(provide (rename-out [%connect-to-revit-family connect-to-revit-family]))
 (provide (rename-out [%disconnect-from-revit disconnect-from-revit]))
 
 #|
