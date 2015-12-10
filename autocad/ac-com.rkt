@@ -27,7 +27,7 @@
 (define-type VarDouble4x4 (Variant Double4x4))
 (define-type VarDouble3N (Variant (Vectorof Double)))
 (define-type VarDouble2N (Variant (Vectorof Double)))
-(define-type VarIntegerN (Variant (Vectorof Integer)))
+(define-type VarIntegerN Type-Described #;(Variant (Vectorof Integer)))
 
 (define-syntax-rule (mf m i j) (real->double-flonum (matrix-ref m i j)))
 
@@ -453,7 +453,9 @@
 (def-rw-property (CanonicalMediaName Layout) String)
 (def-ro-property (Caption Application) String)
 (def-rw-property (CategoryName View) String)
-(def-rw-property (Center Arc) Double)
+|#
+(def-rw-property (center Arc) VarDouble3)
+#|
 (def-rw-property (CenterMarkSize DimDiametric) Double)
 (def-rw-property (CenterPlot Layout) Boolean)
 (def-rw-property (CenterPoint DimArcLength) Variant)
@@ -799,8 +801,10 @@
 (LowerLeftCorner property idh_lowerleftcorner.htm)
 (def-rw-property (Macro PopupMenuItem) String)
 (def-rw-property (MainDictionary PreferencesFiles) String)
-(def-rw-property (MajorAxis Ellipse) Double)
-(def-rw-property (MajorRadius Ellipse) Double)
+|#
+(def-rw-property (major-axis Ellipse) Double)
+(def-rw-property (major-radius Ellipse) Double)
+#|
 (def-ro-property (Mask LayerStateManager) enum)
 |#
 (def-rw-property (material All) String)
@@ -824,8 +828,10 @@
 (Menus property idh_menus.htm)
 (def-ro-property (MinimumTableHeight Table) Double)
 (def-ro-property (MinimumTableWidth Table) Double)
-(def-ro-property (MinorAxis Ellipse) Double)
-(def-rw-property (MinorRadius Ellipse) Double)
+|#
+(def-ro-property (minor-axis Ellipse) Double)
+(def-rw-property (minor-radius Ellipse) Double)
+#|
 (def-ro-property (MLineScale MLine) Double)
 (def-rw-property (Mode Attribute) acAttributeMode)
 (ModelCrosshairColor property idh_modelcrosshaircolor.htm)
@@ -958,8 +964,10 @@
 (def-rw-property (QNewTemplateFile PreferencesFiles) String)
 (def-rw-property (QuietErrorMode Plot) Boolean)
 (def-ro-property (RadiiOfGyration 3DSolid) Double)
-(def-rw-property (Radius Arc) Double)
-(def-rw-property (RadiusRatio Ellipse) Double)
+|#
+(def-rw-property (radius Arc) Double)
+(def-rw-property (radius-ratio Ellipse) Double)
+#|
 (def-ro-property (RoOnly Document) Boolean)
 (def-ro-property (Red AcCmColor) Long)
 (def-ro-property (ReferenceCount FileDependency) Long)
@@ -1279,7 +1287,7 @@
 |#
 (def-com (add-point ModelSpace) ((Pt VarDouble3)) Point)
 ;;AML FIX THE ANY
-(def-com (add-polyface-mesh ModelSpace) ((VerticesList VarDouble3N) (FaceList Any #;VarIntegerN)) PolyfaceMesh)
+(def-com (add-polyface-mesh ModelSpace) ((VerticesList VarDouble3N) (FaceList VarIntegerN)) PolyfaceMesh)
 (def-com (add-polyline ModelSpace) ((VerticesList VarDouble3N)) Polyline)
 #|
 (def-com (AddPViewport PaperSpace) ((Center VarDouble3) (Width Double) (Height Double)) PViewport)
@@ -1856,9 +1864,14 @@
 
 ;;array of shorts
 (define (Integers->VarShortN [v : Integers]) : VarIntegerN ;;HACK: improve this when the new ffi/com is out
-  (error "FIX THIS")
-  #;(for/vector ([e (in-list v)])
-      (type-describe e 'short-int)))
+  #;
+  (for/vector ([e (in-list v)])
+    (type-describe e 'short-int))
+  (type-describe
+   (list->vector v)
+   `(variant (array ,(length v) short-int))))
+
+
 
 (define (Com-Objects->VarIdN [c : Com-Objects]) : VarIdN
   (display "Converting from") (displayln c)
@@ -1892,122 +1905,10 @@
     [(def-autolisp (name param ...) type)
      (def-autolisp ((name name) param ...) type)]))
 
-(def-autolisp ((al-nth nth) [i Integer] [l Com-Object]) Any)
-(def-autolisp ((al-length length) [l Com-Object]) Integer)
 (def-autolisp ((al-handent handent) [id String]) Com-Object)
 (def-autolisp ((al-eval eval) [e Com-Object]) Any)
 (def-autolisp ((al-read read) [s String]) Com-Object)
 
-(define (loc<-al-com [c : Com-Object]) : Loc
-  (xyz (cast (al-nth 0 c) Real)
-       (cast (al-nth 1 c) Real)
-       (cast (al-nth 2 c) Real)
-       world-cs))
-
-(define (vec<-al-com [c : Com-Object]) : Vec
-  (vxyz (cast (al-nth 0 c) Real)
-        (cast (al-nth 1 c) Real)
-        (cast (al-nth 2 c) Real)
-        world-cs))
-
-(define (list<-al-com [c : Com-Object]) : (Listof Any)
-  (let ((n (al-length c)))
-    (for/list : (Listof Any) ((i (in-range n)))
-      (al-nth i c))))
-
-;(def-autolisp (entget [c Com-Object]) Com-Object)
-;(def-autolisp (assoc [k Com-Object] [l Com-Object]) Com-Object)
-
-(def-autolisp (vlax-curve-getStartPoint [c Com-Object]) Com-Object)
-(def-autolisp (vlax-curve-getEndPoint [c Com-Object]) Com-Object)
-(def-autolisp (vlax-curve-getStartParam [c Com-Object]) Real)
-(def-autolisp (vlax-curve-getEndParam [c Com-Object]) Real)
-(def-autolisp (vlax-curve-getDistAtParam [c Com-Object] [t Real]) Real)
-(def-autolisp (vlax-curve-getParamAtDist [c Com-Object] [length Real]) Real)
-(def-autolisp (vlax-curve-getFirstDeriv [c Com-Object] [t Real]) Com-Object)
-(def-autolisp (vlax-curve-getSecondDeriv [c Com-Object] [t Real]) Com-Object)
-(def-autolisp (vlax-curve-getPointAtParam [c Com-Object] [t Real]) Com-Object)
-
-(provide curve-start-point
-         curve-end-point
-         curve-start-param
-         curve-end-param
-         curve-length
-         curve-tangent-at
-         curve-normal-at
-         curve-point-at
-         curve-frame-at
-         curve-frame-at-length)
-
-(define (curve-start-point [c : Com-Object]) : Loc
-  (loc<-al-com (vlax-curve-getStartPoint (al-handent (handle c)))))
-
-(define (curve-end-point [c : Com-Object]) : Loc
-  (loc<-al-com (vlax-curve-getEndPoint (al-handent (handle c)))))
-
-(define (curve-start-param [c : Com-Object]) : Real
-  (vlax-curve-getStartParam (al-handent (handle c))))
-
-(define (curve-end-param [c : Com-Object]) : Real
-  (vlax-curve-getEndParam (al-handent (handle c))))
-
-(define (curve-length [c : Com-Object]) : Real
-  (vlax-curve-getDistAtParam (al-handent (handle c))
-                             (vlax-curve-getEndParam (al-handent (handle c)))))
-
-(define (curve-frame-at-length [c : Com-Object] [d : Real]) : Loc
-  (curve-frame-at c (vlax-curve-getParamAtDist (al-handent (handle c)) d)))
-
-(define (curve-tangent-at [c : Com-Object] [t : Real]) : Vec
-  (vec<-al-com (vlax-curve-getFirstDeriv (al-handent (handle c)) t)))
-
-(define (curve-normal-at [c : Com-Object] [t : Real]) : Vec
-  (vec<-al-com (vlax-curve-getSecondDeriv (al-handent (handle c)) t)))
-
-(define (curve-point-at [c : Com-Object] [t : Real]) : Loc
-  (loc<-al-com (vlax-curve-getPointAtParam (al-handent (handle c)) t)))
-
-(define (xvec-for [t : Vec] [n : Vec])
-  (define (~zero? [x : Real]) : Boolean
-    (< (abs x) 1e-14))
-  (if (~zero? (vlength n)) ;unusable normal
-      (vpol 1 (+ (sph-phi t) pi/2))
-      n))
-
-(define (curve-frame-at [c : Com-Object] [t : Real]) : Loc
-  (let* ((o (curve-point-at c t))
-         (tv (curve-tangent-at c t))
-         (nv (xvec-for tv (curve-normal-at c t))))
-    (loc-from-o-vx-vy
-     o
-     nv
-     (v*v nv (v*r tv -1)))))
-
-#|
-
-
-(define-syntax (def-autolisp stx)
-  (syntax-case stx ()
-    ((def (name autolisp-name))
-     (syntax/loc stx 
-       (define (name . args)
-         (let ((ref (com-get-property autolisp-functions "Item" 'autolisp-name)))
-           (set! name (lambda args
-                        (apply com-invoke ref "funcall" args))))
-         (apply name args))))
-    ((def name (param ...) rtype)
-     (with-syntax ((str (string-upcase (symbol->string (syntax-e #'name)))))
-       (syntax/loc stx
-         (def (name str)))))))
-
-(def-autolisp (al-read "read"))
-(def-autolisp (al-eval "eval"))
-(def-autolisp (al-length "length"))
-(def-autolisp (al-nth "nth"))
-(def-autolisp (al-handent "handent"))
-
-
-|#
 
 (define-type AutoLISP-Type (U Real String))
 
@@ -2040,12 +1941,117 @@
                (set! name new-func)
                (apply name args)))))))))
 
-;;Extras
+#|
+;These functions are not safe as the Lisp object might have been moved by the Lisp GC
+(def-autolisp ((al-nth nth) [i Integer] [l Com-Object]) Any)
+(def-autolisp ((al-length length) [l Com-Object]) Integer)
+(define (loc<-al-com [c : Com-Object]) : Loc
+  (xyz (cast (al-nth 0 c) Real)
+       (cast (al-nth 1 c) Real)
+       (cast (al-nth 2 c) Real)
+       world-cs))
 
-#;(define-syntax (defun stx)
-  (syntax-case stx ()
-    ((defun name params body ...)
-     #'(define name (lambda all (void))))))
+(define (vec<-al-com [c : Com-Object]) : Vec
+  (vxyz (cast (al-nth 0 c) Real)
+        (cast (al-nth 1 c) Real)
+        (cast (al-nth 2 c) Real)
+        world-cs))
+
+(define (list<-al-com [c : Com-Object]) : (Listof Any)
+  (let ((n (al-length c)))
+    (for/list : (Listof Any) ((i (in-range n)))
+      (al-nth i c))))
+
+;(def-autolisp (entget [c Com-Object]) Com-Object)
+;(def-autolisp (assoc [k Com-Object] [l Com-Object]) Com-Object)
+|#
+(def-autolisp (vlax-curve-getStartParam [c Com-Object]) Real)
+(def-autolisp (vlax-curve-getEndParam [c Com-Object]) Real)
+(def-autolisp (vlax-curve-getDistAtParam [c Com-Object] [t Real]) Real)
+(def-autolisp (vlax-curve-getParamAtDist [c Com-Object] [length Real]) Real)
+#|
+;These functions are not safe as the Lisp object might have been moved by the Lisp GC
+(def-autolisp (vlax-curve-getStartPoint [c Com-Object]) Com-Object)
+(def-autolisp (vlax-curve-getEndPoint [c Com-Object]) Com-Object)
+(def-autolisp (vlax-curve-getFirstDeriv [c Com-Object] [t Real]) Com-Object)
+(def-autolisp (vlax-curve-getSecondDeriv [c Com-Object] [t Real]) Com-Object)
+(def-autolisp (vlax-curve-getPointAtParam [c Com-Object] [t Real]) Com-Object)
+|#
+(defun safe-vlax-curve-getStartPoint (c) (vlax-curve-getStartPoint (handent c)))
+(defun safe-vlax-curve-getEndPoint (c) (vlax-curve-getEndPoint (handent c)))
+(defun safe-vlax-curve-getFirstDeriv (c r) (vlax-curve-getFirstDeriv (handent c) r))
+(defun safe-vlax-curve-getSecondDeriv (c r) (vlax-curve-getSecondDeriv (handent c) r))
+(defun safe-vlax-curve-getPointAtParam (c r) (vlax-curve-getPointAtParam (handent c) r))
+
+(provide curve-start-point
+         curve-end-point
+         curve-start-param
+         curve-end-param
+         curve-length
+         curve-tangent-at
+         curve-normal-at
+         curve-point-at
+         curve-frame-at
+         curve-frame-at-length)
+
+(define (loc<-list [l : Any]) : Loc
+  (let ((l (cast l (List Real Real Real))))
+    (xyz (list-ref l 0)
+         (list-ref l 1)
+         (list-ref l 2)
+         world-cs)))
+
+(define (vec<-list [l : Any]) : Vec
+  (let ((l (cast l (List Real Real Real))))
+    (vxyz (list-ref l 0)
+          (list-ref l 1)
+          (list-ref l 2)
+          world-cs)))
+
+(define (curve-start-point [c : Com-Object]) : Loc
+  (loc<-list (safe-vlax-curve-getStartPoint (handle c))))
+
+(define (curve-end-point [c : Com-Object]) : Loc
+  (loc<-list (safe-vlax-curve-getEndPoint (handle c))))
+
+(define (curve-start-param [c : Com-Object]) : Real
+  (vlax-curve-getStartParam (al-handent (handle c))))
+
+(define (curve-end-param [c : Com-Object]) : Real
+  (vlax-curve-getEndParam (al-handent (handle c))))
+
+(define (curve-length [c : Com-Object]) : Real
+  (vlax-curve-getDistAtParam (al-handent (handle c))
+                             (vlax-curve-getEndParam (al-handent (handle c)))))
+
+(define (curve-frame-at-length [c : Com-Object] [d : Real]) : Loc
+  (curve-frame-at c (vlax-curve-getParamAtDist (al-handent (handle c)) d)))
+
+(define (curve-tangent-at [c : Com-Object] [t : Real]) : Vec
+  (vec<-list (safe-vlax-curve-getFirstDeriv (handle c) t)))
+
+(define (curve-normal-at [c : Com-Object] [t : Real]) : Vec
+  (vec<-list (safe-vlax-curve-getSecondDeriv (handle c) t)))
+
+(define (curve-point-at [c : Com-Object] [t : Real]) : Loc
+  (loc<-list (safe-vlax-curve-getPointAtParam (handle c) t)))
+
+(define (xvec-for [t : Vec] [n : Vec])
+  (define (~zero? [x : Real]) : Boolean
+    (< (abs x) 1e-14))
+  (if (~zero? (vlength n)) ;unusable normal
+      (vpol 1 (+ (sph-phi t) pi/2))
+      n))
+
+(define (curve-frame-at [c : Com-Object] [t : Real]) : Loc
+  (let* ((o (curve-point-at c t))
+         (tv (curve-tangent-at c t))
+         (nv (xvec-for tv (curve-normal-at c t))))
+    (loc-from-o-vx-vy
+     o
+     nv
+     (v*v nv (v*r tv -1)))))
+
 
 ;;Helpers
 (provide add-closed-line)
@@ -2352,11 +2358,16 @@
            type))))
 
 (provide curve?)
-(define (curve? [obj : Com-Object])
+(define (curve? [obj : Com-Object]) : Boolean
   (and (member (object-name obj)
-               '("AcDb3dPolyline" "AcDb2dPolyline"
-                                  "AcDbArc" "AcDbCircle" "AcDbEllipse"
-                                  "AcDbPolyline" "AcDbLine" "AcDbSpline"))
+               '("AcDb3dPolyline"
+                 "AcDb2dPolyline"
+                 "AcDbArc"
+                 "AcDbCircle"
+                 "AcDbEllipse"
+                 "AcDbPolyline"
+                 "AcDbLine"
+                 "AcDbSpline"))
        #t))
 
 (provide acceptable-surface?)
@@ -2376,7 +2387,23 @@
                   "AcDbExtrudedSurface"
                   "AcDbSweptSurface"))
        #t))
-  
+
+(provide as-surface)
+(define (as-surface [obj : Com-Object]) : Com-Object
+  (let ((name (object-name obj)))
+    (cond ((string=? name "AcDbRegion")
+           (begin0
+             (conv-to-surface-command obj)
+             (delete obj)))
+          ((string=? name "AcDbPolygonMesh")
+           (let ((s (mesh-smooth-command obj 0)))
+             (begin0
+               (conv-to-surface-command s 1)
+               (delete obj)
+               (delete s))))
+          (else
+           obj))))
+
 (define (convert-3dpolyline [obj : Com-Object]) : (Listof Com-Object)
   (let ((type (object-name obj)))
     (cond ((string=? type "AcDb3dPolyline")
@@ -2536,6 +2563,15 @@
    (handents objects)
    vbCr))
 
+(provide loft-objects-path-string)
+(define (loft-objects-path-string [objects : Com-Objects] [path : Com-Object] [solid? : Boolean])
+  (format
+   "._loft _mo ~A ~A~A_path ~A\n"
+   (if solid? "_so" "_su")
+   (handents objects)
+   vbCr;" "
+   (handent path)))
+
 (provide loft-objects-guides-string)
 (define (loft-objects-guides-string [objects : Com-Objects] [guides : Com-Objects] [solid? : Boolean])
   (format
@@ -2638,9 +2674,8 @@
 
 (def-new-shape-cmd (mesh-smooth-command [object : Com-Object] [smooth-level : Integer 0])
   (with-autocad-variable (facetersmoothlev smooth-level)
-    (format "._meshsmooth ~A~A~A"
+    (format "._meshsmooth ~A~A"
             (handent object)
-            vbCr
             vbCr)))
 
 (def-new-shape-cmd (conv-to-surface-command [object : Com-Object] [smooth-level : Integer 0])
@@ -2660,21 +2695,15 @@
             (handents objects)
             vbCr))
 
-#|
 ;;Thicken
 
-(define (thicken-string object length)
+(def-new-shape-cmd (thicken-command [object : Com-Object] [length : Real])
   (format "._thicken ~A~A~A\n"
           (handent object)
           vbCr
           length))
 
-;;HACK replace with def-new-shape-cmd?
-(provide thicken-command)
-(define (thicken-command object length)
-  (new-shape-from
-   (thicken-string object length)))
-
+#|
 ;;Helix
 (def-new-shape-cmd conic-helix (p0 r0 p1 r1 turns)
   (format "._helix ~A ~A ~A _Turns ~A _Axis ~A\n" 
