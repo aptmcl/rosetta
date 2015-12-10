@@ -344,8 +344,8 @@
                    (cx normal) (cy normal) (cz normal)
                    re ri))))
 
-(def-shape (surface [profile : (Curve-Shape Ref)])
-  (%addSurface (shape-refs profile)))
+(def-shape* (surface [profiles : (Curve-Shape Ref) *])
+  (%addSurface (shapes-refs profile)))
 
 (def-shape* (join-curves [shapes : (Curve-Shape Ref) *])
   (%joinCurves (shapes-refs shapes)))
