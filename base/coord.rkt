@@ -113,6 +113,7 @@
          loc-from-pts
          loc-from-o-n
          loc-from-o-phi
+         loc-from-o-p/v
          vf
          vlength
          perpendicular-vector)
@@ -533,44 +534,45 @@
           v)))
 
 ;;The following ones are semantically incorrect but those who know what they are doing...
+(define (p<-v [v : Vec]) : Loc
+  (p+v (u0 v) v))
 
-(define (-c [p0 : Loc] [p1 : Loc]) : Loc
-  (let-values (((c0 c1)
-                (if (=cs? p0 p1)
-                    (values (Xyz-loc p0) (Xyz-loc p1))
-                    (values (world-loc p0) (world-loc p1)))))
-    (xyz (- (col-idx c0 0) (col-idx c1 0))
-         (- (col-idx c0 1) (col-idx c1 1))
-         (- (col-idx c0 2) (col-idx c1 2))
-         (if (=cs? p0 p1)
-             p0
-             world-cs))))
+(define (v<-p [p : Loc]) : Vec
+  (p-p p (u0 p)))
 
-(define (+c [p : Loc] [v : Loc]) : Loc
-  (let-values (((c0 c1)
-                (if (=cs? p v)
-                    (values (Xyz-loc p) (Xyz-loc v))
-                    (values (world-loc p) (world-loc v)))))
-    (xyz (+ (col-idx c0 0) (col-idx c1 0))
-         (+ (col-idx c0 1) (col-idx c1 1))
-         (+ (col-idx c0 2) (col-idx c1 2))
-         (if (=cs? p v)
-             p
-             world-cs))))
+(: +c (-> Xyz Xyz Xyz))
+(define (+c p v)
+  (cond ((and (VXyz? p) (VXyz? v))
+         (p<-v (v+v p v)))
+        ((VXyz? v)
+         (p+v p v))
+        (else
+         (p+v p (v<-p v)))))
 
-(define (*c [v : Loc] [r : Real]) : Loc
-  (let ((c (Xyz-loc v)))
-    (xyz (* (col-idx c 0) r)
-         (* (col-idx c 1) r)          
-         (* (col-idx c 2) r)
-         v)))
+(: -c (-> Xyz Xyz Xyz))
+(define (-c p v)
+  (cond ((and (VXyz? p) (VXyz? v))
+         (p<-v (v-v p v)))
+        ((VXyz? v)
+         (p-v p v))
+        (else
+         (p<-v (p-p p v)))))
 
-(define (/c [v : Loc] [r : Real]) : Loc
-  (let ((c (Xyz-loc v)))
-    (xyz (/ (col-idx c 0) r)
-         (/ (col-idx c 1) r)          
-         (/ (col-idx c 2) r)
-         v)))
+(: *c (-> Xyz Real Xyz))
+(define (*c v r)
+  (p<-v
+   (v*r (if (VXyz? v)
+            v
+            (v<-p v))
+        r)))
+
+(: /c (-> Xyz Real Xyz))
+(define (/c v r)
+  (p<-v
+   (v/r (if (VXyz? v)
+            v
+            (v<-p v))
+        r)))
 
 (define-syntax-rule
   (let-coords ([(x y z) p] ...) body ...)
@@ -692,6 +694,9 @@
 
 (define (loc-from-o-phi [o : Loc] [phi : Real]) : Loc
   (u0 (cs-from-o-phi o phi)))
+
+(define (loc-from-o-p/v [o : Loc] [p-or-v : Loc]) : Loc
+  (u0 (cs-from-o-vz o (if (VXyz? p-or-v) p-or-v (p-p p-or-v o)))))
 
 ;;;
 
