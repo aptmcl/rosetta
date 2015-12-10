@@ -29,6 +29,8 @@
          curve-start-location
          enable-update
          disable-update
+         loft
+         loft-ruled
          map-curve-division
          map-curve-length-division
          prompt-point
@@ -110,6 +112,10 @@
                  (%text-string r)
                  (%insertion-point r)
                  (%height r)))
+      ((circle)
+       (new-circle (thunk r)
+                   (%center r)
+                   (%radius r)))
       (else
        (new-unknown (thunk r))))))
 
@@ -217,6 +223,15 @@
                   (p-p (cadr end) (car end))))))
     (%add-spline pts v0 v1))))
 
+(def-shape (spline* [pts : Locs] [v0 : (U #f Vec) #f] [v1 : (U #f Vec) #f])
+  ;;HACK: apparently, there's no difference
+  ;(ac:spline-command cs v0 v1)
+  (let ((v0 (or v0 (p-p (cadr pts) (car pts))))
+        (v1 (or v1 
+                (let ((end (take-right pts 2)))
+                  (p-p (cadr end) (car end))))))
+    (%add-spline pts v0 v1)))
+
 (def-shape* (closed-spline [pts : Loc *])
 
    #|
@@ -312,7 +327,10 @@ The following example does not work as intended. Rotating the args to closed-spl
 
 (def-shape (surface-regular-polygon [edges : Integer 3] [center : Loc (u0)] [radius : Real 1] [angle : Real 0] [inscribed? : Boolean #f])
   (let ((pts (regular-polygon-vertices edges center radius angle inscribed?)))
-    (error "TO BE DONE")))
+    (let ((poly (%add-3d-poly (append pts (list (car pts))))))
+      (begin0
+        (singleton-ref (%add-region (list poly)))
+        (%delete poly)))))
 
 (define (surface-boundary [shape : Shape]) : Shape
   (let ((refs (shape-refs shape)))
@@ -331,76 +349,94 @@ The following example does not work as intended. Rotating the args to closed-spl
              (delete-shape shape)
              (new-unknown (thunk (%join-curves rs))))))))
 
-(def-shape (loft-curve-point [curve : Shape] [point : (Point-Shape Ref)] [solid? : Boolean #f])
+(define (loft-curve-point [curve : Shape] [point : (Point-Shape Ref)])
   (let ((boundary (surface-boundary curve)))
     (begin0
       (%loft-command
-       (%loft-to-point-string (shape-ref boundary) (point-position point) solid?)
+       (%loft-to-point-string (shape-ref boundary) (point-position point) #f)
        #t
        #f)
       (delete-shape boundary)
       (delete-shape point))))
 
-(def-shape (loft-surface-point [surface : Shape] [point : (Point-Shape Ref)] [solid? : Boolean #t])
+(define (loft-surface-point [surface : Shape] [point : (Point-Shape Ref)])
   (begin0
     (%loft-command
-     (%loft-to-point-string (shape-ref (surface-boundary surface)) (point-position point) solid?)
+     (%loft-to-point-string (shape-ref (surface-boundary surface)) (point-position point) #t)
      #t
      #f)
     (delete-shape surface)
     (delete-shape point)))
 
-(def-shape (loft-curves [curves : Shapes] [ruled? : Boolean #f] [solid? : Boolean #t] [closed? : Boolean #f])
-   (begin0
-     (%loft-command (%loft-objects-string (map shape-ref curves) solid?)
-                    ruled?
-                    closed?)
-     (delete-shapes curves)))
+(define (loft-profiles [profiles : Shapes] [rails : (Listof (Curve-Shape RefOp))]
+                       [solid? : Boolean] [ruled? : Boolean] [closed? : Boolean])
+  (begin0
+    (%loft-command (cond ((null? rails)
+                          (%loft-objects-string (map shape-ref profiles) solid?))
+                         ((null? (cdr rails))
+                          (%loft-objects-path-string (map shape-ref profiles) (shape-ref (car rails)) solid?))
+                         (else
+                          (%loft-objects-guides-string (map shape-ref profiles) (map shape-ref rails) solid?)))
+                   ruled?
+                   closed?)
+    (delete-shapes profiles)
+    (delete-shapes rails)))
 
-(def-shape (loft-surfaces [shapes : Shapes] [ruled? : Boolean #f] [solid? : Boolean #t] [closed? : Boolean #f])
-  (let ((sections (if solid? (map surface-boundary shapes) shapes)))
-    (begin0
-      (%loft-command (%loft-objects-string (map shape-ref sections) solid?)
-                     ruled?
-                     closed?)
-      (delete-shapes sections))))
+
+(define (loft-curves [shapes : Shapes] [rails : (Listof (Curve-Shape RefOp))]
+                     [ruled? : Boolean #f] [closed? : Boolean #f])
+  (loft-profiles shapes rails #f ruled? closed?))
+
+(define (loft-surfaces [shapes : Shapes] [rails : (Listof (Curve-Shape RefOp))]
+                       [ruled? : Boolean #f] [closed? : Boolean #f])
+  (loft-profiles (map surface-boundary shapes) rails #t ruled? closed?))
 
 ;;HACK> Bug in Typed Racket. Using (inst curve? Ref) in andmap
 (define (curve?? [s : Shape]) : Boolean
   (curve? s))
 
-(define (loft [profiles : Shapes]
-              [ruled? : Boolean #f] [solid? : Boolean #f] [closed? : Boolean #f]) : Shape
+(define (loft [profiles : (Listof (Extrudable-Shape Ref))] [rails : (Listof (Curve-Shape Ref)) (list)]
+              [ruled? : Boolean #f] [closed? : Boolean #f]) : Shape
   (cond ((null? (cdr profiles))
-         (car profiles))
+         (error 'loft "just one cross section"))
         ((andmap point? profiles)
+         (assert (null? rails))
          (begin0
            ((if ruled?
                 (if closed? polygon line)
                 (if closed? closed-spline spline))
             (map point-position profiles))
            (delete-shapes profiles)))
-        ((andmap curve?? profiles) ;;HACK This is probably bogus due to TypedRacket optimizer
-         (loft-curves profiles ruled? solid? closed?))
-        ((andmap surface-region? profiles)
-         (loft-surfaces profiles ruled? #t closed?))
-        ((null? (cddr profiles))
-         (let-values ([([p : (Point-Shape Ref)]
-                        [s : Shape])
-                       (cond ((point? (car profiles))
-                              (values (car profiles) (cadr profiles)))
-                             ((point? (cadr profiles))
-                              (values (cadr profiles) (car profiles)))
-                             (else
-                              (error 'loft-shapes "cross sections are not either points or curves or surfaces ~A" profiles)))])
-           (cond ((curve? s)
-                  (loft-curve-point s p solid?))
-                 ((surface-region? s)
-                  (loft-surface-point s p #t))
-                 (else
-                  (error 'loft-shapes "can't loft the shapes ~A" profiles)))))
         (else
-         (error 'loft-shapes "cross sections are neither points nor curves nor surfaces  ~A" profiles))))
+         (new-loft
+          (thunk
+           (cond 
+             ((andmap curve?? profiles) ;;HACK This is probably bogus due to TypedRacket optimizer
+              (loft-curves profiles rails ruled? closed?))
+             ((andmap surface-region? profiles)
+              (loft-surfaces profiles rails ruled? closed?))
+             ((null? (cddr profiles))
+              (assert (null? rails))
+              (let-values ([([p : (Point-Shape Ref)]
+                             [s : Shape])
+                            (cond ((point? (car profiles))
+                                   (values (car profiles) (cadr profiles)))
+                                  ((point? (cadr profiles))
+                                   (values (cadr profiles) (car profiles)))
+                                  (else
+                                   (error 'loft-shapes "cross sections are not either points or curves or surfaces ~A" profiles)))])
+                (cond ((curve? s)
+                       (loft-curve-point s p))
+                      ((surface-region? s)
+                       (loft-surface-point s p))
+                      (else
+                       (error 'loft-shapes "can't loft the shapes ~A" profiles)))))
+             (else
+              (error 'loft-shapes "cross sections are neither points nor curves nor surfaces  ~A" profiles))))
+          profiles rails ruled? closed?))))
+
+(define (loft-ruled [profiles : (Listof (Extrudable-Shape Ref))])
+  (loft profiles (list) #t))
 
 (def-shape (irregular-pyramid [cbs : Locs (list (ux) (uy) (uxy))] [ct : Loc (uz)])
   (%irregular-pyramid cbs ct))
@@ -477,19 +513,24 @@ The following example does not work as intended. Rotating the args to closed-spl
                    [t1 : Loc (+x t0 1)]
                    [t2 : Loc (+y t1 1)]
                    [t3 : Loc (+y t0 1)])
-   (let ((pm (%add-polyface-mesh 
-              (list b0 b1 b2 b3 t0 t1 t2 t3) 
-              (vector 1 4 3 2
-                      5 6 7 8 
-                      1 2 6 5 
-                      2 3 7 6 
-                      3 4 8 7
-                      1 5 8 4))))
-     (let ((m (%mesh-smooth-command pm)))
-       (%delete pm)
-       (begin0
-         (%conv-to-solid-command m)
-         (%delete m)))))
+  (%irregular-pyramid-frustum
+   (list b0 b1 b2 b3)
+   (list t0 t1 t2 t3))
+  ;;HACK it seems impossible to avoid the anoying dialog, so it is better to use the previous approach
+  #;
+  (let ((pm (%add-polyface-mesh 
+             (list b0 b1 b2 b3 t0 t1 t2 t3) 
+             (list 1 4 3 2
+                   5 6 7 8 
+                   1 2 6 5 
+                   2 3 7 6 
+                   3 4 8 7
+                   1 5 8 4))))
+    (let ((m (%mesh-smooth-command pm)))
+      (%delete pm)
+      (begin0
+        (%conv-to-solid-command m)
+        (%delete m)))))
 
 (def-shape (sphere [c : Loc (u0)] [r : Real 1])
   (%add-sphere c r))
@@ -503,12 +544,12 @@ The following example does not work as intended. Rotating the args to closed-spl
              [closed-v? : Boolean closed-v?])
      (cond ((> nu 256)
             (let ([q (quotient nu 2)])
-              (append (rec (take ptss q) q nv #f closed-v?)
+              (append (rec (take ptss (+ q 1)) (+ q 1) nv #f closed-v?)
                       (rec (drop ptss q) (- nu q) nv #f closed-v?))))
            ((> nv 256)
             (let ([q (quotient nu 2)])
-              (append (rec (map (lambda ([pts : Locs]) (take pts q)) ptss)
-                        nu q closed-u? #f)
+              (append (rec (map (lambda ([pts : Locs]) (take pts (+ q 1))) ptss)
+                        nu (+ q 1) closed-u? #f)
                       (rec (map (lambda ([pts : Locs]) (drop pts q)) ptss)
                         nu (- nv q) closed-u? #f))))
            (else
@@ -550,17 +591,17 @@ The following example does not work as intended. Rotating the args to closed-spl
    (%add-torus (u0 world-cs) re ri)
    center))
 
-(def-shape (surface [profile : (Curve-Shape RefOp)])
-  (let ((refs (shape-refs profile)))
+(def-shape* (surface [profiles : (Curve-Shape RefOp) *])
+  (let ((refs (shapes-refs profiles)))
     (if (singleton? refs)
         (let ((ref (car refs)))
           (if (%point? ref)
               ref
               (begin0
                 (singleton-ref (%add-region refs))
-                (delete-shape profile))))
+                (delete-shapes profiles))))
         (let ((curves (%convert-3dpolylines refs)))
-          (mark-deleted! profile)
+          (for-each (inst mark-deleted! RefOp) profiles)
           (begin0
             (single-ref-or-union
              (%add-region curves))
@@ -586,12 +627,22 @@ The following example does not work as intended. Rotating the args to closed-spl
     (%join-curves (shapes-refs shapes))
     (for-each (inst mark-deleted! RefOp) shapes)))
 
-(def-shape (revolve [shape : Shape] [p : Loc (u0)] [n : Vec (vz 1)] [start-angle : Real 0] [amplitude : Real 2pi])
-  (let ((p (loc-from-o-vz p n)))
+(def-shape (revolve [shape : Shape] [p : Loc (u0)] [n : Loc (vz 1)] [start-angle : Real 0] [amplitude : Real 2pi])
+  (let ((p (loc-from-o-p/v p n)))
     (begin0
       (map-ref ([r shape])
         (%revolve-command r p (+z p 1) start-angle (+ start-angle amplitude) (surface-region? shape)))
       (delete-shape shape))))
+
+(define (curve? [s : Shape]) : Boolean
+  (or (line? s)
+      (closed-line? s)
+      (spline? s)
+      (closed-spline? s)
+      (circle? s)
+      (arc? s)
+      ;;ask the backend
+      (andmap %curve? (shape-refs s))))
 
 (define (surface-region? [s : Shape]) : Boolean
   (or (surface? s)
@@ -619,6 +670,15 @@ The following example does not work as intended. Rotating the args to closed-spl
             (%transform profile frame)
             (%sweep-command profile #f path surface? frame rotation scale))))
       (delete-shapes (list profile path)))))
+
+(def-shape (thicken [surf : (Extrudable-Shape RefOp)] [h : Real 1])
+  (begin0
+    (map-ref ([surf surf])
+      (let ((s (%as-surface surf)))
+        (begin0
+          (%thicken-command s h)
+          (%delete s))))
+    (mark-deleted! surf)))
 
 (def-shape (slice [shape : Shape] [p : Loc (u0)] [n : Vec (vz 1 p)])
   (begin0
