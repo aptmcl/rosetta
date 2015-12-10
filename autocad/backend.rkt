@@ -290,13 +290,13 @@ The following example does not work as intended. Rotating the args to closed-spl
 (: map-curve-division (All (A) (->* ((-> Loc A) Shape Integer) (Boolean) (Listof A))))
 (: map-curve-length-division (All (A) (->* ((-> Loc A) Shape Integer) (Boolean) (Listof A))))
 
-(define (map-curve-division [f : (-> Loc A)] [curve : Shape] [n : Integer] [last? : Boolean #f]) : (Listof A)
+(define (map-curve-division [f : (-> Loc A)] [curve : Shape] [n : Integer] [last? : Boolean #t]) : (Listof A)
   (let-values ([(start end) (curve-domain curve)])
     (map-division (lambda ([t : Real])
                     (f (curve-frame-at curve t)))
                   start end n last?)))
 
-(define (map-curve-length-division [f : (-> Loc A)] [curve : Shape] [n : Integer] [last? : Boolean #f]) : (Listof A)
+(define (map-curve-length-division [f : (-> Loc A)] [curve : Shape] [n : Integer] [last? : Boolean #t]) : (Listof A)
   (map-division (lambda ([t : Real])
                   (f (curve-frame-at-length curve t)))
                 0.0 (curve-length curve) n last?))
