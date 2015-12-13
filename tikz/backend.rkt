@@ -822,15 +822,6 @@ The following example does not work as intended. Rotating the args to closed-spl
             (rh:split-brep-sloppy-n sh su 5))
        ))))
 
-(def-new-shape (grid-surface ptss [closed-s? #f] [closed-t? #f] [smooth-s? #t] [smooth-t? #t])
-  (opengl
-   (gl:add-grid-surface
-    (map (lambda (pts)
-           (map as-world pts))
-         ptss)
-    closed-s? smooth-s?
-    closed-t? smooth-t?)))
-
 ;;Surfaces
 
 (def-shape-op (surface-domain-u surface)
@@ -1846,8 +1837,6 @@ Utilities: think about moving them to a different file
                (< (distance (car pts) (last pts)) 1.0e-015)) ;AutoCAD tolerance
            (drop-right pts 1)
            pts)))))
-
-#|
  
 ; predicates
 
@@ -1942,7 +1931,6 @@ Utilities: think about moving them to a different file
     (or v1 rh:com-omit)))
   (autocad
 
-   #|
 The following example does not work as intended. Rotating the args to closed-spline solves the problem
 (define (campo p c pista  a-palco a-pista)
   (define l (* (/ 67 105) c))
@@ -1960,9 +1948,7 @@ The following example does not work as intended. Rotating the args to closed-spl
                  (+x p (- (- (/ l 2)) (* 3 pista)))))
 
 (campo (xyz 0 0 0) 105 6.3 0.02 1)
-|#
-   
-   
+
    
    (let ((cs (append cs (list (car cs)))))
      (let ((v0* (or v0 (-c (cadr cs) (car cs))))
@@ -2105,8 +2091,6 @@ The following example does not work as intended. Rotating the args to closed-spl
       #t
       solid?))))
 
-#|
-
 (def-new-shape (right-cuboid [cb (u0)] [width 1] [height 1] [h/ct 1])
   (else
    (let-values ([(c h) (position-and-height cb h/ct)])
@@ -2129,7 +2113,6 @@ to
 cpu time: 2355 real time: 5130 gc time: 327
 
 a 20~30x speedup
-|#
 
 (def-new-shape (right-cuboid [cb (u0)] [width 1] [height 1] [h/ct 1])
   (rhino
@@ -2487,20 +2470,13 @@ a 20~30x speedup
    (begin0
        (ac:revolve-command (shape-impl shape) p0 p1 a0 (+ a0 a) (surface-region? shape))
      (delete-shape shape))))
+|#
 
-(def-new-shape-op (thicken shape [h 1])
-  (rhino
-   (begin0
-     (let-shapes ((r shape))
-       (rh:thicken r (+ h))) ;;HACK + instead of - for the MarketHall
-     (mark-deleted! shape)))
-  (autocad
-   (let ((s (ac:as-surface (shape-impl shape))))
-     (begin0
-         (ac:thicken-command s h)
-       (ac:delete s)
-       (mark-deleted! shape)))))
+(define (thicken [surf : Any] [h : Real 1])
+  (displayln "This must be finished!")
+  (void))
 
+#|
 ;;Use something like singleton-or-union
 
 (provide section)
@@ -2781,8 +2757,6 @@ a 20~30x speedup
 (provide select-shape)
 (define select-shape select-shapes)
 
-#|
-
 (define (split-brep id cutter)
   (begin0
     (match (cons id cutter)
@@ -2841,8 +2815,6 @@ a 20~30x speedup
         (generate-knot-vector (- v-degree 1) n-cols)
         (list u-degree v-degree)
         #;(map (lambda (row) (map (lambda (col) 1.0) row)) controls))))))
-
-|#
 
 (def-new-shape-op* (surface shapes)
   (rhino
@@ -3139,5 +3111,4 @@ a 20~30x speedup
    #t)
   (tikz
    #t))
-|#
 |#
