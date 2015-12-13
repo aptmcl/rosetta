@@ -499,88 +499,34 @@ The following example does not work as intended. Rotating the args to closed-spl
    (begin0
      (rh:add-planar-srf (map shape-impl shapes))
      (delete-shapes shapes))))
-  
-(def-new-shape (surface-grid css [closed-u? #f] [closed-v? #f])
-  (rhino
-   ;;Rhino requires at least 3 points in each dimension
-   (if (and (null? (cddr css))
-            (null? (cddr (car css))))
-       (rh:add-srf-pt (append (car css) (cadr css)))
-       (let ((css
-              (cond ((null? (cddr css))
-                     (list (car css)
-                           (map (lambda (p0 p1) (/c (+c p0 p1) 2)) (car css) (cadr css))
-                           (cadr css)))
-                    ((null? (cddr (car css)))
-                     (map (lambda (cs)
-                            (/c (+c (car cs) (cadr cs)) 2))
-                          css))
-                    (else
-                     css))))
-         (rh:add-srf-pt-grid
-          (vector (length css) (length (car css)))
-          (foldr append (list) css)
-          rh:com-omit
-          (vector closed-u? closed-v?)))))
-  (autocad
-   #;(loft-curves (map (if closed-v? closed-spline spline) css) #f #f closed-u?)
-   ;;HACK: This must be seriously improved!!!
-   (let ((nu (length css))
-         (nv (length (car css))))
-     (unless (and (<= nu 256) (<= nv 256))
-       (error "Too many elements (more than 256x256)"))
-     (define (maybe-singleton l)
-       (if (null? (cdr l))
-           (car l)
-           l))
-     (maybe-singleton
-      (cond ((> nu 256)
-             (append
-              (shape-ref
-               (surface-grid (take css 256) #f closed-v?))
-              (shape-ref
-               (surface-grid (drop css 255) #f closed-v?))))
-            ((> nv 256)
-             (append
-              (shape-ref
-               (surface-grid (map (lambda (cs) (take cs 256)) css) closed-u? #f))
-              (shape-ref
-               (surface-grid (map (lambda (cs) (drop cs 255)) css) closed-u? #f))))
-            (else
-             (let ((r 
-                    (ac:add-3d-mesh
-                     (if closed-u? (+ nu 1) nu)
-                     (if closed-v? (+ nv 1) nv)
-                     (foldr append 
-                            (list)
-                            (let ((css (if closed-v?
-                                           (map (lambda (l) (append l (list (car l))))
-                                                css)
-                                           css)))
-                              (if closed-u?
-                                  (append css (list (car css)))
-                                  css))))))
-               (when closed-u?
-                 (ac:m-close r #t))
-               (when closed-v?
-                 (ac:n-close r #t))
-               ;(ac:type r ac:ac-bezier-surface-mesh) BUG??
-               (list r))))))
-  #;(for ((pts0 (in-list css))
-         (pts1 (in-list (cdr css))))
-     (for ((pt0 (in-list pts0))
-           (pt1 (in-list (cdr pts0)))
-           (pt2 (in-list (cdr pts1)))
-           (pt3 (in-list pts1)))
-       (ac:add-3d-face pt0 pt1 pt2 pt3))))
-  (opengl
-   (gl:add-grid-surface
-    (map (lambda (pts)
-           (map as-world pts))
-         css)
-    closed-u? #t
-    closed-v? #t)))
+|#
 
+(define (transpose-ptss [ptss : (Listof (Listof Loc))]) : (Listof (Listof Loc))
+  (if (null? (car ptss))
+      (list)
+      (cons (map (inst car Loc (Listof Loc)) ptss)
+            (transpose-ptss (map (inst cdr Loc (Listof Loc)) ptss)))))
+
+
+(def-shape (surface-grid [ptss : (Listof (Listof Loc))] [closed-u? : Boolean #f] [closed-v? : Boolean #f])
+  (let ((ptss
+         (for/list : (Listof (Listof Loc)) ([pts (in-list ptss)])
+           (for/list : (Listof Loc) ((pt (in-list pts)))
+             (loc-in-world pt)))))
+    (for ((pts (in-list ptss)))
+      (%closed-line pts))
+    (for ((pts (in-list (transpose-ptss ptss))))
+      (%closed-line (map loc-in-world pts))))
+  #;
+  (for ((pts0 (in-list ptss))
+        (pts1 (in-list (cdr ptss))))
+    (for ((pt0 (in-list pts0))
+          (pt1 (in-list (cdr pts0)))
+          (pt2 (in-list (cdr pts1)))
+          (pt3 (in-list pts1)))
+      (%closed-line (map loc-in-world (list pt0 pt1 pt2 pt3))))))
+
+#|
 (def-new-shape (mesh-grid css [closed-u? #f] [closed-v? #f])
   (rhino
    (rh:add-mesh
