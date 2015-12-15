@@ -107,6 +107,16 @@
   (required primitive:double topelevation 9)
   (required primitive:string toplevelname 10)
   (required primitive:string walltype 11)))
+(define-message-type
+ beaminfostrc
+ ((required primitive:double p0coordx 1)
+  (required primitive:double p0coordy 2)
+  (required primitive:double p0coordz 3)
+  (required primitive:double p1coordx 4)
+  (required primitive:double p1coordy 5)
+  (required primitive:double p1coordz 6)
+  (required primitive:double width 7)
+  (required primitive:double height 8)))
 (define-message-type polywallinfostrc ((repeated struct:wallinfostrc walls 1)))
 (define-message-type idstrc ((required primitive:int32 id 1)))
 (define-message-type doublestrc ((required primitive:double height 1)))
