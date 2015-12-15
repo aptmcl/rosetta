@@ -72,7 +72,7 @@
                          (file-stream-buffer-mode output 'none)
                          ;;I'm not sure this is the correct place to do this.
                          ;;I just know it must run before closing the socket
-                         (plumber-add-flush! (current-plumber)
+                      #;   (plumber-add-flush! (current-plumber)
                                              (lambda (e)
                                                (plumber-flush-handle-remove! e)
                                                (disconnect-from-revit)))))
@@ -173,16 +173,6 @@
                                 #:p2coordy (+ (cy p) r)
                                 #:p2coordz (cz p))))
 
-(define (union id1 id2 . ids)
-  (let ((l (list)))
-    (set! l (append l (list id1)))
-    (set! l (append l (list id2)))
-    (set! l (append l ids))
-    ))
-    
-    ;;(write-sized serialize (namestrc* #:name "union") output)
-    ;;(write-sized serialize (polyidstrc* #:ids l) output)))
-
 ;;;;;;;;;;;;;;;;;;;;BIM Function;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -220,16 +210,6 @@
                                #:p1coordz (cz p1)
                                #:levelb levelb
                                #:levelt levelt)))
-
-(define (poly-wall pts levelb levelt)
-  (let ((l (convert-list pts)))
-    (send/no-rcv "polyWall"
-                 (polywallstrc* #:pts l
-                                #:levelb levelb
-                                #:levelt levelt))
-    ;;AML This seems inconsistent, as it doesn't process the result through polyidstrc-ids
-    (read-sized (cut deserialize (polyidstrc*) <>) input)))
-
 
 (define (curtain-wall p0 p1 p2 p3 level)
   (send/rcv-id "curtainWall"
@@ -368,18 +348,18 @@
 
 (define (disconnect-from-revit)
   (send/no-rcv "disconnect")
-  (close-ports))
+  (close-ports)
+  (void))
 
 ;;;;;;;;New 2.0 Operator ;;;;;;;;;;;;;;;
 
 
 (define (create-wall guide #:bottom-level[bottom-level (current-level)] #:top-level[top-level (upper-level #:level bottom-level)])
   (let ((pts (convert-list guide)))
-    (send/no-rcv "polyWall"
-                 (polywallstrc* #:pts pts
-                                #:levelb bottom-level
-                                #:levelt top-level))
-    (polyidstrc-ids (read-sized (cut deserialize (polyidstrc*) <>) input))))
+    (send/rcv-polyid "polyWall"
+                     (polywallstrc* #:pts pts
+                                    #:levelb bottom-level
+                                    #:levelt top-level))))
 
 (define (create-slab guide #:bottom-level [bottom-level (current-level)])
   (let ((pts (convert-list guide)))
@@ -395,11 +375,10 @@
                                      #:points pts))))
 
 (define (create-walls-from-slab slab-id height #:bottom-level[bottom-level (current-level)])
-  (send/no-rcv "wallsFromSlabs"
-               (wallsfromslabsstrc* #:slabid slab-id
-                                    #:blevel bottom-level
-                                    #:height height))
-  (polyidstrc-ids (read-sized (cut deserialize (polyidstrc*) <>) input)))
+  (send/rcv-polyid "wallsFromSlabs"
+                   (wallsfromslabsstrc* #:slabid slab-id
+                                        #:blevel bottom-level
+                                        #:height height)))
 
 (define (create-hole-slab slab-id points)
   (let ((pts (convert-list points)))

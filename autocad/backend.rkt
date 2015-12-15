@@ -47,8 +47,6 @@
 (include "../base/common.rkc")
 
 (define (current-backend-name) "AutoCAD")
-;;Start now
-(%start)
 
 ;;References, in AutoCAD, are Com-Objects
 
@@ -797,6 +795,8 @@ The following example does not work as intended. Rotating the args to closed-spl
   (%clear-selection-command)
   (%select-shapes-command (shapes-refs ss))
   (void))
+
+;;Mass modeling
 
 (def-shape (polygonal-mass [pts : Locs] [height : Real])
   (let ((com (%add-3d-poly (append pts (list (car pts))))))

@@ -114,20 +114,20 @@
 (def-shape* (line [pts : Loc *])
   (%line (map loc-in-world pts)))
 
-(def-shape (closed-line [pts : (Listof Loc) (list (u0) (ux) (uy))])
+(def-shape* (closed-line [pts : Loc *])
   (%closed-line (map loc-in-world pts)))
 
 ;;A polygon should have all its vertices in the same plane
 ;;but we don't check that
-(provide polygon)
-(define polygon closed-line)
+(def-shape* (polygon [pts : Loc *])
+  (%closed-line (map loc-in-world pts)))
 
-(def-shape (spline [pts : Locs (list (u0) (ux) (uy))]) ; [v0 : (U #f Vec) #f] [v1 : (U #f Vec) #f])
+(def-shape* (spline [pts : Loc *]) ; [v0 : (U #f Vec) #f] [v1 : (U #f Vec) #f])
   (if #f ;(and v0 v1) ;;HACK This should be solved by dealing with optionals
       (error "Finish this")
       (%hobby-spline pts #f)))
 
-(def-shape (closed-spline [pts : Locs])
+(def-shape* (closed-spline [pts : Loc *])
   (%hobby-closed-spline pts #f))
 
 #|
