@@ -472,9 +472,9 @@
 (define (move-element element vector)
   (send/no-rcv "moveElement"
                (movestrc* #:element element
-                                    #:vectorx (cx vector)
-                                    #:vectory (cy vector)
-                                    #:vectorz (cz vector))))
+                          #:vectorx (cx vector)
+                          #:vectory (cy vector)
+                          #:vectorz (cz vector))))
 
 (define (rotate-element element angle p0 p1)
   (send/no-rcv "rotateElement"

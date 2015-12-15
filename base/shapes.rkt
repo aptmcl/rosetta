@@ -423,16 +423,14 @@
 (def-base-shape (offset shape distance))
 (def-base-shape (offset-curve shape direction distance normal))
 |#
-(def-base-shape (revolve [shape : (shape R)] [p0 : Loc (u0)] [v : Vec (vz 1)] [start-angle : Real 0] [amplitude : Real 2pi]))
-#|
-(def-base-shape (thicken shape [h 1]))
-|#
+(def-base-shape (revolve [shape : (shape R)] [p0 : Loc (u0)] [v : Loc (vz 1)] [start-angle : Real 0] [amplitude : Real 2pi]))
+(def-base-shape (thicken [shape : (shape R)] [h : Real 1]))
 (def-base-shape (join-curves [shapes : (Listof (Curve-Shape R))]))
 #|(def-base-shape (join-surfaces shapes))
 (def-base-shape (inner-solid shapes))
 (def-base-shape (solid shapes))
 |#
-(def-base-shape 2D-shape (surface [profile : (Curve-Shape R)]))
+(def-base-shape 2D-shape (surface [profiles : (Listof (Curve-Shape R))]))
 #|
 (def-base-shape (planar-surface shapes))
 |#
@@ -443,20 +441,9 @@
 
 (def-base-shape (sweep [path : (Curve-Shape R)] [profile : (Extrudable-Shape R)] [rotation : Real 0] [scale : Real 1]))
 (def-base-shape (loft [profiles : (Listof (Extrudable-Shape R))]
-                      [ruled? : Boolean #f] [solid? : Boolean #f] [closed? : Boolean #f]))
-(def-base-shape (loft-guided [profiles : (Listof (Extrudable-Shape R))]
-                             [paths : (Listof (Curve-Shape R))]
-                             [ruled? : Boolean #f] [solid? : Boolean #f] [closed? : Boolean #f]))
-(def-base-shape (loft-curves [profiles : (Listof (Extrudable-Shape R))]
-                             [ruled? : Boolean #f] [solid? : Boolean #f] [closed? : Boolean #f]))
-(def-base-shape (loft-curve-point [profile : (Curve-Shape R)]
-                                  [point : (Point-Shape R)]
-                                  [solid? : Boolean #f]))
-(def-base-shape (loft-surfaces [profiles : (Listof (Surface-Shape R))]
-                               [ruled? : Boolean #f] [solid? : Boolean #f] [closed? : Boolean #f]))
-(def-base-shape (loft-surface-point [profile : (Surface-Shape R)]
-                                    [point : (Point-Shape R)]
-                                    [solid? : Boolean #f]))
+                      [paths : (Listof (Curve-Shape R))]
+                      [ruled? : Boolean #f]
+                      [closed? : Boolean #f]))
 (def-base-shape (slice [shape : (shape R)] [p : Loc (u0)] [n : Vec (vz 1)]))
 #|
 (def-base-shape (half-space p n))
@@ -504,15 +491,6 @@
       (values dx/c1 dy)
       (let ((d (p-p dx/c1 c)))
         (values (cx d) (cy d)))))
-
-(provide curve?)
-(define #:forall (R) (curve? [s : (shape R)]) : Boolean
-  (or (line? s)
-      (closed-line? s)
-      (spline? s)
-      (closed-spline? s)
-      (circle? s)
-      (arc? s)))
 
 ;;Mass modeling
 ;;These are operations more suitable for BIM

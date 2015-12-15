@@ -499,88 +499,34 @@ The following example does not work as intended. Rotating the args to closed-spl
    (begin0
      (rh:add-planar-srf (map shape-impl shapes))
      (delete-shapes shapes))))
-  
-(def-new-shape (surface-grid css [closed-u? #f] [closed-v? #f])
-  (rhino
-   ;;Rhino requires at least 3 points in each dimension
-   (if (and (null? (cddr css))
-            (null? (cddr (car css))))
-       (rh:add-srf-pt (append (car css) (cadr css)))
-       (let ((css
-              (cond ((null? (cddr css))
-                     (list (car css)
-                           (map (lambda (p0 p1) (/c (+c p0 p1) 2)) (car css) (cadr css))
-                           (cadr css)))
-                    ((null? (cddr (car css)))
-                     (map (lambda (cs)
-                            (/c (+c (car cs) (cadr cs)) 2))
-                          css))
-                    (else
-                     css))))
-         (rh:add-srf-pt-grid
-          (vector (length css) (length (car css)))
-          (foldr append (list) css)
-          rh:com-omit
-          (vector closed-u? closed-v?)))))
-  (autocad
-   #;(loft-curves (map (if closed-v? closed-spline spline) css) #f #f closed-u?)
-   ;;HACK: This must be seriously improved!!!
-   (let ((nu (length css))
-         (nv (length (car css))))
-     (unless (and (<= nu 256) (<= nv 256))
-       (error "Too many elements (more than 256x256)"))
-     (define (maybe-singleton l)
-       (if (null? (cdr l))
-           (car l)
-           l))
-     (maybe-singleton
-      (cond ((> nu 256)
-             (append
-              (shape-ref
-               (surface-grid (take css 256) #f closed-v?))
-              (shape-ref
-               (surface-grid (drop css 255) #f closed-v?))))
-            ((> nv 256)
-             (append
-              (shape-ref
-               (surface-grid (map (lambda (cs) (take cs 256)) css) closed-u? #f))
-              (shape-ref
-               (surface-grid (map (lambda (cs) (drop cs 255)) css) closed-u? #f))))
-            (else
-             (let ((r 
-                    (ac:add-3d-mesh
-                     (if closed-u? (+ nu 1) nu)
-                     (if closed-v? (+ nv 1) nv)
-                     (foldr append 
-                            (list)
-                            (let ((css (if closed-v?
-                                           (map (lambda (l) (append l (list (car l))))
-                                                css)
-                                           css)))
-                              (if closed-u?
-                                  (append css (list (car css)))
-                                  css))))))
-               (when closed-u?
-                 (ac:m-close r #t))
-               (when closed-v?
-                 (ac:n-close r #t))
-               ;(ac:type r ac:ac-bezier-surface-mesh) BUG??
-               (list r))))))
-  #;(for ((pts0 (in-list css))
-         (pts1 (in-list (cdr css))))
-     (for ((pt0 (in-list pts0))
-           (pt1 (in-list (cdr pts0)))
-           (pt2 (in-list (cdr pts1)))
-           (pt3 (in-list pts1)))
-       (ac:add-3d-face pt0 pt1 pt2 pt3))))
-  (opengl
-   (gl:add-grid-surface
-    (map (lambda (pts)
-           (map as-world pts))
-         css)
-    closed-u? #t
-    closed-v? #t)))
+|#
 
+(define (transpose-ptss [ptss : (Listof (Listof Loc))]) : (Listof (Listof Loc))
+  (if (null? (car ptss))
+      (list)
+      (cons (map (inst car Loc (Listof Loc)) ptss)
+            (transpose-ptss (map (inst cdr Loc (Listof Loc)) ptss)))))
+
+
+(def-shape (surface-grid [ptss : (Listof (Listof Loc))] [closed-u? : Boolean #f] [closed-v? : Boolean #f])
+  (let ((ptss
+         (for/list : (Listof (Listof Loc)) ([pts (in-list ptss)])
+           (for/list : (Listof Loc) ((pt (in-list pts)))
+             (loc-in-world pt)))))
+    (for ((pts (in-list ptss)))
+      (%closed-line pts))
+    (for ((pts (in-list (transpose-ptss ptss))))
+      (%closed-line (map loc-in-world pts))))
+  #;
+  (for ((pts0 (in-list ptss))
+        (pts1 (in-list (cdr ptss))))
+    (for ((pt0 (in-list pts0))
+          (pt1 (in-list (cdr pts0)))
+          (pt2 (in-list (cdr pts1)))
+          (pt3 (in-list pts1)))
+      (%closed-line (map loc-in-world (list pt0 pt1 pt2 pt3))))))
+
+#|
 (def-new-shape (mesh-grid css [closed-u? #f] [closed-v? #f])
   (rhino
    (rh:add-mesh
@@ -875,15 +821,6 @@ The following example does not work as intended. Rotating the args to closed-spl
               (new-shape 'slice rhino id))
             (rh:split-brep-sloppy-n sh su 5))
        ))))
-
-(def-new-shape (grid-surface ptss [closed-s? #f] [closed-t? #f] [smooth-s? #t] [smooth-t? #t])
-  (opengl
-   (gl:add-grid-surface
-    (map (lambda (pts)
-           (map as-world pts))
-         ptss)
-    closed-s? smooth-s?
-    closed-t? smooth-t?)))
 
 ;;Surfaces
 
@@ -1900,8 +1837,6 @@ Utilities: think about moving them to a different file
                (< (distance (car pts) (last pts)) 1.0e-015)) ;AutoCAD tolerance
            (drop-right pts 1)
            pts)))))
-
-#|
  
 ; predicates
 
@@ -1996,7 +1931,6 @@ Utilities: think about moving them to a different file
     (or v1 rh:com-omit)))
   (autocad
 
-   #|
 The following example does not work as intended. Rotating the args to closed-spline solves the problem
 (define (campo p c pista  a-palco a-pista)
   (define l (* (/ 67 105) c))
@@ -2014,9 +1948,7 @@ The following example does not work as intended. Rotating the args to closed-spl
                  (+x p (- (- (/ l 2)) (* 3 pista)))))
 
 (campo (xyz 0 0 0) 105 6.3 0.02 1)
-|#
-   
-   
+
    
    (let ((cs (append cs (list (car cs)))))
      (let ((v0* (or v0 (-c (cadr cs) (car cs))))
@@ -2159,8 +2091,6 @@ The following example does not work as intended. Rotating the args to closed-spl
       #t
       solid?))))
 
-#|
-
 (def-new-shape (right-cuboid [cb (u0)] [width 1] [height 1] [h/ct 1])
   (else
    (let-values ([(c h) (position-and-height cb h/ct)])
@@ -2183,7 +2113,6 @@ to
 cpu time: 2355 real time: 5130 gc time: 327
 
 a 20~30x speedup
-|#
 
 (def-new-shape (right-cuboid [cb (u0)] [width 1] [height 1] [h/ct 1])
   (rhino
@@ -2541,20 +2470,13 @@ a 20~30x speedup
    (begin0
        (ac:revolve-command (shape-impl shape) p0 p1 a0 (+ a0 a) (surface-region? shape))
      (delete-shape shape))))
+|#
 
-(def-new-shape-op (thicken shape [h 1])
-  (rhino
-   (begin0
-     (let-shapes ((r shape))
-       (rh:thicken r (+ h))) ;;HACK + instead of - for the MarketHall
-     (mark-deleted! shape)))
-  (autocad
-   (let ((s (ac:as-surface (shape-impl shape))))
-     (begin0
-         (ac:thicken-command s h)
-       (ac:delete s)
-       (mark-deleted! shape)))))
+(define (thicken [surf : Any] [h : Real 1])
+  (displayln "This must be finished!")
+  (void))
 
+#|
 ;;Use something like singleton-or-union
 
 (provide section)
@@ -2835,8 +2757,6 @@ a 20~30x speedup
 (provide select-shape)
 (define select-shape select-shapes)
 
-#|
-
 (define (split-brep id cutter)
   (begin0
     (match (cons id cutter)
@@ -2895,8 +2815,6 @@ a 20~30x speedup
         (generate-knot-vector (- v-degree 1) n-cols)
         (list u-degree v-degree)
         #;(map (lambda (row) (map (lambda (col) 1.0) row)) controls))))))
-
-|#
 
 (def-new-shape-op* (surface shapes)
   (rhino
@@ -3193,5 +3111,4 @@ a 20~30x speedup
    #t)
   (tikz
    #t))
-|#
 |#
