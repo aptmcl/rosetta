@@ -301,14 +301,6 @@
                            #:p1coordz (cz p1)
                            #:level level)))
 
-(define (column p0 blevel tlevel)
-  (send/rcv-id "createColumn"
-               (columnstrc* #:p0coordx (cx p0)
-                            #:p0coordy (cy p0)
-                            #:p0coordz (cz p0)
-                            #:baselevel blevel
-                            #:toplevel tlevel)))
-
 (define (create-floor-opening p0 p1 floor)
   (send/no-rcv "createOpening"
                (flooropeningstrc* #:p0coordx (cx p0)
@@ -318,13 +310,6 @@
                                   #:p1coordy (cy p1)
                                   #:p1coordz (cz p1)
                                   #:floorid (idstrc-id floor)) output))
-
-
-(define (floor-from-points lista level)
-  (let ((l (convert-list lista)))
-    (send/rcv-id "createFloorFromPoints"
-                 (polylinefloorstrc* #:floor level 
-                                     #:points l))))
 
 (define (create-stairs-run blevel tlevel bp0 bp1 tp0 tp1)
   (send/no-rcv "stairsRun"
@@ -386,13 +371,14 @@
                  (holeslabstrc* #:slabid slab-id
                                 #:pts pts))))
 
-(define (create-column center #:bottom-level[bottom-level (current-level)] #:top-level[top-level (upper-level #:level bottom-level)])
+(define (create-column center #:bottom-level[bottom-level (current-level)] #:top-level[top-level (upper-level #:level bottom-level)] #:width [width 0])
   (send/rcv-id "createColumn"
                (columnstrc* #:p0coordx (cx center)
                             #:p0coordy (cy center)
                             #:p0coordz (cz center)
                             #:baselevel bottom-level
-                            #:toplevel top-level)))
+                            #:toplevel top-level
+                            #:width width)))
 
 (define (intersect-wall idw idf)
   (send/rcv-id "intersectWF" idw idf))
