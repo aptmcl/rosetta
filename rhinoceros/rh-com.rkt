@@ -381,7 +381,7 @@
 (def current-layer (#:opt name) name)
 |#
 (def-com current-view (#:opt [name String]) String)
-(def-com curve-arc-length-point ([curve Id] [l Real]) Loc)
+(def-com curve-arc-length-point ([curve Id] [l Real]) Point)
 #|
 (def-com CurveArea
 (def-com CurveAreaCentroid
@@ -408,7 +408,7 @@
 (def-com CurveEditPoints
 |#
 (def-com curve-end-point ([curve Id]) Point)
-(def-com curve-evaluate ([curve Id] [t Real] #:opt [derivative Integer]) (Vectorof Loc))
+(def-com curve-evaluate ([curve Id] [t Real] #:opt [derivative Integer]) Points)
 #|
 CurveFilletPoints
 |#
@@ -440,7 +440,7 @@ CurveRailFrames
 #|
 CurveSurfaceIntersection
 |#
-(def-com curve-tangent ([curve Id] [t Real] #:opt [segment Integer]) Vec)
+(def-com curve-tangent ([curve Id] [t Real] #:opt [segment Integer]) Direction)
 #|
 CurveWeights
 DivideCurve
