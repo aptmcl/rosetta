@@ -38,7 +38,7 @@
                ((#f) #'<)
                (else #'pred))
             i n)
-           ([(v) (+ a (/ (* i (- b a)) n))])
+           ([(v) (if (= i n) b (+ a (/ (* i (- b a)) n)))]) ;Extra test to avoid rounding errors
            #true
            #true
            ((+ i 1)))]])))
