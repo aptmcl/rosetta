@@ -190,7 +190,7 @@
                            (format "com-invoke-~a-~a" (syntax->datum #'(type ...)))))])
            (quasisyntax/loc stx
              (begin
-               (unsafe-require/typed
+               (require/typed #;unsafe-require/typed
                 ffi/com
                 [(com-invoke com-invoke-typed) (Com-Object String req-type ... -> rtype)])
                (provide name)
