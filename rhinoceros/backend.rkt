@@ -605,6 +605,12 @@
 
 (define (map-curve-length-division [f : (-> Loc A)] [curve : Shape] [n : Integer] [last? : Boolean #t]) : (Listof A)
   (let ((r (shape-ref curve)))
+    (displayln (%curve-length r))
+    (map-division (lambda ([l : Real])
+                    (displayln l)
+                    (f (%curve-perp-frame r (%curve-closest-point r (%curve-arc-length-point r l)))))
+                  0 (%curve-length r) n last?)
+    #;
     (let ((params (%divide-curve-length r (/ (%curve-length r) n) #f #f)))
       (let ((limit (- (vector-length params) (if last? 0 1))))
         (for/list : (Listof A) ((i : Integer (in-range 0 limit)) ;;HACK needed to prevent a bug in Typed Racket
