@@ -487,6 +487,17 @@
                             #:p1y (cy p1)
                             #:p1z (cz p1))))
 
+(define (create-beam p0 p1 width height)
+  (send/rcv-id "createBeam"
+               (beaminfostrc* #:p0coordx (cx p0)
+                                        #:p0coordy (cy p0)
+                                        #:p0coordz (cz p0)
+                                        #:p1coordx (cx p1)
+                                        #:p1coordy (cy p1)
+                                        #:p1coordz (cz p1)
+                                        #:width width
+                                        #:height height)))
+
 ;;;;;;;;Auxiliary Funtions;;;;;;;;;;;;;;
 
 (define (convert-list lista)
