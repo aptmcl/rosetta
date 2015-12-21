@@ -19,6 +19,7 @@
          delete-shape
          delete-shapes
          delete-all-shapes
+         current-layer
          curve-start-location
          curve-end-location
          curve-domain
@@ -811,15 +812,19 @@ The following example does not work as intended. Rotating the args to closed-spl
   (void))
 
 (provide render-view)
-(define (render-view name) : Void
-  ;(%renderView (prepare-for-file (render-pathname name)) (render-width) (render-height))
+(define (render-view [name : String]) : Void
+  (%skystatus %skystatus:background-and-illumination)
+  (%render-command (render-width)
+                   (render-height)
+                   (prepare-for-saving-file (render-pathname name)))
   (void))
 
 (provide render-stereo-view)
 (define (render-stereo-view name) : Void
   (displayln "render-stereo-view needs to be finished")
-  #;#;(%RenderResolution (vector (render-width) (render-height)))
-   (%render-view (prepare-for-file (render-pathname name)))
+  #;#;
+  (%RenderResolution (vector (render-width) (render-height)))
+  (%render-view (prepare-for-saving-file (render-pathname name)))
   (void))
 
 (define (zoom-extents) : Void

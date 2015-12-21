@@ -1,6 +1,6 @@
 #lang typed/racket/base
 (require (for-syntax racket/base racket/list))
-(require racket/function racket/string racket/match racket/port)
+(require racket/function racket/string racket/match racket/port racket/file)
 (require (except-in math random-integer)
          "../base/typed-com.rkt"
          "../base/utils.rkt"
@@ -1167,7 +1167,9 @@
 (def-ro-property (Value32 DynamicBlockReferenceProperty) DynamicBlockReferenceProperty)
 (def-ro-property (VBE Application) VBE)
 (def-rw-property (Verify Attribute) Boolean)
-(def-ro-property (Version Application) String)
+|#
+(def-ro-property (version Application) String)
+#|
 (def-ro-property (VersionGUID FileDependency) String)
 (def-rw-property (VertCellMargin Table) Double)
 (VerticalDirection property idh_verticaldirection.htm)
@@ -2220,24 +2222,6 @@
     [(def name)
      (syntax/loc stx
        (def name Any))]))
-#;
-(define-syntax (def-autocad-variable stx)
-  (syntax-case stx ()
-    [(def (name str) type)
-     (syntax/loc stx
-       (begin
-         (provide name)
-         (define name
-           (case-lambda
-             (() (cast (get-variable str) type))
-             (([val : type]) (set-variable str val))))))]
-    [(def name type)
-     (with-syntax ((str (string-upcase (symbol->string (syntax-e #'name)))))
-       (syntax/loc stx
-         (def (name str) type)))]
-    [(def name)
-     (syntax/loc stx
-       (def name Any))]))
 
 (def-autocad-variable delobj)
 (def-autocad-variable facetersmoothlev Integer)
@@ -2250,7 +2234,7 @@
 (def-autocad-variable loftparam Integer)
 (def-autocad-variable nomutt)
 (def-autocad-variable perspective)
-(def-autocad-variable skystatus)
+(def-autocad-variable skystatus Skystatus)
 (def-autocad-variable sunstatus)
 (def-autocad-variable cmdecho)
 (def-autocad-variable lenslength Real)
@@ -2277,6 +2261,14 @@
            (begin body ...)
            (unless (= previous new)
              (name previous))))))))
+
+;; skystatus values
+(provide skystatus:off skystatus:background skystatus:background-and-illumination)
+(define-type Skystatus (U 0 1 2))
+(define skystatus:off : Skystatus 0)
+(define skystatus:background : Skystatus 1)
+(define skystatus:background-and-illumination : Skystatus 2)
+
 
 ;;; target
 
@@ -2944,8 +2936,11 @@
 
 ;;Render
 
-(def-cmd (render-command [quality : String] [width : Integer] [height : Integer] [filename : String])
-  (format "._-render ~A _R ~A ~A _yes ~A\n" quality width height filename))
+(def-cmd (render-command [width : Integer] [height : Integer] [filename : Path-String])
+  ;;Rendering changed a lot in AutoCAD 2016
+  (if (regexp-match? #rx"^20" (version (application)))
+      (format "._-render ~A _R ~A ~A _yes ~A\n" "H" width height filename)
+      (format "._-render ~A _R ~A ~A _yes ~A\n" "P" width height filename)))
 
 (provide save-screen-png)
 (define (save-screen-png [filename : String]) : Void

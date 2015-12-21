@@ -298,12 +298,13 @@
   path)
 
 
-(provide film-filename film-frame start-film frame-filename)
-
-(define film-filename (make-parameter ""))
-(define film-frame (make-parameter 0))
+(provide film-active? film-filename film-frame start-film frame-filename)
+(define film-active? : (Parameterof Boolean) (make-parameter #f))
+(define film-filename : (Parameterof String) (make-parameter ""))
+(define film-frame : (Parameterof Natural) (make-parameter 0))
 
 (define (start-film [name : String])
+  (film-active? #t)
   (film-filename name)
   (film-frame 0))
 
