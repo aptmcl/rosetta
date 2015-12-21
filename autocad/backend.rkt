@@ -827,6 +827,13 @@ The following example does not work as intended. Rotating the args to closed-spl
   (%render-view (prepare-for-saving-file (render-pathname name)))
   (void))
 
+(provide save-film-frame)
+(define (save-film-frame [obj : Any (void)]) : Any
+  (parameterize ((render-kind-dir "Film"))
+    (render-view (frame-filename (film-filename) (film-frame)))
+  (film-frame (+ (film-frame) 1))
+  obj))
+
 (define (zoom-extents) : Void
   (%zoom-extents))
 

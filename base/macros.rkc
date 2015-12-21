@@ -125,14 +125,7 @@
            (lambda () body ...)
            (lambda () (current-layer old-layer))))))))
 
-
-(provide save-film-frame)
-(define (save-film-frame [obj : Any (void)]) : Any
-  (parameterize ((render-kind-dir "Film"))
-    (render-view (frame-filename (film-filename) (film-frame)))
-  (film-frame (+ (film-frame) 1))
-  obj))
-
+#|
 ;;To make movies
 ;;(film "sergelsChange" ((e 2.5 3.5 10 1.5 20)) ...(f ... e ...) ...)
 
@@ -148,3 +141,4 @@
       body ...
       (retrying (save-film-frame)))
     ...))
+|#
