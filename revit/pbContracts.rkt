@@ -168,7 +168,8 @@
   (required primitive:double p0coordy 2)
   (required primitive:double p0coordz 3)
   (required struct:idstrc baselevel 4)
-  (required struct:idstrc toplevel 5)))
+  (required struct:idstrc toplevel 5)
+  (required primitive:double width 6)))
 (define-message-type
  flooropeningstrc
  ((required primitive:double p0coordx 1)
