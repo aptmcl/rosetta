@@ -300,7 +300,7 @@
 
 (def-backend (all-shapes) (current-in-backend))
 (def-backend (delete-all-shapes) (current-out-backend))
-(def-backend (connect-to-revit-family) (current-out-backend))
+(def-backend (connect-to-revit) (current-out-backend))
 
 
 (def-new-shape (polygonal-mass [points : Locs] [height : Real]))
