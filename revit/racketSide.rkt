@@ -473,16 +473,23 @@
                             #:p1y (cy p1)
                             #:p1z (cz p1))))
 
-(define (create-beam p0 p1 width height)
+(define (create-beam p0 p1 width height family wname hname)
   (send/rcv-id "createBeam"
                (beaminfostrc* #:p0coordx (cx p0)
-                                        #:p0coordy (cy p0)
-                                        #:p0coordz (cz p0)
-                                        #:p1coordx (cx p1)
-                                        #:p1coordy (cy p1)
-                                        #:p1coordz (cz p1)
-                                        #:width width
-                                        #:height height)))
+                              #:p0coordy (cy p0)
+                              #:p0coordz (cz p0)
+                              #:p1coordx (cx p1)
+                              #:p1coordy (cy p1)
+                              #:p1coordz (cz p1)
+                              #:width width
+                              #:height height
+                              #:family family
+                              #:wname wname
+                              #:hname hname)))
+
+(define (load-family path)
+  (send/rcv-id "loadFamily"
+               (namestrc* #:name path)))
 
 ;;;;;;;;Auxiliary Funtions;;;;;;;;;;;;;;
 
