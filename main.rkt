@@ -191,6 +191,7 @@
 (def-new-shape (surface-arc [center : Loc (u0)] [radius : Real 1] [start-angle : Real 0] [amplitude : Real pi]))
 ;(def-shape (elliptic-arc [center : Loc (u0)] [radius-x : Real 1] [radius-y : Real 1] [start-angle : Real 0] [amplitude : Real pi]))
 (def-new-shape (ellipse [center : Loc (u0)] [radius-x : Real 1] [radius-y : Real 1]))
+(def-new-shape (surface-ellipse [center : Loc (u0)] [radius-x : Real 1] [radius-y : Real 1]))
 (def-new-shape (line [pts : (Listof Loc) (list (u0) (ux))]))
 #|
 (def-shape (bounding-box s))
@@ -223,7 +224,7 @@
 (def-new-shape (regular-pyramid [edges : Integer 3] [cb : Loc (u0)] [rb : Real 1] [a : Real 0] [h/ct : LocOrZ 1] [inscribed? : Boolean #f]))
 (def-new-shape (irregular-pyramid [cbs : Locs (list (ux) (uy) (uxy))] [ct : Loc (uz)]))
 (def-new-shape (regular-prism [edges : Integer 3] [cb : Loc (u0)] [r : Real 1] [a : Real 0] [h/ct : LocOrZ 1] [inscribed? : Boolean #f]))
-;(def-shape (irregular-prism [cbs : Locs (list (ux) (uy) (uxy))] [h/ct : LocOrZ 1] [solid? : Boolean #t]))
+(def-new-shape (irregular-prism [cbs : Locs (list (ux) (uy) (uxy))] [h/ct : LocOrZ 1] [solid? : Boolean #t]))
 (def-new-shape (right-cuboid [cb : Loc (u0)] [width : Real 1] [height : Real 1] [h/ct : LocOrZ 1]))
 (def-new-shape (box [c : Loc (u0)] [dx/c1 : LocOrZ 1] [dy : Real (if (number? dx/c1) dx/c1 1)] [dz : Real dy]))
 (def-new-shape (cone [cb : Loc (u0)] [r : Real 1] [h/ct : LocOrZ 1]))
@@ -300,7 +301,7 @@
 
 (def-backend (all-shapes) (current-in-backend))
 (def-backend (delete-all-shapes) (current-out-backend))
-(def-backend (connect-to-revit-family) (current-out-backend))
+(def-backend (connect-to-revit) (current-out-backend))
 
 
 (def-new-shape (polygonal-mass [points : Locs] [height : Real]))

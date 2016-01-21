@@ -497,3 +497,7 @@
 
 (def-base-shape 3D-shape (polygonal-mass [points : Locs] [height : Real]))
 (def-base-shape 3D-shape (rectangular-mass [center : Loc] [width : Real] [length : Real] [height : Real]))
+
+;;BIM
+
+(def-base-shape 3D-shape (beam [p0 : Loc] [p1 : Loc] [width : Real] [height : Real]))
