@@ -28,6 +28,7 @@
          circle
          reg-line
          irregularPyramid
+         irregularPyramid3
          floats<-pts
          line
          polygon-surface
