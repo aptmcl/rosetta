@@ -84,8 +84,8 @@
   )
 
 (define (circle center rad [alpha 0.0] [r 1.0] [g 1.0] [b 1.0])
-  (reg-line center 20 rad rad (uz) alpha r g b))
-;(transform (reg-line center 20 rad rad) (loc->transformation-matrix center)))
+  ;  (reg-line center 20 rad rad (uz) alpha r g b))
+  (transform (reg-line (u0 world-cs) 20 (* 2 rad) (* 2 rad)) (loc->transformation-matrix center)))
 
 (define (reg-surface p1 sides w l [v1 (uz)] [alpha 0.0] [r 1.0] [g 1.0] [b 1.0])
   (let* ([p2 (+c p1 v1)]
@@ -135,7 +135,7 @@
 (define (polygon-surface pts [r 1.0] [g 1.0] [b 1.0])
   (if (> (length pts) 3)
       (cons (ffi:triangle (floats<-pts (list (first pts) (second pts) (third pts))) r g b ) 
-        (polygon-surface (append (list (first pts)) (rest (rest pts))) r g b))
+            (polygon-surface (append (list (first pts)) (rest (rest pts))) r g b))
       (list (ffi:triangle (floats<-pts (list (first pts) (second pts) (third pts))) r g b ))))
 
 #;(define (line pts [r 1.0] [g 1.0] [b 1.0])
@@ -170,9 +170,9 @@
   #;(line pts)
   (displayln pts)
   (if (> (length pts) 2)
-   (cons (line (list (first pts) (second pts))) (polygon (rest pts) r g b))
-   (line pts)
-   )
+      (cons (line (list (first pts) (second pts))) (polygon (rest pts) r g b))
+      (line pts)
+      )
   )
 
 (define (point p1 [rad 0.5] [r 1.0] [g 1.0] [b 1.0])
