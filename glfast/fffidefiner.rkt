@@ -52,7 +52,7 @@
         ))]))
 
 
-(defffi "int start()")
+;(defffi "int start()")
 (defffi "int clean()")
 (defffi "int init(int n)")
 (defffi "int end_cycle()")
