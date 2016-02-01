@@ -110,9 +110,9 @@
     (let aux ((pts base-pts))
       (if
        (> (length pts) 2)
-       (begin (polygon-surface (append (take pts 2) (list top)) r g b)
-              (aux (drop pts 1)))
-       (polygon-surface (append pts (list top)) r g b))))             
+       (cons (polygon-surface (append (take pts 2) (list top)) r g b)
+             (aux (drop pts 1)))
+       (list (polygon-surface (append pts (list top)) r g b)))))             
   )
 
 
