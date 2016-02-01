@@ -101,10 +101,16 @@
     )
   )
 
-(define (irregularPyramid p1 p2 l1 a1 l2 a2 l3 a3 [r 1.0] [g 1.0] [b 1.0])
-  (let ([args (map exact->inexact (list (cx p1) (cy p1) (cz p1) (cx p2) (cy p2) (cz p2) l1 a1 l2 a2 l3 a3 r g b))])
-    (apply ffi:irregularPyramid3 args)
-    )
+(define (irregularPyramid base-center rhos phis top [r 1.0] [g 1.0] [b 1.0])
+  (let ([base-pts (for/list
+                      ((rho rhos) (phi phis))
+                    (+pol base-center rho phi))])
+    (let aux ((pts base-pts))
+      (if
+       (> (length pts) 2)
+       (begin (polygon-surface (append (take pts 2) (list top)) r g b)
+              (aux (drop pts 1)))
+       (polygon-surface (append pts (list top)) r g b))))             
   )
 
 
