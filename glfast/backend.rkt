@@ -29,6 +29,7 @@
          reg-line
          irregularPyramid
          irregularPyramid3
+         irregularPyramid-pts
          floats<-pts
          line
          polygon-surface
@@ -100,6 +101,16 @@
     (apply ffi:regLine args)
     )
   )
+
+(define (irregularPyramid-pts base-pts top [r 1.0] [g 1.0] [b 1.0])
+   (list (polygon-surface (list (first base-pts) (last base-pts) top) r g b)
+          (polygon-surface base-pts r g b)
+          (let aux ((pts base-pts))
+            (if
+             (> (length pts) 2)
+             (cons (polygon-surface (append (take pts 2) (list top)) r g b)
+                   (aux (drop pts 1)))
+             (list (polygon-surface (append pts (list top)) r g b))))))
 
 (define (irregularPyramid base-center rhos phis top [r 1.0] [g 1.0] [b 1.0])
   (let ([base-pts (for/list
