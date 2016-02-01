@@ -105,6 +105,8 @@
   (let ([base-pts (for/list
                       ((rho rhos) (phi phis))
                     (+pol base-center rho phi))])
+    (polygon-surface (list (first base-pts) (last base-pts) top) r g b)
+    (polygon-surface base-pts r g b)
     (let aux ((pts base-pts))
       (if
        (> (length pts) 2)
