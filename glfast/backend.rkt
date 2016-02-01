@@ -105,14 +105,14 @@
   (let ([base-pts (for/list
                       ((rho rhos) (phi phis))
                     (+pol base-center rho phi))])
-    (polygon-surface (list (first base-pts) (last base-pts) top) r g b)
-    (polygon-surface base-pts r g b)
-    (let aux ((pts base-pts))
-      (if
-       (> (length pts) 2)
-       (cons (polygon-surface (append (take pts 2) (list top)) r g b)
-             (aux (drop pts 1)))
-       (list (polygon-surface (append pts (list top)) r g b)))))             
+    (list (polygon-surface (list (first base-pts) (last base-pts) top) r g b)
+          (polygon-surface base-pts r g b)
+          (let aux ((pts base-pts))
+            (if
+             (> (length pts) 2)
+             (cons (polygon-surface (append (take pts 2) (list top)) r g b)
+                   (aux (drop pts 1)))
+             (list (polygon-surface (append pts (list top)) r g b))))))             
   )
 
 
