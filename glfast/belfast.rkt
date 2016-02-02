@@ -1,6 +1,6 @@
 #lang racket
-(require "backend.rkt")
-
+;(require "backend.rkt")
+(require rosetta/glfast)
 
 (init 10)
 
@@ -31,8 +31,9 @@
                (polygon-surface (list p20 p11 p10 (first base-pts-1)) 0.3 0.5 0.5)
                (polygon-surface (list p21 p11 p10 (last base-pts-1)) 0.3 0.5 0.5)
                (irregularPyramid p1 rhos phis p10 0.3 0.5 0.5)
-               (cylinder p2 (/ size 3) (+z p2 size) 0.3 0.5 0.5))
+               )
          p (ux))
+        (cylinder p2 (/ size 3) (+z p2 size) 0.3 0.5 0.5)
         (cylinder p (/ size 3) (+z p size) 0.3 0.5 0.5)
         
         ))))
