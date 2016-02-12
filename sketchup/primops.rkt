@@ -27,7 +27,7 @@ Sketchup specific operations
   (shell-execute 
    "open"
    "Sketchup.exe"
-   (format "-RubyStartup ~s -template ~s" 
+   (format "-RubyStartup \"~s\" -template \"~s\"" 
            (path->string sketchup-init)
            (path->string sketchup-template))
    (current-directory)
