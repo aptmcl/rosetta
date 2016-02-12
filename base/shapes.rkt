@@ -386,9 +386,12 @@
 
 (def-base-shape 2D-shape (surface-circle [center : Loc (u0)] [radius : Real 1]))
 (def-base-shape 2D-shape (surface-arc [center : Loc (u0)] [radius : Real 1] [start-angle : Real 0] [amplitude : Real pi]))
+(def-base-shape 2D-shape (surface-elliptic-arc [center : Loc (u0)] [radius-x : Real 1] [radius-y : Real 1] [start-angle : Real 0] [amplitude : Real pi]))
+(def-base-shape 2D-shape (surface-ellipse [center : Loc (u0)] [radius-x : Real 1] [radius-y : Real 1]))
 (def-base-shape 2D-shape (surface-polygon [vertices : (Listof Loc) (list (u0) (ux) (uy))]))
 (def-base-shape 2D-shape (surface-regular-polygon [edges : Integer 3] [center : Loc (u0)] [radius : Real 1] [angle : Real 0] [inscribed? : Boolean #f]))
 (def-base-shape 2D-shape (surface-rectangle [c : Loc (u0)] [dx/c1 : (U Real Loc) 1] [dy : Real 1]))
+
 (def-base-shape (text [str : String ""] [c : Loc (u0)] [h : Real 1]))
 (def-base-shape (text-centered [str : String ""] [c : Loc (u0)] [h : Real 1]))
 (def-base-shape 3D-shape (sphere [c : Loc (u0)] [r : Real 1]))
