@@ -17,6 +17,8 @@
          delete-shape
          delete-shapes
          delete-all-shapes
+         create-layer
+         current-layer
          curve-start-location
          curve-end-location
          curve-domain
@@ -130,13 +132,12 @@
   (%add-ellipse center radius-x radius-y))
 
 (def-shape (surface-circle [center : Loc (u0)] [radius : Real 1])
-  (%add-surface-circle center (cast radius Positive-Real)))
+  (%add-surface-from-curve (%add-circle center (cast radius Positive-Real))))
 
-(define (%add-surface-circle [center : Loc] [radius : Positive-Real]) : Ref
-  (let ((circ (%add-circle center radius)))
-    (begin0
-      (singleton-ref (%add-planar-srf (list circ)))
-      (%delete-object circ))))
+(define (%add-surface-from-curve [curve : Ref]) : Ref
+  (begin0
+    (singleton-ref (%add-planar-srf (list curve)))
+    (%delete-object curve)))
 
 (def-shape (surface-arc [center : Loc (u0)] [radius : Real 1] [start-angle : Real 0] [amplitude : Real pi])
   (cond ((= radius 0)
@@ -144,7 +145,7 @@
         ((= amplitude 0)
          (%add-point (+pol center radius start-angle)))
         ((>= (abs amplitude) 2pi)
-         (%add-surface-circle center (cast radius Positive-Real)))
+         (%add-surface-from-curve (%add-circle center (cast radius Positive-Real))))
         (else
          (let ((curves
                 (list
@@ -159,6 +160,10 @@
            (begin0
              (singleton-ref (%add-planar-srf curves))
              (%delete-objects curves))))))
+
+(def-shape (surface-ellipse [center : Loc (u0)] [radius-x : Real 1] [radius-y : Real 1])
+  (%add-surface-from-curve (%add-ellipse center radius-x radius-y)))
+
 
 (def-shape* (line [pts : Loc *])
   (%add-polyline pts))
@@ -601,13 +606,11 @@
          (end (vector-ref d 1)))
     (map-division (lambda ([t : Real])
                     (f (%curve-perp-frame r t)))
-                  start end n last?)))
+                  start end n last?))) 
 
 (define (map-curve-length-division [f : (-> Loc A)] [curve : Shape] [n : Integer] [last? : Boolean #t]) : (Listof A)
   (let ((r (shape-ref curve)))
-    (displayln (%curve-length r))
     (map-division (lambda ([l : Real])
-                    (displayln l)
                     (f (%curve-perp-frame r (%curve-closest-point r (%curve-arc-length-point r l)))))
                   0 (%curve-length r) n last?)
     #;
@@ -741,3 +744,25 @@ Command: _viewcapturetofile
   (%irregular-pyramid-frustum
    pts
    (map (lambda ([pt : Loc]) (+z pt height)) pts)))
+
+(define shape-color
+  (case-lambda
+    [([shape : Shape])
+     (%objects-color (shape-refs shape))]
+    [([shape : Shape] [new-color : Color])
+     (%objects-color (shape-refs shape) new-color)
+     (void)]))
+
+(define-type Layer String)
+
+(define (create-layer [name : String] [color : (Option Color) #f]) : Layer
+  (%add-layer name (or color %com-omit))
+  name)
+
+(define current-layer
+  (case-lambda
+    [()
+     (%current-layer)]
+    [([new-layer : Layer])
+     (%current-layer new-layer)]))
+
