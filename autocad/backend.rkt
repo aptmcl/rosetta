@@ -19,6 +19,7 @@
          delete-shape
          delete-shapes
          delete-all-shapes
+         create-layer
          current-layer
          curve-start-location
          curve-end-location
@@ -168,12 +169,14 @@
        (%add-ellipse (u0 world-cs) (xyz 0 radius-y 0) (/ radius-x radius-y)))
    center))
 
+(define (%add-surface-from-curve [curve : Ref]) : Ref
+  (begin0
+    (singleton-ref (%add-region (list curve)))
+    (%delete curve)))
+  
 (define (%add-surface-circle [center : Loc] [radius : Real])
   (%transform
-   (let ((circ (%add-circle (u0 world-cs) radius)))
-     (begin0
-       (singleton-ref (%add-region (list circ)))
-       (%delete circ)))
+   (%add-surface-from-curve (%add-circle (u0 world-cs) radius))
    center))
 
 (def-shape (surface-circle [center : Loc (u0)] [radius : Real 1])
@@ -200,6 +203,15 @@
              (begin0
                (singleton-ref (%add-region curves))
                (for ((c (in-list curves))) (%delete c))))))))
+
+(def-shape (surface-ellipse [center : Loc (u0)] [radius-x : Real 1] [radius-y : Real 1])
+  (%transform
+   (if (> radius-x radius-y)
+       (%add-surface-from-curve
+        (%add-ellipse (u0 world-cs) (xyz radius-x 0 0) (/ radius-y radius-x)))
+       (%add-surface-from-curve
+        (%add-ellipse (u0 world-cs) (xyz 0 radius-y 0) (/ radius-x radius-y))))
+   center))
 
 (def-shape* (line [pts : Loc *])
   (%add-3d-poly pts))
@@ -754,8 +766,10 @@ The following example does not work as intended. Rotating the args to closed-spl
 (define-type Layer String)
 (define-type Material String)
 
-(define (create-layer [name : String]) : Layer
-  (%add-layer name)
+(define (create-layer [name : String] [color : (Option Color) #f]) : Layer
+  (let ((layer (%add-layer name)))
+    (when color
+      (%true-color layer color)))
   name)
 
 (define current-layer
