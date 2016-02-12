@@ -235,6 +235,18 @@
                      [rs (cdr rs)])
                  (loop rs (combine r1 combs) n)))))))
 
+
+;;Colors
+
+(define-type Color (U rgb))
+
+(struct rgb
+  ([red : Byte]
+   [green : Byte]
+   [blue : Byte]))
+
+(provide Color (struct-out rgb))
+
 ;;Renders and Films
 (provide render-dir
          render-user-dir
