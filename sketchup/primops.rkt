@@ -3,6 +3,7 @@
 (require "../base/connection.rkt"
          (except-in "../base/utils.rkt" random))
 (require racket/runtime-path)
+(require racket/path)
 
 (provide start-sketchup
          stop-sketchup
@@ -10,8 +11,8 @@
          encode-xyz
          encode-list-f)
 
-(define-runtime-path sketchup-template (build-path "template.skp"))
-(define-runtime-path sketchup-init (build-path "rosetta.rb"))
+(define-runtime-path sketchup-template "template.skp")
+(define-runtime-path sketchup-init "rosetta.rb")
 
 #|
 Sketchup specific operations
@@ -27,9 +28,9 @@ Sketchup specific operations
   (shell-execute 
    "open"
    "Sketchup.exe"
-   (format "-RubyStartup \"~s\" -template \"~s\"" 
-           (path->string sketchup-init)
-           (path->string sketchup-template))
+   (format "-RubyStartup ~s -template ~s" 
+           (path->string (normalize-path sketchup-init))
+           (path->string (normalize-path sketchup-template)))
    (current-directory)
    'sw_shownormal)
   (establish-connection "Sketchup" sketchup-port))
