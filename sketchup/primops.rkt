@@ -3,6 +3,8 @@
 (require "../base/connection.rkt"
          (except-in "../base/utils.rkt" random))
 (require racket/runtime-path)
+(require racket/system
+         racket/port)
 
 (provide start-sketchup
          stop-sketchup
@@ -17,6 +19,9 @@
 Sketchup specific operations
 |#
 
+(define /dev/null-out
+   (open-output-file "/dev/null" #:exists 'append))
+
 (: start-sketchup (-> Connection))
 (: stop-sketchup (Connection -> Void))
 
@@ -24,7 +29,14 @@ Sketchup specific operations
 
 (define (start-sketchup)
   (putenv "ROSETTAPORT" (number->string sketchup-port))
-  (shell-execute 
+  (subprocess	/dev/null-out	 
+ 	 	#f	 
+ 	 	/dev/null-out	 
+ 	 	"/Applications/SketchUp 2015/SketchUp.app/Contents/MacOS/SketchUp"	 
+ 	 	(format "-RubyStartup ~s -template ~s" 
+           (path->string sketchup-init)
+           (path->string sketchup-template)))
+  #;(shell-execute 
    "open"
    "Sketchup.exe"
    (format "-RubyStartup ~s -template ~s" 
@@ -39,8 +51,9 @@ Sketchup specific operations
 
 (define-cached (sketchup) : Connection
   (start-sketchup))
-
-
+;(define skup (establish-connection "Sketchup" 54222))
+;(define-cached (sketchup) : Connection skup)
+;(addBox 0 0 0 1 1 1)
 (define-type Location (List Real Real Real))
 (define-type Locations (Listof Location))
 (define-type Locationss (Listof (Listof Location)))

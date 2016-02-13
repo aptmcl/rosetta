@@ -8,24 +8,24 @@ Sketchup.send_action("showRubyPanel:")
 # socket part
 def connect
   port = ENV["ROSETTAPORT"].to_i
-  SKSocket.connect("localhost", port)
+  SKSocket.connect("127.0.0.1", port)
   SKSocket.add_socket_listener {|e| socketListener(e)}
 end
 
 def socketListener(e)
-  if e == "Connection established"
-    SKSocket.write("connected\n")
-  else
-    begin
-      # for debugging
-      puts e
-      SKSocket.write("%s\n" % (eval e))
-    rescue Exception => err
-      puts e
-      puts err
-      SKSocket.write("ERROR\n")
-      SKSocket.write("%s\n" % err.message)
-    end
+  #if e == "Connection established"
+  SKSocket.write("connected\n")
+  #else
+  begin
+    # for debugging
+    puts e
+    SKSocket.write("%s\n" % (eval e))
+  rescue Exception => err
+    puts e
+    puts err
+    SKSocket.write("ERROR\n")
+    SKSocket.write("%s\n" % err.message)
+  #  end
   end
 end
 
@@ -1836,5 +1836,5 @@ if(not file_loaded?("rosetta.rb"))
   # UI.menu("Tools").add_item("Shutdown Rosetta") { shutdown }
 
   # connect now
-  connect
+  #connect
 end
