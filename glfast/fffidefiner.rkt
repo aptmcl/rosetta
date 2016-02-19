@@ -59,6 +59,7 @@
 (defffi "int send_data()")
 (defffi "int pool()")
 (defffi "int cycle()")
+(defffi "int close()")
 
 (defffi "void city(int n)")
 

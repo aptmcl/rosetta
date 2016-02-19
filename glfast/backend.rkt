@@ -231,11 +231,13 @@
     (ffi:transform id mat-lst)))
 
 ;;;;;;;;;;;;;;;;;;;;; rendering functions     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(provide init pool clean cycle send_data)
+(provide init pool clean end_cycle cycle send_data close)
 (define init ffi:init)
 (define pool ffi:pool)
 (define clean ffi:clean)
 (define cycle ffi:cycle)
+(define close ffi:close)
+(define end_cycle ffi:end_cycle)
 (define send_data ffi:send_data)
 ;(define start ffi:start)
 
