@@ -40,6 +40,8 @@
          view-top
          select-shape
          select-shapes
+         shape-layer
+         shape-color
          zoom-extents
 )
 
@@ -748,9 +750,10 @@ Command: _viewcapturetofile
 (define shape-color
   (case-lambda
     [([shape : Shape])
-     (%objects-color (shape-refs shape))]
+     (%object-color (shape-ref shape))]
     [([shape : Shape] [new-color : Color])
-     (%objects-color (shape-refs shape) new-color)
+     (do-ref ([r shape])
+       (%object-color r new-color))
      (void)]))
 
 (define-type Layer String)
@@ -765,4 +768,14 @@ Command: _viewcapturetofile
      (%current-layer)]
     [([new-layer : Layer])
      (%current-layer new-layer)]))
+
+(define shape-layer
+  (case-lambda
+    [([shape : Shape])
+     (%object-layer (shape-ref shape))]
+    [([shape : Shape] [new-layer : Layer])
+     (do-ref ([r shape])
+       (%object-layer r new-layer))
+     (void)]))
+
 

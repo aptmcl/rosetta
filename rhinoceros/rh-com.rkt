@@ -549,9 +549,7 @@ DivideCurveEquidistant
 
 ;;How do we access the COM-OBJECT if Rhino only returns Strings?
 (def-com-method normalized-length-parameter curve ([curve Com-Object] [t Real]) Real)
-#|
-(def object-layer (id #:opt name) name)
-|#
+(def-com object-layer ([shape Id] #:opt [name String]) String)
 (def-com object-color ([shape Id] #:opt [color RGB]) RGB)
 (def-com (objects-color ObjectColor) ([shape Ids] #:opt [color RGB]) RGB)
 #|
