@@ -446,7 +446,7 @@
 (def-rw-property (ClippingEnabled DwfUnderlay) Boolean)
 |#
 (def-rw-property (closed 3DPolyline) Boolean)
-(def-rw-property (color All) AcColor)
+(def-rw-property (color All) AcCmColor)
 #|
 (def-rw-property (ColorBookPath PreferencesFiles) String)
 (def-rw-property (ColorIndex AcCmColor) acColor)

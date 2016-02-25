@@ -40,10 +40,12 @@
          prompt-real
          prompt-shape
          render-view
-         view
-         view-top
          select-shape
          select-shapes
+         shape-layer
+         shape-color
+         view
+         view-top
          zoom-extents
 )
 
@@ -761,6 +763,17 @@ The following example does not work as intended. Rotating the args to closed-spl
                     p1 (+x p1 dx) (+xy p1 dx dy) (+y p1 dy))))
           (loop (combine bb (%bounding-box (car rs)))
                 (cdr rs))))))
+
+;;Color
+(define shape-color
+  (case-lambda
+    [([shape : Shape])
+     (%true-color (shape-ref shape))]
+    [([shape : Shape] [new-color : Color])
+     (do-ref ([r shape])
+       (%true-color r new-color))
+     (void)]))
+
 
 ;;Layers&Materials
 (define-type Layer String)
