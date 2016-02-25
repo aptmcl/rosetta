@@ -35,7 +35,7 @@
       (rename-file-or-directory proto "C:\\Autodesk\\protobuf-net.dll" #t)
       (rename-file-or-directory dll "C:\\Autodesk\\RosettaToRevit.dll" #t))
     (displayln "done!")
-    (setf moved-addon-files? #t)))
+    (set! moved-addon-files? #t)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
