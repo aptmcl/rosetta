@@ -103,7 +103,8 @@
             ((failed-subtraction? r)
              (for-each rec (failed-subtraction-refs r)))
             (else
-             body ...)))))
+             body ...
+	     (void))))))
 
 (define (copy-ref-op [r : RefOp]) : RefOp
   (cond ((failed-union? r)
