@@ -17,6 +17,8 @@
          delete-shape
          delete-shapes
          delete-all-shapes
+         create-layer
+         current-layer
          curve-start-point
          curve-end-point
          enable-update
@@ -25,6 +27,10 @@
          ;prompt-integer
          ;prompt-real
          ;prompt-shape
+         ;select-shape
+         ;select-shapes
+         shape-layer
+         shape-color
          view
          view-top
          render-view
@@ -457,6 +463,62 @@
 (defnew-from (extrusion profile [n : Pt])
   (addExtrusion (sketchup-shape-ref profile)
                 (cx n) (cy n) (cz n)))
+
+
+
+
+;;Layers and Colors
+
+;;Color
+(define shape-color
+  (case-lambda
+    [([shape : Shape])
+     (%shapeRGBA (shape-ref shape))]
+    [([shape : Shape] [new-color : Color])
+     (%setShapeRGB (shape-ref shape) (rgb-red new-color) (rgb-green new-color) (rgb-blue new-color))
+     (void)]))
+
+
+;;Layers&Materials
+(define-type Layer String)
+(define-type Material String)
+
+(define (create-layer [name : String] [color : (Option Color) #f]) : Layer
+  (%addLayer name)
+  (when color
+    (%setLayerRGB name (rgb-red color) (rgb-green color) (rgb-blue color)))
+  name)
+
+(define current-layer
+  (case-lambda
+    [()
+     (%currentLayer)]
+    [([new-layer : Layer])
+     (%setCurrentLayer new-layer)]))
+
+(define shape-layer
+  (case-lambda
+    [([shape : Shape])
+     (%shapeLayer (shape-ref shape))]
+    [([shape : Shape] [new-layer : Layer])
+     (%setShapeLayer (shape-ref shape) new-layer)
+     (void)]))
+#;
+(define (create-material [name : String]) : Material
+  (%add-material name)
+  name)
+
+#;
+(define shape-material
+  (case-lambda
+    [([shape : Shape])
+     (%material (shape-ref shape))]
+    [([shape : Shape] [new-material : Material])
+     (%material (shape-ref shape) new-material)
+     (void)]))
+
+;;
+
 
 (provide fast-view)
 (define (fast-view) : Void
