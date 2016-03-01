@@ -22,6 +22,7 @@
          right-cuboid
          pyramid
          sphere
+         sphere2
          prism
          trunk
          reg-surface
@@ -68,6 +69,10 @@
 (define (sphere p1 radius [r 1.0] [g 1.0] [b 1.0])
   (let* ([args (map exact->inexact (list (cx p1) (cy p1) (cz p1) radius r g b))])
     (apply ffi:sphere args)
+    ))
+(define (sphere2 p1 radius [r 1.0] [g 1.0] [b 1.0])
+  (let* ([args (map exact->inexact (list (cx p1) (cy p1) (cz p1) radius r g b))])
+    (apply ffi:sphere2 args)
     ))
 
 (define (prism p1 w h p2 sides [r 1.0] [g 1.0] [b 1.0])
@@ -231,15 +236,15 @@
     (ffi:transform id mat-lst)))
 
 ;;;;;;;;;;;;;;;;;;;;; rendering functions     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(provide init pool clean end_cycle cycle send_data close)
+(provide init pool clean end_cycle cycle send_data close start)
 (define init ffi:init)
 (define pool ffi:pool)
 (define clean ffi:clean)
 (define cycle ffi:cycle)
-(define close ffi:close)
+(define close ffi:startth)
 (define end_cycle ffi:end_cycle)
 (define send_data ffi:send_data)
-;(define start ffi:start)
+(define start ffi:startth)
 
 (define args #f)
 (define fn #f)

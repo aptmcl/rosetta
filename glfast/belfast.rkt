@@ -2,8 +2,6 @@
 ;(require "backend.rkt")
 (require rosetta/glfast)
 
-(init 10)
-
 (define (ship p size)
   (let ([p0 p]
         [p1 (+x p (* size 2))]
@@ -46,4 +44,4 @@
    (send_data)
    (thread while)))
 
-(read)
+;(read)

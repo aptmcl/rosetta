@@ -52,9 +52,10 @@
         ))]))
 
 
-;(defffi "int start()")
+(defffi "int startth()")
 (defffi "int clean()")
 (defffi "int init(int n)")
+(defffi "int init2(int n)")
 (defffi "int end_cycle()")
 (defffi "int send_data()")
 (defffi "int pool()")
@@ -66,6 +67,7 @@
 (defffi "int prismpts(float pos_x, float pos_y, float pos_z, float pos_x_2, float pos_y_2, float pos_z_2, float l, float w, float h, float sides, float red, float g, float b)")
 (defffi "int box(float pos_x, float pos_y, float pos_z, float w, float l, float h, float red, float g, float b, float angle, float vx, float vy, float vz)")
 (defffi "int sphere(float pos_x, float pos_y, float pos_z, float r, float red, float g, float b)")
+(defffi "int sphere2(float pos_x, float pos_y, float pos_z, float r, float red, float g, float b)")
 (defffi "int pyramid(float pos_x, float pos_y, float pos_z, float w, float l, float h, float sides, float red, float g, float b)")
 (defffi "int trunkpts(float pos_x, float pos_y, float pos_z, float pos_x_2, float pos_y_2, float pos_z_2, float l, float w, float h, float w1, float h1, float sides, float red, float g, float b)")
 (defffi "int pyramidpts(float pos_x, float pos_y, float pos_z, float pos_x_2, float pos_y_2, float pos_z_2, float w, float l, float h, float sides, float red, float g, float b)")
