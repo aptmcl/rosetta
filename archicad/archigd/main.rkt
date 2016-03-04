@@ -320,6 +320,3 @@
     (send-arcs listarcs)
     (elementid-guid (read-sized (cut deserialize (elementid*) <>)input)))))
 |#
-
-
-
