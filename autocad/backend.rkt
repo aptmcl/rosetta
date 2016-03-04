@@ -1,4 +1,4 @@
-#lang typed/racket/base #:no-optimize
+#lang typed/racket/base/no-check
 (require racket/math
          racket/list
          racket/function)
@@ -642,7 +642,7 @@ The following example does not work as intended. Rotating the args to closed-spl
     (%join-curves (shapes-refs shapes))
     (for-each (inst mark-deleted! RefOp) shapes)))
 
-(def-shape (revolve [shape : Shape] [p : Loc (u0)] [n : Loc (vz 1)] [start-angle : Real 0] [amplitude : Real 2pi])
+(def-shape (revolve [shape : Shape] [p : Loc (u0)] [n : Vec (vz 1)] [start-angle : Real 0] [amplitude : Real 2pi])
   (let ((p (loc-from-o-p/v p n)))
     (begin0
       (map-ref ([r shape])

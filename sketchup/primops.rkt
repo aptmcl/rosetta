@@ -1,4 +1,4 @@
-#lang typed/racket/base
+#lang typed/racket/base/no-check
 (require (for-syntax racket/base))
 (require "../base/connection.rkt"
          (except-in "../base/utils.rkt" random))

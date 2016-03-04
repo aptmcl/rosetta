@@ -1,4 +1,4 @@
-#lang typed/racket/base
+#lang typed/racket/base/no-check
 (require racket/function)
 (require "../base/typed-com.rkt"
          "../base/utils.rkt"

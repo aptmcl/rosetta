@@ -1,4 +1,4 @@
-#lang typed/racket/base #:no-optimize
+#lang typed/racket/base/no-check
 (require racket/math
          racket/list
          racket/function)
@@ -39,6 +39,10 @@
 |#)
 
 (define-type Ref Any)
+(define-type Shape Any)
+(define-type Shapes Any)
+
+(provide Ref Shape Shapes)
 
 (require/typed "racketSide.rkt"
                [(boxb %boxb) (-> Loc Real Real Real Ref)]

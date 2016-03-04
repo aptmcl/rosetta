@@ -1,4 +1,4 @@
-#lang typed/racket/base
+#lang typed/racket/base/no-check
 (require (for-syntax racket/base racket/list))
 (require racket/function racket/string racket/match racket/port racket/file)
 (require (except-in math random-integer)

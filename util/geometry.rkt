@@ -1,4 +1,4 @@
-#lang typed/racket
+#lang typed/racket/no-check
 (require "../base/coord.rkt")
 (provide circle-from-three-points-2d
          circle-from-three-points
