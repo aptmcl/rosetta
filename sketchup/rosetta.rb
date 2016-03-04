@@ -98,6 +98,7 @@ end
 
 ### Alternative
 def returnShape(s)
+# NOTE: s.guid in ComponentInstance only applies to Sketchup 2014+
   if (s.class==Sketchup::Group) or (s.class==Sketchup::ComponentInstance)
     s.guid
   else #if (s.class==Sketchup::Face)
@@ -890,6 +891,7 @@ def faceCentroid(face)
    Geom::Point3d.new(cx/n, cy/n, cz/n)
 end
 
+=begin
 # extrude
 
 def extrudeCurve(id,v)
@@ -1025,7 +1027,7 @@ clverts.each{|verts|
 }
 
 end#def
-
+=end
 
 # sweep
 def addSweep(idPath, idProfile)
