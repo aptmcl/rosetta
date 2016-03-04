@@ -57,11 +57,6 @@
 (define server-addr "localhost")
 
 (define (connect-to-revit)
-  (connect-to-revit-family)
-  (set! current-level (make-parameter (get-level 0 "Level 1")))
-  (delete-level "Level 2"))
-
-(define (connect-to-revit-family)
   (let rec((n 10))
     (with-handlers ((exn:fail? (lambda (e)
                                  (displayln "Please, start the Revit->Rosetta plugin.")
@@ -77,11 +72,18 @@
                          (file-stream-buffer-mode output 'none)
                          ;;I'm not sure this is the correct place to do this.
                          ;;I just know it must run before closing the socket
-                         (plumber-add-flush! (current-plumber)
+                      #;   (plumber-add-flush! (current-plumber)
                                              (lambda (e)
                                                (plumber-flush-handle-remove! e)
-                                               (disconnect-from-revit)))))))
+                                               (disconnect-from-revit)))))
+      (when (project-document?)
+        (set! current-level (make-parameter (get-level 0 "Level 1")))
+        (delete-level "Level 2"))))
   (void))
+
+(define (project-document?)
+  (write-sized serialize (namestrc* #:name "isProject") output)
+  (boolstrc-answer (read-sized (cut deserialize (boolstrc*) <>) input)))
 
 (define (close-ports)
   (close-input-port input)
@@ -171,16 +173,6 @@
                                 #:p2coordy (+ (cy p) r)
                                 #:p2coordz (cz p))))
 
-(define (union id1 id2 . ids)
-  (let ((l (list)))
-    (set! l (append l (list id1)))
-    (set! l (append l (list id2)))
-    (set! l (append l ids))
-    ))
-    
-    ;;(write-sized serialize (namestrc* #:name "union") output)
-    ;;(write-sized serialize (polyidstrc* #:ids l) output)))
-
 ;;;;;;;;;;;;;;;;;;;;BIM Function;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
@@ -218,16 +210,6 @@
                                #:p1coordz (cz p1)
                                #:levelb levelb
                                #:levelt levelt)))
-
-(define (poly-wall pts levelb levelt)
-  (let ((l (convert-list pts)))
-    (send/no-rcv "polyWall"
-                 (polywallstrc* #:pts l
-                                #:levelb levelb
-                                #:levelt levelt))
-    ;;AML This seems inconsistent, as it doesn't process the result through polyidstrc-ids
-    (read-sized (cut deserialize (polyidstrc*) <>) input)))
-
 
 (define (curtain-wall p0 p1 p2 p3 level)
   (send/rcv-id "curtainWall"
@@ -284,9 +266,9 @@
 (define (delete-element elem)
   (send/no-rcv "deleteElement" elem))
 
-(define (create-level height name)
+(define (create-level #:height [height 0])
   (send/rcv-id "createLevel"
-               (levelstrc* #:h height #:name name)))
+               (doublestrc* #:height height)))
 
 (define (upper-level #:level [level (current-level)]
                      #:height [height (default-level-to-level-height)])
@@ -319,14 +301,6 @@
                            #:p1coordz (cz p1)
                            #:level level)))
 
-(define (column p0 blevel tlevel)
-  (send/rcv-id "createColumn"
-               (columnstrc* #:p0coordx (cx p0)
-                            #:p0coordy (cy p0)
-                            #:p0coordz (cz p0)
-                            #:baselevel blevel
-                            #:toplevel tlevel)))
-
 (define (create-floor-opening p0 p1 floor)
   (send/no-rcv "createOpening"
                (flooropeningstrc* #:p0coordx (cx p0)
@@ -336,13 +310,6 @@
                                   #:p1coordy (cy p1)
                                   #:p1coordz (cz p1)
                                   #:floorid (idstrc-id floor)) output))
-
-
-(define (floor-from-points lista level)
-  (let ((l (convert-list lista)))
-    (send/rcv-id "createFloorFromPoints"
-                 (polylinefloorstrc* #:floor level 
-                                     #:points l))))
 
 (define (create-stairs-run blevel tlevel bp0 bp1 tp0 tp1)
   (send/no-rcv "stairsRun"
@@ -366,18 +333,18 @@
 
 (define (disconnect-from-revit)
   (send/no-rcv "disconnect")
-  (close-ports))
+  (close-ports)
+  (void))
 
 ;;;;;;;;New 2.0 Operator ;;;;;;;;;;;;;;;
 
 
 (define (create-wall guide #:bottom-level[bottom-level (current-level)] #:top-level[top-level (upper-level #:level bottom-level)])
   (let ((pts (convert-list guide)))
-    (send/no-rcv "polyWall"
-                 (polywallstrc* #:pts pts
-                                #:levelb bottom-level
-                                #:levelt top-level))
-    (polyidstrc-ids (read-sized (cut deserialize (polyidstrc*) <>) input))))
+    (send/rcv-polyid "polyWall"
+                     (polywallstrc* #:pts pts
+                                    #:levelb bottom-level
+                                    #:levelt top-level))))
 
 (define (create-slab guide #:bottom-level [bottom-level (current-level)])
   (let ((pts (convert-list guide)))
@@ -393,11 +360,10 @@
                                      #:points pts))))
 
 (define (create-walls-from-slab slab-id height #:bottom-level[bottom-level (current-level)])
-  (send/no-rcv "wallsFromSlabs"
-               (wallsfromslabsstrc* #:slabid slab-id
-                                    #:blevel bottom-level
-                                    #:height height))
-  (polyidstrc-ids (read-sized (cut deserialize (polyidstrc*) <>) input)))
+  (send/rcv-polyid "wallsFromSlabs"
+                   (wallsfromslabsstrc* #:slabid slab-id
+                                        #:blevel bottom-level
+                                        #:height height)))
 
 (define (create-hole-slab slab-id points)
   (let ((pts (convert-list points)))
@@ -405,13 +371,14 @@
                  (holeslabstrc* #:slabid slab-id
                                 #:pts pts))))
 
-(define (create-column center #:bottom-level[bottom-level (current-level)] #:top-level[top-level (upper-level #:level bottom-level)])
+(define (create-column center #:bottom-level[bottom-level (current-level)] #:top-level[top-level (upper-level #:level bottom-level)] #:width [width 0])
   (send/rcv-id "createColumn"
                (columnstrc* #:p0coordx (cx center)
                             #:p0coordy (cy center)
                             #:p0coordz (cz center)
                             #:baselevel bottom-level
-                            #:toplevel top-level)))
+                            #:toplevel top-level
+                            #:width width)))
 
 (define (intersect-wall idw idf)
   (send/rcv-id "intersectWF" idw idf))
@@ -487,6 +454,42 @@
 (define (import-dwg file)
   (send/no-rcv "importDWG")
   (send/no-rcv file))
+
+(define (move-element element vector)
+  (send/no-rcv "moveElement"
+               (movestrc* #:element element
+                          #:vectorx (cx vector)
+                          #:vectory (cy vector)
+                          #:vectorz (cz vector))))
+
+(define (rotate-element element angle p0 p1)
+  (send/no-rcv "rotateElement"
+               (rotatestrc* #:element element
+                            #:angle angle
+                            #:p0x (cx p0)
+                            #:p0y (cy p0)
+                            #:p0z (cz p0)
+                            #:p1x (cx p1)
+                            #:p1y (cy p1)
+                            #:p1z (cz p1))))
+
+(define (create-beam p0 p1 width height family wname hname)
+  (send/rcv-id "createBeam"
+               (beaminfostrc* #:p0coordx (cx p0)
+                              #:p0coordy (cy p0)
+                              #:p0coordz (cz p0)
+                              #:p1coordx (cx p1)
+                              #:p1coordy (cy p1)
+                              #:p1coordz (cz p1)
+                              #:width width
+                              #:height height
+                              #:family family
+                              #:wname wname
+                              #:hname hname)))
+
+(define (load-family path)
+  (send/rcv-id "loadFamily"
+               (namestrc* #:name path)))
 
 ;;;;;;;;Auxiliary Funtions;;;;;;;;;;;;;;
 

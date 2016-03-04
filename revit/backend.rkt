@@ -43,11 +43,11 @@
 (require/typed "racketSide.rkt"
                [(boxb %boxb) (-> Loc Real Real Real Ref)]
                [(extrusion-mass %extrusion-mass) (-> Locs Real Ref)]
-               [(connect-to-revit-family %connect-to-revit-family) (-> Void)])
+               [(disconnect-from-revit %disconnect-from-revit) (-> Void)])
 
 ;(require (prefix-in % "racketSide.rkt"))
 
-(provide (rename-out [%connect-to-revit-family connect-to-revit-family]))
+(provide (rename-out [%disconnect-from-revit disconnect-from-revit]))
 
 #|
 (require racket/include)
@@ -750,7 +750,20 @@ The following example does not work as intended. Rotating the args to closed-spl
   (void))
 |#
 
+(define short-curve-tolerance : Float 0.0025602455729167)
+
 (def-shape (polygonal-mass [points : Locs] [height : Real])
-  (%extrusion-mass (append points (list (car points))) height))
+  (define (loop [points : Locs]) : Locs
+    (if (or (null? points) (null? (cdr points)))
+        points
+        (let ([p0 : Loc (car points)] [p1 : Loc (cadr points)])
+          (let ((p0 (loc-in-world p0))
+                (p1 (loc-in-world p1)))
+            (if (< (distance p0 p1) short-curve-tolerance)
+                (let ((p (intermediate-point p0 p1)))
+                  (loop (cons p (loop (cddr points)))))
+                (cons p0 (loop (cdr points))))))))
+  (let ((points (loop points)))
+    (%extrusion-mass (append points (list (car points))) height)))
 
 ;(def-shape (rectangular-mass [center : Loc] [width : Real] [length : Real] [height : Real]))

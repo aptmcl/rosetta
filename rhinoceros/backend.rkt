@@ -347,16 +347,16 @@
 (def-shape (torus [center : Loc (u0)] [re : Real 1] [ri : Real 1/2])
   (%add-torus-plane center re ri))
 
-(def-shape (surface [profile : (Curve-Shape RefOp)])
+(def-shape* (surface [profiles : (Curve-Shape RefOp) *])
   (begin0
-    (let ((refs (shape-refs profile)))
+    (let ((refs (shapes-refs profiles)))
       (if (singleton? refs)
           (let ((ref (car refs)))
             (if (%is-point ref)
                 ref
                 (singleton-ref (%add-planar-srf refs))))
           (%add-edge-srf refs)))
-    (delete-shape profile)))
+    (delete-shapes profiles)))
 
 (define (union-refs [rs : Refs]) : Refs
   (maximize-combination
@@ -590,8 +590,11 @@
   (let ((r (shape-ref curve)))
     (%curve-perp-frame r (%curve-closest-point r (%curve-arc-length-point r l)))))
 
-;;HACK These two functions require the default initialization on last? but Typed Racket has a bug.
-(define #:forall (T) (map-curve-division [f : (-> Loc T)] [curve : Shape] [n : Integer] [last? : Boolean]) : (Listof T)
+;;HACK These two functions require the default initialization on last? but Typed Racket has a bug and prevents the use of #:forall (A)
+(: map-curve-division (All (A) (->* ((-> Loc A) Shape Integer) (Boolean) (Listof A))))
+(: map-curve-length-division (All (A) (->* ((-> Loc A) Shape Integer) (Boolean) (Listof A))))
+
+(define (map-curve-division [f : (-> Loc A)] [curve : Shape] [n : Integer] [last? : Boolean #t]) : (Listof A)
   (let* ((r (shape-ref curve))
          (d (%curve-domain r))
          (start (vector-ref d 0))
@@ -600,11 +603,11 @@
                     (f (%curve-perp-frame r t)))
                   start end n last?)))
 
-(define #:forall (T) (map-curve-length-division [f : (-> Loc T)] [curve : Shape] [n : Integer] [last? : Boolean]) : (Listof T)
+(define (map-curve-length-division [f : (-> Loc A)] [curve : Shape] [n : Integer] [last? : Boolean #t]) : (Listof A)
   (let ((r (shape-ref curve)))
     (let ((params (%divide-curve-length r (/ (%curve-length r) n) #f #f)))
       (let ((limit (- (vector-length params) (if last? 0 1))))
-        (for/list : (Listof T) ((i : Integer (in-range 0 limit)) ;;HACK needed to prevent a bug in Typed Racket
+        (for/list : (Listof A) ((i : Integer (in-range 0 limit)) ;;HACK needed to prevent a bug in Typed Racket
                                 (t : Real (in-vector params)))
           (f (%curve-perp-frame r t)))))))
 

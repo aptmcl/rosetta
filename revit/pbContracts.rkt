@@ -107,9 +107,23 @@
   (required primitive:double topelevation 9)
   (required primitive:string toplevelname 10)
   (required primitive:string walltype 11)))
+(define-message-type
+ beaminfostrc
+ ((required primitive:double p0coordx 1)
+  (required primitive:double p0coordy 2)
+  (required primitive:double p0coordz 3)
+  (required primitive:double p1coordx 4)
+  (required primitive:double p1coordy 5)
+  (required primitive:double p1coordz 6)
+  (required primitive:double width 7)
+  (required primitive:double height 8)
+  (required struct:idstrc family 9)
+  (required primitive:string wname 10)
+  (required primitive:string hname 11)))
 (define-message-type polywallinfostrc ((repeated struct:wallinfostrc walls 1)))
 (define-message-type idstrc ((required primitive:int32 id 1)))
 (define-message-type doublestrc ((required primitive:double height 1)))
+(define-message-type boolstrc ((required primitive:bool answer 1)))
 (define-message-type doublevolumestrc ((required primitive:double volume 1)))
 (define-message-type polyidstrc ((repeated struct:idstrc ids 1)))
 (define-message-type polylevelstrc ((repeated struct:levelstrc levels 1)))
@@ -157,7 +171,8 @@
   (required primitive:double p0coordy 2)
   (required primitive:double p0coordz 3)
   (required struct:idstrc baselevel 4)
-  (required struct:idstrc toplevel 5)))
+  (required struct:idstrc toplevel 5)
+  (required primitive:double width 6)))
 (define-message-type
  flooropeningstrc
  ((required primitive:double p0coordx 1)
@@ -268,5 +283,21 @@
 (define-message-type
  extrusionstrc
  ((repeated primitive:double pts 1) (required primitive:double elevation 2)))
+(define-message-type
+ movestrc
+ ((required struct:idstrc element 1)
+  (required primitive:double vectorx 2)
+  (required primitive:double vectory 3)
+  (required primitive:double vectorz 4)))
+(define-message-type
+ rotatestrc
+ ((required struct:idstrc element 1)
+  (required primitive:double angle 2)
+  (required primitive:double p0x 3)
+  (required primitive:double p0y 4)
+  (required primitive:double p0z 5)
+  (required primitive:double p1x 6)
+  (required primitive:double p1y 7)
+  (required primitive:double p1z 8)))
 
 (provide (all-defined-out))
