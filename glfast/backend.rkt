@@ -41,7 +41,7 @@
          rotate)
 (define city ffi:city)
 (define (end_cycle?)
-  (if (< (ffi:end_cycle) 0)
+  (if (< (ffi:end_cycle2) 0)
       #f
       #t))
 
@@ -236,15 +236,19 @@
     (ffi:transform id mat-lst)))
 
 ;;;;;;;;;;;;;;;;;;;;; rendering functions     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-(provide init pool clean end_cycle cycle send_data close start)
+(provide init init2 pool clean end_cycle end_cycle2 cycle cycle2 send_data close start startth)
 (define init ffi:init)
+(define init2 ffi:init2)
 (define pool ffi:pool)
 (define clean ffi:clean)
 (define cycle ffi:cycle)
-(define close ffi:startth)
+(define cycle2 ffi:cycle2)
+(define close ffi:close)
 (define end_cycle ffi:end_cycle)
+(define end_cycle2 ffi:end_cycle2)
 (define send_data ffi:send_data)
-(define start ffi:startth)
+(define start ffi:start)
+(define startth ffi:startth)
 
 (define args #f)
 (define fn #f)
@@ -253,20 +257,20 @@
 (provide setup update while)
 (define (setup fun arg)
   (displayln arg)
-  (init 100)
+  ;(init 100)
   (set! changed #t)
   (set! fn fun)
   (set! args arg))
 
 (define (update arg)
-  (displayln arg)
+  ;(displayln arg)
   (set! changed #t)
   (set! args arg))
 
 (define (render-scene fn args)
   (begin
     (clean)
-    (displayln args)
+    ;(displayln args)
     (apply fn args)
     (send_data)))
 

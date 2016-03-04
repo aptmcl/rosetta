@@ -53,13 +53,16 @@
 
 
 (defffi "int startth()")
+(defffi "int start()")
 (defffi "int clean()")
 (defffi "int init(int n)")
 (defffi "int init2(int n)")
 (defffi "int end_cycle()")
+(defffi "int end_cycle2()")
 (defffi "int send_data()")
 (defffi "int pool()")
-(defffi "int cycle()")
+(defffi "float cycle()")
+(defffi "float cycle2()")
 (defffi "int close()")
 
 (defffi "void city(int n)")
