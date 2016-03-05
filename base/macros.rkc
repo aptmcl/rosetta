@@ -112,3 +112,33 @@
   (parameterize ((current-cs (z-rotated-cs phi (current-cs))))
     body ...))
 
+;; Renders and movies
+
+(provide with-current-layer)
+(define-syntax (with-current-layer stx)
+  (syntax-case stx ()
+    ((_ new-layer body ...)
+     (syntax/loc stx
+       (let ((old-layer (current-layer)))
+         (dynamic-wind
+           (lambda () (current-layer new-layer))
+           (lambda () body ...)
+           (lambda () (current-layer old-layer))))))))
+
+#|
+;;To make movies
+;;(film "sergelsChange" ((e 2.5 3.5 10 1.5 20)) ...(f ... e ...) ...)
+
+(provide film)
+(define-syntax-rule
+  (film name ((param init next ...) ...) body ...)
+  (let ((param init) ...)
+    (start-film name)
+    body ...
+    (save-film-frame)
+    (for ((e (cdr (enumerate-param (list init next ...)))))
+      (set! param e)
+      body ...
+      (retrying (save-film-frame)))
+    ...))
+|#

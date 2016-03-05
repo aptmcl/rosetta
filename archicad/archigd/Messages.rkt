@@ -21,6 +21,7 @@
   (required primitive:double arcangle 3)))
 (define-message-type doublemessage ((required primitive:double d 1)))
 (define-message-type intlistmsg ((repeated primitive:int32 ilist 1)))
+(define-message-type repeateddoublemsg ((repeated primitive:double dlist 1)))
 (define-message-type
  rooflevelsmsg
  ((repeated primitive:double angle 1) (repeated primitive:double height 2)))
@@ -77,12 +78,14 @@
   (required primitive:double zpos 3)
   (required primitive:double height 4)
   (required primitive:double width 5)
-  (required primitive:bool hole 6)))
+  (required primitive:bool hole 6)
+  (required primitive:string name 7)))
 (define-message-type
  windowmessage
  ((required primitive:string guid 1)
   (required primitive:double objloc 2)
-  (required primitive:double zpos 3)))
+  (required primitive:double zpos 3)
+  (required primitive:string name 4)))
 (define-message-type
  circlemessage
  ((required primitive:double p0x 1)
@@ -177,7 +180,8 @@
  meshmessage
  ((required primitive:double level 1)
   (required primitive:string material 2)
-  (required primitive:int32 bottomlevel 3)))
+  (required primitive:int32 bottomlevel 3)
+  (optional primitive:string overridematerial 4)))
 (define-message-type
  rotatemsg
  ((repeated primitive:string guid 1)
@@ -195,7 +199,7 @@
  ((required primitive:double posx 1)
   (required primitive:double posy 2)
   (required primitive:double bottom 3)
-  (required primitive:double height 4)
+  (optional primitive:double height 4)
   (required primitive:bool circlebased 5)
   (required primitive:double angle 6)
   (required primitive:double depth 7)
@@ -233,17 +237,6 @@
   (required primitive:double width 5)
   (required primitive:bool circlebased 6)))
 (define-message-type
- objectmsg
- ((required primitive:int32 index 1)
-  (required primitive:double posx 2)
-  (required primitive:double posy 3)
-  (required primitive:bool usexyfixsize 4)
-  (required primitive:double xratio 5)
-  (required primitive:double yratio 6)
-  (required primitive:bool useobjsectattrs 7)
-  (required primitive:double bottom 8)
-  (required primitive:double angle 9)))
-(define-message-type
  stairsmsg
  ((required primitive:string name 1)
   (required primitive:double posx 2)
@@ -253,7 +246,11 @@
   (required primitive:double bottom 6)
   (required primitive:double angle 7)
   (required primitive:int32 bottomindex 8)
-  (required primitive:bool usexyfixsize 9)))
+  (required primitive:bool usexyfixsize 9)
+  (repeated primitive:string names 10)
+  (repeated primitive:double values 11)
+  (repeated primitive:string strings 12)
+  (repeated primitive:bool isstring 13)))
 (define-message-type
  roofmsg
  ((required primitive:double height 1)
@@ -368,5 +365,67 @@
   (required primitive:double z 5)
   (required primitive:double angle 6)
   (required primitive:double scale 7)))
+(define-message-type
+ applymatrix
+ ((required primitive:string guid 1) (repeated primitive:double matrix 2)))
+(define-message-type
+ beammsg
+ ((required primitive:double x0 1)
+  (required primitive:double y0 2)
+  (required primitive:double x1 3)
+  (required primitive:double y1 4)
+  (required primitive:double beamheight 5)
+  (required primitive:double beamwidth 6)
+  (required primitive:double levelheight 7)
+  (required primitive:int32 bottomlevel 8)
+  (required primitive:double angle 9)
+  (required primitive:string material 10)))
+(define-message-type intarray ((repeated primitive:int32 lst 1)))
+(define-message-type doublearray ((repeated primitive:double lst 1)))
+(define-message-type boolarray ((repeated primitive:bool lst 1)))
+(define-message-type stringarray ((repeated primitive:string lst 1)))
+(define-message-type
+ objectmsg
+ ((required primitive:int32 index 1)
+  (required primitive:double posx 2)
+  (required primitive:double posy 3)
+  (required primitive:bool usexyfixsize 4)
+  (required primitive:double xratio 5)
+  (required primitive:double yratio 6)
+  (required primitive:bool useobjsectattrs 7)
+  (required primitive:double bottom 8)
+  (required primitive:double angle 9)
+  (repeated primitive:string names 10)
+  (repeated primitive:double doubles 11)
+  (repeated primitive:string strings 12)
+  (repeated primitive:int32 integers 13)
+  (repeated primitive:bool booleans 14)
+  (repeated primitive:string paramtype 15)
+  (repeated struct:intarray intarrays 16)
+  (repeated struct:doublearray doublearrays 17)
+  (repeated struct:boolarray boolarrays 18)
+  (repeated struct:stringarray stringarrays 19)
+  (repeated primitive:bool isarray 20)
+  (optional primitive:string name 21)))
+(define-message-type
+ libpartmsg
+ ((required primitive:string name 1)
+  (required primitive:string twocode 2)
+  (required primitive:string threecode 3)
+  (required primitive:string type 4)
+  (required primitive:string parentid 5)
+  (required primitive:string mastercode 6)
+  (required primitive:string parametercode 7)
+  (repeated primitive:string names 8)
+  (repeated primitive:double doubles 9)
+  (repeated primitive:string strings 10)
+  (repeated primitive:int32 integers 11)
+  (repeated primitive:bool booleans 12)
+  (repeated primitive:string paramtype 13)
+  (repeated struct:intarray intarrays 14)
+  (repeated struct:doublearray doublearrays 15)
+  (repeated struct:boolarray boolarrays 16)
+  (repeated struct:stringarray stringarrays 17)
+  (repeated primitive:bool isarray 18)))
 
 (provide (all-defined-out))

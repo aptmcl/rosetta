@@ -120,17 +120,24 @@ Function used to create a door into an existing wall
 Example of usage:
 (send (create-door wallId 1.0 0.0))
 |#
-(define (create-door guid objloc [width -10000] [bottom 0] [height -10000])
+(define (create-door guid
+                     objloc
+                     #:type-of-door [type-of-door "Door 18"]
+                     #:width [width -10000]
+                     #:bottom [bottom 0]
+                     #:height [height -10000])
   (let ((door-to-create (doormessage* #:guid guid
                                       #:objloc objloc
                                       #:zpos bottom
                                       #:height height
                                       #:width width
                                       #:hole #f
+                                      #:name type-of-door
                                       )))
     (write-msg "Door" door-to-create)
     (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
 
+;;TODO Review this function
 (define (create-hole-in-wall guid objloc [width -10000] [bottom 0] [height -10000])
   (let ((door-to-create (doormessage* #:guid guid
                                       #:objloc objloc
@@ -138,10 +145,12 @@ Example of usage:
                                       #:height height
                                       #:width width
                                       #:hole #t
+                                      #:name ""
                                       )))
     (write-msg "Door" door-to-create)
     (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
 
+;;TODO Review this function
 (define (create-hole-in-wall-test guid list-points [list-arcs (list)])
   (let ((msg (holemsg* #:guid guid )))
     (write-msg "HoleTest" msg)
@@ -162,10 +171,14 @@ Function used to create a window into a existing wall
 Example of usage:
 (send (create-window wallId 1.0 1.0))
 |#
-(define (create-window guid objloc zpos)
+(define (create-window guid
+                       objloc
+                       #:type-of-window [type-of-window "Window 18"]
+                       #:zpos [zpos 0])
   (let ((window-to-create (windowmessage* #:guid guid
                                           #:objloc objloc
-                                          #:zpos zpos)))
+                                          #:zpos zpos
+                                          #:name type-of-window)))
     (write-msg "Window" window-to-create)
     (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
 
@@ -190,8 +203,7 @@ Example of usage:
     (write-msg "CurtainWall" c-wall-msg)
     (send-points guide)
     (send-arcs listarcs)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input)))
-  )
+    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
 
 #|
 Function to create a Slab
@@ -201,6 +213,32 @@ Example of usage:
 (send (slab cPoints))
 
 |#
+
+(define (sub-polys-position-specific-argument points [counter 0])
+  (cond
+    [(null? points) (list)]
+    [(list? (car points)) (cons (+ counter (length (car points))) (sub-polys-position-specific-argument (cdr points) (+ counter (length (car points)))))]
+    [else (sub-polys-position-specific-argument (cdr points) counter)]))
+
+(define (sub-polys-position points [counter 0])
+  (cond
+    [(null? points) (list counter)]
+    [(list? (car points)) (cons counter (sub-polys-position (cdr points) (+ counter (length (car points)))))]
+    [else (sub-polys-position (cdr points) (+ counter 1))]))
+
+;;TODO rework conditions, too confusing...
+(define (close-guide points first-el [no-lists? #t])
+  (cond
+    [(and (null? points) no-lists?)(list first-el)]
+    [(null? points) (list)]
+    [(and (list? (car points)) no-lists?) (cons first-el (cons (append (car points) (list (caar points))) (close-guide (cdr points) first-el #f)))]
+    [(list? (car points))(cons (append (car points) (list (caar points))) (close-guide (cdr points) first-el #f))]
+    [else (cons (car points) (close-guide (cdr points) first-el no-lists?))]))
+
+(define (prepare-points points)
+  (let ((points (close-guide points (car points))))
+    (list (flatten points) (sub-polys-position points))))
+
 (define default-slab-alignment (make-parameter "Center"))
 (define default-slab-type-of-material (make-parameter "Composite"))
 #;(define default-slab-material  
@@ -214,15 +252,18 @@ Example of usage:
                      #:type-of-material [type-of-material (default-slab-type-of-material)]
                      #:material [material (cond [(eq? type-of-material "Basic") "GENERIC - INTERNAL CLADDING"]
                                                 [(eq? type-of-material "Composite") "Generic Slab/Roof"])]
-                     #:sub-polygons [sub-polygons (list (length guide))])
-  (let ((slab-msg (slabmessage* #:level bottom
-                                #:material material
-                                #:thickness thickness
-                                #:type type-of-material
-                                #:bottomlevel (storyinfo-index bottom-level)
-                                #:subpolygons sub-polygons)))
+                     ;#:sub-polygons [sub-polygons (list (length guide))]
+                     )
+  (let* ((slab-info (prepare-points guide))
+         (slab-msg (slabmessage* #:level bottom
+                                 #:material material
+                                 #:thickness thickness
+                                 #:type type-of-material
+                                 #:bottomlevel (storyinfo-index bottom-level)
+                                 #:subpolygons (cadr slab-info))))
     (write-msg "NewSlab" slab-msg)  
-    (send-points guide)
+    ;(send-points guide)
+    (send-points (car slab-info))
     ;(elementid-guid (read-sized (cut deserialize (elementid*) <>)input))
     (let ((result (read-sized (cut deserialize (elementid*) <>)input)))
       (if (and (elementid-crashmaterial result) 
@@ -246,7 +287,7 @@ Example of usage:
 (define (create-hole-slab slab-id listpoints [listarcs (list)])
   (let ((slab-msg (holemsg* #:guid slab-id)))
     (write-msg "HoleSlab" slab-msg)  
-    (send-points listpoints)
+    (send-points (append listpoints (list (car listpoints))))
     (send-arcs listarcs)
     (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
 
@@ -323,24 +364,37 @@ Example of usage:
                        #:bottom-level [bottom-level (current-level)]
                        #:top-level [top-level (upper-level #:level bottom-level)]
                        ;;ArchiCAD ONLY --------------------------------------------------------------
-                       #:circle-based? [circle-based? #t]
+                       #:circle-based? [circle-based? #f]
                        #:angle [angle 0]
                        #:depth [depth 0.15]
                        #:width [width 0.15]
                        #:slant-angle [slant-angle (/ pi 2)]
-                       #:slant-direction [slant-direction 0])
-  (let ((msg (columnmsg*  #:posx (cx orig-pos)
-                          #:posy (cy orig-pos)
-                          #:bottom 0
-                          #:height 0
-                          #:circlebased circle-based?
-                          #:angle angle
-                          #:depth depth
-                          #:width width
-                          #:slantangle slant-angle
-                          #:slantdirection slant-direction
-                          #:bottomindex (storyinfo-index bottom-level)
-                          #:upperindex (storyinfo-index top-level))))
+                       #:slant-direction [slant-direction 0]
+                       #:height [height null])
+  (let ((msg (if (null? height)
+                 (columnmsg*  #:posx (cx orig-pos)
+                              #:posy (cy orig-pos)
+                              #:bottom (cz orig-pos)
+                              #:circlebased circle-based?
+                              #:angle angle
+                              #:depth depth
+                              #:width width
+                              #:slantangle slant-angle
+                              #:slantdirection slant-direction
+                              #:bottomindex (storyinfo-index bottom-level)
+                              #:upperindex (storyinfo-index top-level))
+                 (columnmsg*  #:posx (cx orig-pos)
+                              #:posy (cy orig-pos)
+                              #:bottom (cz orig-pos)
+                              #:height height
+                              #:circlebased circle-based?
+                              #:angle angle
+                              #:depth depth
+                              #:width width
+                              #:slantangle slant-angle
+                              #:slantdirection slant-direction
+                              #:bottomindex (storyinfo-index bottom-level)
+                              #:upperindex (storyinfo-index top-level)))))
     (write-msg "NewColumn" msg)
     ;(elementid-guid (read-sized (cut deserialize (elementid*) <>)input))
     (let ((result (read-sized (cut deserialize (elementid*) <>)input)))
@@ -375,6 +429,92 @@ Example of usage:
             (error "The material does not exist"))
           (elementidlist-guid result)))))
 
+(define (create-beam p0
+                     p1
+                     #:beam-height [beam-height 0.15]
+                     #:beam-width [beam-width 0.15]
+                     #:bottom-level [bottom-level (current-level)]
+                     #:material [material "GENERIC - STRUCTURAL"])
+  (let* ((new-p0 (loc-in-world p0))
+         (new-p1 (loc-in-world p1))
+         (msg (beammsg* #:x0 (cx new-p0)
+                        #:y0 (cy new-p0)
+                        #:x1 (cx new-p1)
+                        #:y1 (cy new-p1)
+                        #:beamheight beam-height
+                        #:beamwidth beam-width
+                        #:levelheight (cz new-p0)
+                        #:bottomlevel (storyinfo-index bottom-level)
+                        #:angle (- pi/2 (sph-psi (p-p p1 p0)))
+                        #:material material)))
+    (write-msg "Beam" msg)
+    ;(elementid-guid (read-sized (cut deserialize (elementid*) <>)input))
+    (let ((result (read-sized (cut deserialize (elementid*) <>)input)))
+      (if (and (elementid-crashmaterial result) 
+               (crash-on-no-material?))
+          (begin 
+            (disconnect)
+            (error "The material does not exist"))
+          (elementid-guid result)))))
+
+(define (split-params-list lsst)
+  (let ((names (list))
+        (int-values (list))
+        (double-values (list))
+        (string-values (list))
+        (bool-values (list))
+        (lst-int-values (list))
+        (lst-double-values (list))
+        (lst-string-values (list))
+        (lst-bool-values (list))
+        (param-types (list))
+        (is-array? (list)))
+    (for ([lst lsst])
+         (let ((name (car lst))
+               (value (cadr lst)))
+           (set! names (append names (list name)))
+           (if (list? value)
+               (begin
+                 (set! is-array? (append is-array? (list #t)))
+                 (cond [(string? (car value))
+                        (begin
+                          (set! param-types (append param-types (list "s")))
+                          (set! lst-string-values (append lst-string-values (list (stringarray* #:lst value)))))]
+                       [(real? (car value))
+                        (begin
+                          (set! param-types (append param-types (list "d")))
+                          (set! lst-double-values (append lst-double-values (list (doublearray* #:lst value)))))]
+                       [(integer? (car value))
+                        (begin
+                          (set! param-types (append param-types (list "i")))
+                          (set! lst-int-values (append lst-int-values (list (intarray* #:lst value)))))]
+                       [(boolean? (car value))
+                        (begin
+                          (set! param-types (append param-types (list "b")))
+                          (set! lst-bool-values (append lst-bool-values (list (boolarray* #:lst value)))))]))
+               (begin
+                 (set! is-array? (append is-array? (list #f)))
+                 (cond [(string? value)
+                        (begin
+                          (set! param-types (append param-types (list "s")))
+                          (set! string-values (append string-values (list value))))]
+                       [(real? value)
+                        (begin
+                          (set! param-types (append param-types (list "d")))
+                          (set! double-values (append double-values (list value))))]
+                       [(integer? value)
+                        (begin
+                          (set! param-types (append param-types (list "i")))
+                          (set! int-values (append int-values (list value))))]
+                       [(boolean? value)
+                        (begin
+                          (set! param-types (append param-types (list "b")))
+                          (set! bool-values (append bool-values (list value))))])))))
+    (list names int-values double-values string-values bool-values lst-int-values lst-double-values lst-string-values lst-bool-values param-types is-array?)))
+
+
+
+
 #|
 Function to create a object
  index: index that indentifies what object will be used (needs better documentation)
@@ -382,23 +522,58 @@ Function to create a object
 Example of usage: 
 (send (create-object 1324 (xy 0.0 0.0)))
 |#
-(define (create-object index
+(define (create-object index/name
                        orig-pos
                        #:use-xy-fix-size? [use-xy-fix-size? #f]
                        #:x-ratio [x-ratio 1]
                        #:y-ratio [y-ratio 1]
                        #:use-obj-sect-attrs? [use-obj-sect-attrs? #t]
                        #:angle [angle 0]
-                       #:height [height 0])
-  (let ((msg (objectmsg* #:index index
-                         #:posx (cx orig-pos)
-                         #:posy (cy orig-pos)
-                         #:usexyfixsize use-xy-fix-size?
-                         #:useobjsectattrs use-obj-sect-attrs?
-                         #:xratio x-ratio
-                         #:yratio y-ratio
-                         #:bottom height
-                         #:angle angle)))
+                       #:height [height 0]
+                       #:additional-parameters [additional-parameters (list)])
+  (let* ((splitted-list (split-params-list additional-parameters))
+         (msg (if (string? index/name)
+                  (objectmsg* #:index 0
+                              #:posx (cx orig-pos)
+                              #:posy (cy orig-pos)
+                              #:usexyfixsize use-xy-fix-size?
+                              #:useobjsectattrs use-obj-sect-attrs?
+                              #:xratio x-ratio
+                              #:yratio y-ratio
+                              #:bottom height
+                              #:angle angle
+                              #:names (list-ref splitted-list 0)
+                              #:integers (list-ref splitted-list 1)
+                              #:doubles (list-ref splitted-list 2)
+                              #:strings (list-ref splitted-list 3)
+                              #:booleans (list-ref splitted-list 4)
+                              #:intarrays (list-ref splitted-list 5)
+                              #:doublearrays (list-ref splitted-list 6)
+                              #:stringarrays (list-ref splitted-list 7)
+                              #:boolarrays (list-ref splitted-list 8)
+                              #:paramtype (list-ref splitted-list 9)
+                              #:isarray (list-ref splitted-list 10)
+                              #:name index/name)
+                  (objectmsg* #:index index/name
+                              #:posx (cx orig-pos)
+                              #:posy (cy orig-pos)
+                              #:usexyfixsize use-xy-fix-size?
+                              #:useobjsectattrs use-obj-sect-attrs?
+                              #:xratio x-ratio
+                              #:yratio y-ratio
+                              #:bottom height
+                              #:angle angle
+                              #:names (list-ref splitted-list 0)
+                              #:integers (list-ref splitted-list 1)
+                              #:doubles (list-ref splitted-list 2)
+                              #:strings (list-ref splitted-list 3)
+                              #:booleans (list-ref splitted-list 4)
+                              #:intarrays (list-ref splitted-list 5)
+                              #:doublearrays (list-ref splitted-list 6)
+                              #:stringarrays (list-ref splitted-list 7)
+                              #:boolarrays (list-ref splitted-list 8)
+                              #:paramtype (list-ref splitted-list 9)
+                              #:isarray (list-ref splitted-list 10)))))
     (write-msg "Object" msg)
     (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))
     ))
@@ -408,23 +583,39 @@ Function to create stairs
  index: index that indentifies what stairs will be used (needs better documentation)
  orig-pos: position of the stairs
 |#
-(define (create-stairs #:name name 
-                       #:orig-pos orig-pos 
+(define (create-stairs name 
+                       orig-pos 
                        #:angle [angle 0] 
                        #:x-ratio [x-ratio 1] 
                        #:y-ratio [y-ratio 1]
                        #:bottom-offset [bottom-offset 0] 
                        #:bottom-level [bottom-level (current-level)]
-                       #:use-xy-fix-size [use-xy-fix-size #f])
-  (let ((msg (stairsmsg* #:name name
-                         #:posx (cx orig-pos)
-                         #:posy (cy orig-pos)
-                         #:bottom bottom-offset
-                         #:xratio x-ratio
-                         #:yratio y-ratio
-                         #:angle angle
-                         #:bottomindex (storyinfo-index bottom-level)
-                         #:usexyfixsize use-xy-fix-size)))
+                       #:use-xy-fix-size [use-xy-fix-size #f]
+                       #:additional-parameters [additional-parameters (list)])
+  (let* ((splitted-list (split-params-list additional-parameters))
+         (msg (stairsmsg* #:name name
+                          #:posx (cx orig-pos)
+                          #:posy (cy orig-pos)
+                          #:bottom bottom-offset
+                          #:xratio x-ratio
+                          #:yratio y-ratio
+                          #:angle angle
+                          #:bottomindex (storyinfo-index bottom-level)
+                          #:usexyfixsize use-xy-fix-size
+                          #:names (list-ref splitted-list 0)
+                          #:integers (list-ref splitted-list 1)
+                          #:doubles (list-ref splitted-list 2)
+                          #:strings (list-ref splitted-list 3)
+                          #:booleans (list-ref splitted-list 4)
+                          #:intarrays (list-ref splitted-list 5)
+                          #:doublearrays (list-ref splitted-list 6)
+                          #:stringarrays (list-ref splitted-list 7)
+                          #:boolarrays (list-ref splitted-list 8)
+                          #:paramtype (list-ref splitted-list 9)
+                          #:isarray (list-ref splitted-list 10)
+                          
+                          )))
+    ;(list names int-values double-values string-values bool-values lst-int-values lst-double-values lst-string-values lst-bool-values param-types is-array?)
     (write-msg "Stairs" msg)
     ;(elementid-guid (read-sized (cut deserialize (elementid*) <>)input))
     (let ((result (read-sized (cut deserialize (elementid*) <>)input)))
@@ -434,6 +625,49 @@ Function to create stairs
             (disconnect)
             (error "The name does not exist"))
           (elementid-guid result)))      
+    ))
+#|
+Function to create a library part
+At the moment does not return anything. It would be more interesting than returning an idex, to be able to use the name given to the library part.
+Example:
+ (send (create-library-part "Test Library Part 1"
+                            "PROJECT2 3, 270, 2 \r\n"
+                            "MATERIAL mat \r\n BLOCK a, b, 1 \r\n ADD a * 0.5, b* 0.5, 1 \r\n CYLIND zzyzx - 3, MIN (a, b) * 0.5 \r\n ADDZ zzyzx - 3 \r\n CONE 2, MIN (a, b) * 0.5, 0.0, 90, 90 \r\n"
+                            #:parameter-code "VALUES \"zzyzx\" RANGE [6,]"))
+This example uses \r\n, newline for windows, it also works with \n...
+
+To use the created library part, reference by name!
+(send (create-object "Test Library Part 1" (u0)))
+|#
+(define (create-library-part name
+                             2D-section
+                             3D-section
+                             #:master-code [master-code ""]
+                             #:parameter-code [parameter-code ""]
+                             #:type [type "Object"]
+                             #:parent-id [parent-id "ModelElement"]
+                             #:additional-parameters [additional-parameters (list)])
+  (let* ((splitted-list (split-params-list additional-parameters))
+         (msg (libpartmsg* #:name name
+                           #:twocode 2D-section
+                           #:threecode 3D-section
+                           #:mastercode master-code
+                           #:parametercode parameter-code
+                           #:type type
+                           #:parentid parent-id
+                           #:names (list-ref splitted-list 0)
+                           #:integers (list-ref splitted-list 1)
+                           #:doubles (list-ref splitted-list 2)
+                           #:strings (list-ref splitted-list 3)
+                           #:booleans (list-ref splitted-list 4)
+                           #:intarrays (list-ref splitted-list 5)
+                           #:doublearrays (list-ref splitted-list 6)
+                           #:stringarrays (list-ref splitted-list 7)
+                           #:boolarrays (list-ref splitted-list 8)
+                           #:paramtype (list-ref splitted-list 9)
+                           #:isarray (list-ref splitted-list 10))))
+    (write-msg "LibraryPart" msg)
+    name
     ))
 #|
 Function to create a plane roof
@@ -459,13 +693,14 @@ Example of usage:
                      #:type-of-material [type-of-material (default-roof-type-of-material)]
                      #:material [material (cond [(eq? type-of-material "Basic") "GENERIC - STRUCTURAL"]
                                                 [(eq? type-of-material "Composite") "Generic Roof/Shell"])])
-  (let ((roof-msg (roofmsg* #:height height
+  (let ((roof-info (prepare-points guide))
+        (roof-msg (roofmsg* #:height height
                             #:material material
                             #:thickness thickness
                             #:type type-of-material
                             #:bottomlevel (storyinfo-index bottom-level))))
     (write-msg "NewRoof" roof-msg)  
-    (send-points guide)
+    (send-points (car roof-info))
     ;(elementid-guid (read-sized (cut deserialize (elementid*) <>)input))
     (let ((result (read-sized (cut deserialize (elementid*) <>)input)))
       (if (and (elementid-crashmaterial result) 
@@ -529,10 +764,16 @@ Function to create a poly roof
                      ;;ArchiCAD ONLY --------------------------------------------------------------
                      #:bottom [bottom 0]
                      #:material [material (default-mesh-material)]
-                     #:level-lines [level-lines (list)])
-  (let ((slab-msg (meshmessage* #:level bottom
-                                #:material material
-                                #:bottomlevel (storyinfo-index bottom-level))))
+                     #:level-lines [level-lines (list)]
+                     #:override-material [override-material null])
+  (let ((slab-msg (if (null? override-material)
+                      (meshmessage* #:level bottom
+                                    #:material material
+                                    #:bottomlevel (storyinfo-index bottom-level))
+                      (meshmessage* #:level bottom
+                                    #:material material
+                                    #:bottomlevel (storyinfo-index bottom-level)
+                                    #:overridematerial override-material))))
     (write-msg "Mesh" slab-msg)  
     (send-points guide)
     (send-points level-lines)

@@ -1,4 +1,4 @@
-#lang typed/racket/base #:no-optimize
+#lang typed/racket/base/no-check
 (require racket/math
          racket/list
          racket/function)
@@ -19,6 +19,8 @@
          delete-shape
          delete-shapes
          delete-all-shapes
+         create-layer
+         current-layer
          curve-start-location
          curve-end-location
          curve-domain
@@ -38,10 +40,12 @@
          prompt-real
          prompt-shape
          render-view
-         view
-         view-top
          select-shape
          select-shapes
+         shape-layer
+         shape-color
+         view
+         view-top
          zoom-extents
 )
 
@@ -167,12 +171,14 @@
        (%add-ellipse (u0 world-cs) (xyz 0 radius-y 0) (/ radius-x radius-y)))
    center))
 
+(define (%add-surface-from-curve [curve : Ref]) : Ref
+  (begin0
+    (singleton-ref (%add-region (list curve)))
+    (%delete curve)))
+  
 (define (%add-surface-circle [center : Loc] [radius : Real])
   (%transform
-   (let ((circ (%add-circle (u0 world-cs) radius)))
-     (begin0
-       (singleton-ref (%add-region (list circ)))
-       (%delete circ)))
+   (%add-surface-from-curve (%add-circle (u0 world-cs) radius))
    center))
 
 (def-shape (surface-circle [center : Loc (u0)] [radius : Real 1])
@@ -199,6 +205,15 @@
              (begin0
                (singleton-ref (%add-region curves))
                (for ((c (in-list curves))) (%delete c))))))))
+
+(def-shape (surface-ellipse [center : Loc (u0)] [radius-x : Real 1] [radius-y : Real 1])
+  (%transform
+   (if (> radius-x radius-y)
+       (%add-surface-from-curve
+        (%add-ellipse (u0 world-cs) (xyz radius-x 0 0) (/ radius-y radius-x)))
+       (%add-surface-from-curve
+        (%add-ellipse (u0 world-cs) (xyz 0 radius-y 0) (/ radius-x radius-y))))
+   center))
 
 (def-shape* (line [pts : Loc *])
   (%add-3d-poly pts))
@@ -627,7 +642,7 @@ The following example does not work as intended. Rotating the args to closed-spl
     (%join-curves (shapes-refs shapes))
     (for-each (inst mark-deleted! RefOp) shapes)))
 
-(def-shape (revolve [shape : Shape] [p : Loc (u0)] [n : Loc (vz 1)] [start-angle : Real 0] [amplitude : Real 2pi])
+(def-shape (revolve [shape : Shape] [p : Loc (u0)] [n : Vec (vz 1)] [start-angle : Real 0] [amplitude : Real 2pi])
   (let ((p (loc-from-o-p/v p n)))
     (begin0
       (map-ref ([r shape])
@@ -727,7 +742,7 @@ The following example does not work as intended. Rotating the args to closed-spl
   (union shape (mirror shape p n)))
 
 (provide bounding-box)
-(define (bounding-box [s : Shape]) : Locs
+(define (bounding-box [s : Shape]) : BBox
   (define (combine [bb0 : (List Loc Loc)] [bb1 : (List Loc Loc)])
     : (List Loc Loc)
     (let ([p0 (car bb0)] [p1 (cadr bb0)] [p2 (car bb1)] [p3 (cadr bb1)])
@@ -740,21 +755,29 @@ The following example does not work as intended. Rotating the args to closed-spl
   (let ([rs : Refs (shape-refs s)])
     (let loop ([bb : (List Loc Loc) (%bounding-box (car rs))] [rs : Refs (cdr rs)])
       (if (null? rs)
-          (let ((p0 (car bb)) (p1 (cadr bb)))
-            (let ((dx (- (cx p1) (cx p0)))
-                  (dy (- (cy p1) (cy p0)))
-                  (dz (- (cz p1) (cz p0))))
-              (list p0 (+x p0 dx) (+xy p0 dx dy) (+y p0 dy)
-                    p1 (+x p1 dx) (+xy p1 dx dy) (+y p1 dy))))
+          (bbox (car bb) (cadr bb))
           (loop (combine bb (%bounding-box (car rs)))
                 (cdr rs))))))
+
+;;Color
+(define shape-color
+  (case-lambda
+    [([shape : Shape])
+     (%true-color (shape-ref shape))]
+    [([shape : Shape] [new-color : Color])
+     (do-ref ([r shape])
+       (%true-color r new-color))
+     (void)]))
+
 
 ;;Layers&Materials
 (define-type Layer String)
 (define-type Material String)
 
-(define (create-layer [name : String]) : Layer
-  (%add-layer name)
+(define (create-layer [name : String] [color : (Option Color) #f]) : Layer
+  (let ((layer (%add-layer name)))
+    (when color
+      (%true-color layer color)))
   name)
 
 (define current-layer
@@ -811,16 +834,27 @@ The following example does not work as intended. Rotating the args to closed-spl
   (void))
 
 (provide render-view)
-(define (render-view name) : Void
-  ;(%renderView (prepare-for-file (render-pathname name)) (render-width) (render-height))
+(define (render-view [name : String]) : Void
+  (%skystatus %skystatus:background-and-illumination)
+  (%render-command (render-width)
+                   (render-height)
+                   (prepare-for-saving-file (render-pathname name)))
   (void))
 
 (provide render-stereo-view)
 (define (render-stereo-view name) : Void
   (displayln "render-stereo-view needs to be finished")
-  #;#;(%RenderResolution (vector (render-width) (render-height)))
-   (%render-view (prepare-for-file (render-pathname name)))
+  #;#;
+  (%RenderResolution (vector (render-width) (render-height)))
+  (%render-view (prepare-for-saving-file (render-pathname name)))
   (void))
+
+(provide save-film-frame)
+(define (save-film-frame [obj : Any (void)]) : Any
+  (parameterize ((render-kind-dir "Film"))
+    (render-view (frame-filename (film-filename) (film-frame)))
+  (film-frame (+ (film-frame) 1))
+  obj))
 
 (define (zoom-extents) : Void
   (%zoom-extents))

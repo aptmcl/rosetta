@@ -1,4 +1,4 @@
-#lang typed/racket/base
+#lang typed/racket/base/no-check
 (require racket/math racket/list racket/function)
 (require "../base/utils.rkt"
          "../base/coord.rkt"
@@ -17,6 +17,8 @@
          delete-shape
          delete-shapes
          delete-all-shapes
+         create-layer
+         current-layer
          curve-start-location
          curve-end-location
          curve-domain
@@ -38,6 +40,8 @@
          view-top
          select-shape
          select-shapes
+         shape-layer
+         shape-color
          zoom-extents
 )
 
@@ -130,13 +134,12 @@
   (%add-ellipse center radius-x radius-y))
 
 (def-shape (surface-circle [center : Loc (u0)] [radius : Real 1])
-  (%add-surface-circle center (cast radius Positive-Real)))
+  (%add-surface-from-curve (%add-circle center (cast radius Positive-Real))))
 
-(define (%add-surface-circle [center : Loc] [radius : Positive-Real]) : Ref
-  (let ((circ (%add-circle center radius)))
-    (begin0
-      (singleton-ref (%add-planar-srf (list circ)))
-      (%delete-object circ))))
+(define (%add-surface-from-curve [curve : Ref]) : Ref
+  (begin0
+    (singleton-ref (%add-planar-srf (list curve)))
+    (%delete-object curve)))
 
 (def-shape (surface-arc [center : Loc (u0)] [radius : Real 1] [start-angle : Real 0] [amplitude : Real pi])
   (cond ((= radius 0)
@@ -144,7 +147,7 @@
         ((= amplitude 0)
          (%add-point (+pol center radius start-angle)))
         ((>= (abs amplitude) 2pi)
-         (%add-surface-circle center (cast radius Positive-Real)))
+         (%add-surface-from-curve (%add-circle center (cast radius Positive-Real))))
         (else
          (let ((curves
                 (list
@@ -159,6 +162,10 @@
            (begin0
              (singleton-ref (%add-planar-srf curves))
              (%delete-objects curves))))))
+
+(def-shape (surface-ellipse [center : Loc (u0)] [radius-x : Real 1] [radius-y : Real 1])
+  (%add-surface-from-curve (%add-ellipse center radius-x radius-y)))
+
 
 (def-shape* (line [pts : Loc *])
   (%add-polyline pts))
@@ -566,7 +573,7 @@
 (define (union-mirror [shape : Shape] [p : Loc (u0)] [n : Vec (vz)])
   (union shape (mirror shape p n)))
 
-(define (bounding-box [s : Shape]) : Locs
+(define (bounding-box [s : Shape]) : BBox
   (%bounding-box (shape-refs s)))
 
 ;;Selectors
@@ -601,10 +608,14 @@
          (end (vector-ref d 1)))
     (map-division (lambda ([t : Real])
                     (f (%curve-perp-frame r t)))
-                  start end n last?)))
+                  start end n last?))) 
 
 (define (map-curve-length-division [f : (-> Loc A)] [curve : Shape] [n : Integer] [last? : Boolean #t]) : (Listof A)
   (let ((r (shape-ref curve)))
+    (map-division (lambda ([l : Real])
+                    (f (%curve-perp-frame r (%curve-closest-point r (%curve-arc-length-point r l)))))
+                  0 (%curve-length r) n last?)
+    #;
     (let ((params (%divide-curve-length r (/ (%curve-length r) n) #f #f)))
       (let ((limit (- (vector-length params) (if last? 0 1))))
         (for/list : (Listof A) ((i : Integer (in-range 0 limit)) ;;HACK needed to prevent a bug in Typed Racket
@@ -735,3 +746,36 @@ Command: _viewcapturetofile
   (%irregular-pyramid-frustum
    pts
    (map (lambda ([pt : Loc]) (+z pt height)) pts)))
+
+(define shape-color
+  (case-lambda
+    [([shape : Shape])
+     (%object-color (shape-ref shape))]
+    [([shape : Shape] [new-color : Color])
+     (do-ref ([r shape])
+       (%object-color r new-color))
+     (void)]))
+
+(define-type Layer String)
+
+(define (create-layer [name : String] [color : (Option Color) #f]) : Layer
+  (%add-layer name (or color %com-omit))
+  name)
+
+(define current-layer
+  (case-lambda
+    [()
+     (%current-layer)]
+    [([new-layer : Layer])
+     (%current-layer new-layer)]))
+
+(define shape-layer
+  (case-lambda
+    [([shape : Shape])
+     (%object-layer (shape-ref shape))]
+    [([shape : Shape] [new-layer : Layer])
+     (do-ref ([r shape])
+       (%object-layer r new-layer))
+     (void)]))
+
+

@@ -1,4 +1,4 @@
-#lang typed/racket/base
+#lang typed/racket/base/no-check
 (require racket/function)
 (require "../base/typed-com.rkt"
          "../base/utils.rkt"
@@ -146,6 +146,19 @@
                    [(vf pl 1 2) (vf pl 2 2) (vf pl 3 2) (vf pl 0 2)]
                    [0           0           0           1]]))))
 
+
+(define-type RGB Integer)
+
+(define (color->rgb [c : Color]) : RGB
+  (+ (arithmetic-shift (rgb-red c) 0)
+     (arithmetic-shift (rgb-green c) 8)
+     (arithmetic-shift (rgb-blue c) 16)))
+
+(define (rgb->color [c : RGB]) : Color
+  (rgb (cast (bitwise-bit-field c 0 8) Byte)
+       (cast (bitwise-bit-field c 8 16) Byte)
+       (cast (bitwise-bit-field c 16 24) Byte)))
+
 #|
 ;;This is so wrong. This only works with curves with a single intersection.
 (define (list<-intersection-array v)
@@ -190,7 +203,8 @@
                      [Rh-Matrix Loc]
                      [Real-Matrix Loc]
                      [Xform Loc]
-                     [OutPlane Loc]))
+                     [OutPlane Loc]
+                     [RGB Color]))
 
 ;;In most cases, upgrading from one type to another requires a conversion function for the type values
 
@@ -214,7 +228,9 @@
      [BoolOrVoid Boolean     boolean-or-void->boolean]
 ;     [Real-Matrix Rh-Matrix  matrix->rh-matrix]
      [Loc       Rh-Matrix    loc->rh-matrix]
-     [MeshIndexes ArrMeshIndexes mesh-indexes->arr-mesh-indexes]))
+     [MeshIndexes ArrMeshIndexes mesh-indexes->arr-mesh-indexes]
+     [RGB       Color        rgb->color]
+     [Color     RGB          color->rgb]))
 
 
 (def-com add-arc ([center Plane] [radius Double] [angle Double]) Id)
@@ -248,12 +264,7 @@
 (def-com add-interp-curve ([points ArrDouble] #:opt [degree Integer] [knot-style Knot-Style] [start-tangent Point] [end-tangent Point]) Id)
 (def-com add-interp-curve-ex ([points ArrDouble] #:opt [degree Integer] [knot-style Knot-Style] [sharp Boolean] [start-tangent Point] [end-tangent Point]) Id)
 (def-com (add-interp-curve-ex2 AddInterpCurveEx) ([points ArrDouble] #:opt [degree Integer] [knot-style Knot-Style] [sharp Boolean]) Id)
-
-#|
-; edit: color marshaling
-(def-com Add-layer (#:opt name integer Boolean Boolean name) Identity)
-|#
-
+(def-com add-layer (#:opt [name String] [color RGB] [visible? Boolean] [locked? Boolean] [parent String]) Any) ;;Any to handle void from already existent layers
 (def-com add-line ([start Point] [end Point]) Id)
 
 (define-incr-enum LoftType
@@ -353,7 +364,7 @@
   (U Void
      (Vector (Vector Double Double Double)
              (Vector Double Double)
-             (Vector Integer Integer)
+             (Vector Double Double)
              (Vector Double Double Double))))
 
 (def-com cap-planar-holes ([shape Id]) Boolean)
@@ -378,10 +389,10 @@
   Boolean)
 
 (def create-solid (arr-ids #:opt delete?) singleton-id)
-(def current-layer (#:opt name) name)
 |#
+(def-com current-layer (#:opt [name String]) String)
 (def-com current-view (#:opt [name String]) String)
-(def-com curve-arc-length-point ([curve Id] [l Real]) Loc)
+(def-com curve-arc-length-point ([curve Id] [l Real]) Point)
 #|
 (def-com CurveArea
 (def-com CurveAreaCentroid
@@ -408,7 +419,7 @@
 (def-com CurveEditPoints
 |#
 (def-com curve-end-point ([curve Id]) Point)
-(def-com curve-evaluate ([curve Id] [t Real] #:opt [derivative Integer]) (Vectorof Loc))
+(def-com curve-evaluate ([curve Id] [t Real] #:opt [derivative Integer]) Points)
 #|
 CurveFilletPoints
 |#
@@ -440,7 +451,7 @@ CurveRailFrames
 #|
 CurveSurfaceIntersection
 |#
-(def-com curve-tangent ([curve Id] [t Real] #:opt [segment Integer]) Vec)
+(def-com curve-tangent ([curve Id] [t Real] #:opt [segment Integer]) Direction)
 #|
 CurveWeights
 DivideCurve
@@ -518,6 +529,7 @@ DivideCurveEquidistant
 ; edit: create an enum for flags
 (def last-created-objects (#:opt Boolean integer) ids)
 |#
+(def-com layer-color ([layer String] #:opt [color RGB]) RGB)
 (def-com join-curves ([shapes Ids] #:opt [delete? Boolean] [tolerance Real]) Ids)
 (def-com join-surfaces ([shapes Ids] #:opt [delete? Boolean]) Id)
 ;(def material-name (integer #:opt string) string)
@@ -537,8 +549,10 @@ DivideCurveEquidistant
 
 ;;How do we access the COM-OBJECT if Rhino only returns Strings?
 (def-com-method normalized-length-parameter curve ([curve Com-Object] [t Real]) Real)
+(def-com object-layer ([shape Id] #:opt [name String]) String)
+(def-com object-color ([shape Id] #:opt [color RGB]) RGB)
+(def-com (objects-color ObjectColor) ([shape Ids] #:opt [color RGB]) RGB)
 #|
-(def object-layer (id #:opt name) name)
 (def offset-curve (id point real #:opt point integer) ids)
 (def offset-surface (id real) id)
 (def plane-from-frame ((o point) (x point) (y point)) rh-plane)
