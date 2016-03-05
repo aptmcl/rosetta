@@ -742,7 +742,7 @@ The following example does not work as intended. Rotating the args to closed-spl
   (union shape (mirror shape p n)))
 
 (provide bounding-box)
-(define (bounding-box [s : Shape]) : Locs
+(define (bounding-box [s : Shape]) : BBox
   (define (combine [bb0 : (List Loc Loc)] [bb1 : (List Loc Loc)])
     : (List Loc Loc)
     (let ([p0 (car bb0)] [p1 (cadr bb0)] [p2 (car bb1)] [p3 (cadr bb1)])
@@ -755,12 +755,7 @@ The following example does not work as intended. Rotating the args to closed-spl
   (let ([rs : Refs (shape-refs s)])
     (let loop ([bb : (List Loc Loc) (%bounding-box (car rs))] [rs : Refs (cdr rs)])
       (if (null? rs)
-          (let ((p0 (car bb)) (p1 (cadr bb)))
-            (let ((dx (- (cx p1) (cx p0)))
-                  (dy (- (cy p1) (cy p0)))
-                  (dz (- (cz p1) (cz p0))))
-              (list p0 (+x p0 dx) (+xy p0 dx dy) (+y p0 dy)
-                    p1 (+x p1 dx) (+xy p1 dx dy) (+y p1 dy))))
+          (bbox (car bb) (cadr bb))
           (loop (combine bb (%bounding-box (car rs)))
                 (cdr rs))))))
 

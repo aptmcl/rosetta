@@ -573,7 +573,7 @@
 (define (union-mirror [shape : Shape] [p : Loc (u0)] [n : Vec (vz)])
   (union shape (mirror shape p n)))
 
-(define (bounding-box [s : Shape]) : Locs
+(define (bounding-box [s : Shape]) : BBox
   (%bounding-box (shape-refs s)))
 
 ;;Selectors
