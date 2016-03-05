@@ -289,6 +289,7 @@
 (def-backend (mirror [shape : Shape] [p : Loc (u0)] [n : Vec (vz)] [copy? : Boolean #t]))
 (def-backend (union-mirror [shape : Shape] [p : Loc (u0)] [n : Vec (vz)]))
 (def-backend (bounding-box [s : Shape]))
+
 #;
 (def-backend shape-color
   (case-lambda
@@ -327,6 +328,7 @@
      (void)]))
 (def-backend (fast-view))
 (def-backend (view [camera : (Option Loc) #f] [target : (Option Loc) #f] [lens : (Option Real) #f]))
+(def-backend (view-expression))
 (def-backend (view-top))
 (def-backend (render-view [name : String]))
 (def-backend (save-film-frame [obj : Any (void)]))
@@ -346,4 +348,7 @@
 
 (def-backend (all-shapes) (current-in-backend))
 (def-backend (delete-all-shapes) (current-out-backend))
+(def-backend (delete-shape [s : Shape]))
+(def-backend (delete-shapes [s : Shapes]))
+
 (def-backend (connect-to-revit) (current-out-backend))
