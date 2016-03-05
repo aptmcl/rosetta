@@ -54,6 +54,18 @@
 
 (define default-level-to-level-height (make-parameter (mt 3)))
 
+(define default-beam-family (make-parameter (idstrc* #:id 0)))
+
+(define default-wall-family (make-parameter (idstrc* #:id 0)))
+
+(define default-slab-family (make-parameter (idstrc* #:id 0)))
+
+(define default-roof-family (make-parameter (idstrc* #:id 0)))
+
+(define default-column-family (make-parameter (idstrc* #:id 0)))
+
+(define default-door-family (make-parameter (idstrc* #:id 0)))
+
 (define server-addr "localhost")
 
 (define (connect-to-revit)
@@ -161,8 +173,30 @@
                                #:p1coordy (cy p1)
                                #:p1coordz (cz p1))))
 
+(define (cylinder-metric p0 r p1)
+  (send/rcv-id "cylinderMetric"
+               (cylinderbstrc* #:p0coordx (cx p0)
+                               #:p0coordy (cy p0)
+                               #:p0coordz (cz p0)
+                               #:radius r
+                               #:p1coordx (cx p1)
+                               #:p1coordy (cy p1)
+                               #:p1coordz (cz p1))))
+
 (define (sphere p r)
   (send/rcv-polyid "sphere"
+                   (spherestrc* #:p0coordx (- (cx p) r)
+                                #:p0coordy (cy p)
+                                #:p0coordz (cz p)
+                                #:p1coordx (+ (cx p) r)
+                                #:p1coordy (cy p)
+                                #:p1coordz (cz p)
+                                #:p2coordx (cx p)
+                                #:p2coordy (+ (cy p) r)
+                                #:p2coordz (cz p))))
+
+(define (sphere-metric p r)
+  (send/rcv-id "sphereMetric"
                    (spherestrc* #:p0coordx (- (cx p) r)
                                 #:p0coordy (cy p)
                                 #:p0coordz (cz p)
@@ -244,18 +278,20 @@
                               #:height height
                               #:level-id level)))
 
-(define (insert-door id loc)
+(define (insert-door id loc #:family[family (default-door-family)])
   (send/rcv-id "insertDoor"
                (insertdoorstrc* #:hostid (idstrc-id id)
                                 #:p0coordx (cx loc)
                                 #:p0coordy (cy loc)
-                                #:p0coordz (cz loc))))
+                                #:p0coordz (cz loc)
+                                #:family family)))
 
-(define (insert-door-relative id deltaX deltaY)
+(define (insert-door-relative id deltaX deltaY #:family[family (default-door-family)])
   (send/rcv-id "insertDoor1"
                (insertdoorbstrc* #:hostid (idstrc-id id)
                                  #:deltax deltaX
-                                 #:deltay deltaY)))
+                                 #:deltay deltaY
+                                 #:family family)))
 
 (define (insert-window id deltaX deltaY)
   (send/rcv-id "insertWindow"
@@ -339,25 +375,28 @@
 ;;;;;;;;New 2.0 Operator ;;;;;;;;;;;;;;;
 
 
-(define (create-wall guide #:bottom-level[bottom-level (current-level)] #:top-level[top-level (upper-level #:level bottom-level)])
+(define (create-wall guide #:bottom-level[bottom-level (current-level)] #:top-level[top-level (upper-level #:level bottom-level)] #:family[family (default-wall-family)])
   (let ((pts (convert-list guide)))
     (send/rcv-polyid "polyWall"
                      (polywallstrc* #:pts pts
                                     #:levelb bottom-level
-                                    #:levelt top-level))))
+                                    #:levelt top-level
+                                    #:familyid family))))
 
-(define (create-slab guide #:bottom-level [bottom-level (current-level)])
+(define (create-slab guide #:bottom-level [bottom-level (current-level)] #:family[family (default-slab-family)])
   (let ((pts (convert-list guide)))
     (send/rcv-id "createFloorFromPoints"
                  (polylinefloorstrc* #:floor bottom-level 
-                                     #:points pts))))
+                                     #:points pts
+                                     #:familyid family))))
 
 
-(define (create-roof guide #:bottom-level[bottom-level (current-level)])
+(define (create-roof guide #:bottom-level[bottom-level (current-level)] #:family [family (default-roof-family)])
   (let ((pts (convert-list guide)))
     (send/rcv-id "createRoof"
                  (polylinefloorstrc* #:floor bottom-level 
-                                     #:points pts))))
+                                     #:points pts
+                                     #:familyid family))))
 
 (define (create-walls-from-slab slab-id height #:bottom-level[bottom-level (current-level)])
   (send/rcv-polyid "wallsFromSlabs"
@@ -371,14 +410,15 @@
                  (holeslabstrc* #:slabid slab-id
                                 #:pts pts))))
 
-(define (create-column center #:bottom-level[bottom-level (current-level)] #:top-level[top-level (upper-level #:level bottom-level)] #:width [width 0])
+(define (create-column center #:bottom-level[bottom-level (current-level)] #:top-level[top-level (upper-level #:level bottom-level)] #:width [width 0] #:family[family (default-column-family)])
   (send/rcv-id "createColumn"
                (columnstrc* #:p0coordx (cx center)
                             #:p0coordy (cy center)
                             #:p0coordz (cz center)
                             #:baselevel bottom-level
                             #:toplevel top-level
-                            #:width width)))
+                            #:width width
+                            #:familyid family)))
 
 (define (intersect-wall idw idf)
   (send/rcv-id "intersectWF" idw idf))
@@ -473,7 +513,7 @@
                             #:p1y (cy p1)
                             #:p1z (cz p1))))
 
-(define (create-beam p0 p1 width height family wname hname)
+(define (create-beam p0 p1 #:family[family (default-beam-family)])
   (send/rcv-id "createBeam"
                (beaminfostrc* #:p0coordx (cx p0)
                               #:p0coordy (cy p0)
@@ -481,15 +521,18 @@
                               #:p1coordx (cx p1)
                               #:p1coordy (cy p1)
                               #:p1coordz (cz p1)
-                              #:width width
-                              #:height height
-                              #:family family
-                              #:wname wname
-                              #:hname hname)))
+                              #:family family)))
 
 (define (load-family path)
   (send/rcv-id "loadFamily"
                (namestrc* #:name path)))
+
+(define (family-element family #:flag-override[flag-override #f] #:parameter-names[parameter-names (list)] #:parameter-values[parameter-values (list)])
+  (send/rcv-id "familyElement"
+               (familyelementstrc* #:familyid family
+                                   #:flag flag-override
+                                   #:names parameter-names
+                                   #:values parameter-values)))
 
 ;;;;;;;;Auxiliary Funtions;;;;;;;;;;;;;;
 
