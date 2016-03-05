@@ -128,7 +128,7 @@
 
 (define-syntax (delegate-backend stx)
   (syntax-case stx ()
-    [(_ (backend ...) (name param ...) backend-expr)
+    [(_ backend-expr (backend ...) (name param ...))
      (with-syntax ([((backend (backend-call arg ...)) ...)
                     (map (lambda (backend)
                            (with-syntax ([backend-shape
@@ -166,21 +166,21 @@
           backend-expr
           name
           [backend (backend-call arg ...)] ...)))]
-    [(def (name param ...) backend-expr)
+    [(delegate backend-expr (name param ...))
      (syntax/loc stx
-       (def (autocad rhino sketchup revit) (name param ...) backend-expr))]))
+       (delegate backend-expr (autocad rhino sketchup revit) (name param ...)))]))
 
 (define-syntax (def-backend stx)
   (syntax-case stx ()
-    [(_ (name param ...) backend-expr)
+    [(_ backend-expr (name param ...))
      (syntax/loc stx
        (begin
          (provide name)
          (define (name param ...)
-           (delegate-backend (name param ...) backend-expr))))]
+           (delegate-backend backend-expr (name param ...)))))]
     [(def (name param ...))
      (syntax/loc stx
-       (def (name param ...) (current-out-backend)))]))
+       (def (current-out-backend) (name param ...)))]))
 
 (define-syntax (def-new-shape-op stx)
   (syntax-case stx ()
@@ -207,7 +207,7 @@
                           t-or-ts
                           (append t-or-ts ts))
                       (cons t-or-ts ts))))
-           (delegate-backend (name [t : (Listof type)]) (current-out-backend)))))]))
+           (delegate-backend (current-out-backend) (name [t : (Listof type)])))))]))
 
 (def-backend (empty-shape))
 (def-backend (universal-shape))
@@ -301,13 +301,13 @@
        (%true-color r new-color))
      (void)]))
 (def-backend (create-layer [name : String] [color : (Option Color) #f]))
-#;
-(def-backend current-layer
+(provide current-layer)
+(define current-layer
   (case-lambda
     [()
-     (%clayer)]
+     (delegate-backend (current-out-backend) (current-layer))]
     [([new-layer : Layer])
-     (%clayer new-layer)]))
+     (delegate-backend (current-out-backend) (current-layer [new-layer : Layer]))]))
 #;
 (def-backend shape-layer
   (case-lambda
@@ -347,9 +347,9 @@
 (def-backend* (intersection [shapes : Shape *]))
 (def-backend* (subtraction [shapes : Shape *]))
 
-(def-backend (all-shapes) (current-in-backend))
-(def-backend (delete-all-shapes) (current-out-backend))
+(def-backend (current-in-backend) (all-shapes))
+(def-backend (delete-all-shapes))
 (def-backend (delete-shape [s : Shape]))
 (def-backend (delete-shapes [s : Shapes]))
 
-(def-backend (connect-to-revit) (current-out-backend))
+(def-backend (current-out-backend) (connect-to-revit))
