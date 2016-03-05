@@ -4,14 +4,21 @@
 
 (require racket/runtime-path)
 
+(define addon-in-use 32)
+
 (define-runtime-path base (build-path 'up))
 
 (define from-addon (build-path base "x64" "Geometry_Test.apx"))
 
 (define to-folder (string->some-system-path "C:\\Program Files\\GRAPHISOFT\\ArchiCAD 18\\Add-ons" 'windows)) 
 
+;TODO - Add more errors
 (define (move-addon)
-      (copy-file from-addon (build-path to-folder "Geometry_Test.apx") #t))
+  (with-handlers ([exn:fail? (lambda (exn)
+                               (cond [(eq? addon-in-use (car (exn:fail:filesystem:errno-errno exn)))
+                                      (displayln "Warning: Addon cannot be moved because it is being used")]
+                                     [else (raise exn)]))])
+    (copy-file from-addon (build-path to-folder "Geometry_Test.apx") #t)))
 
 #|
 (define (move-addon)
