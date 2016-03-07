@@ -108,14 +108,14 @@
   )
 
 (define (irregularPyramid-pts base-pts top [r 1.0] [g 1.0] [b 1.0])
-   (list (polygon-surface (list (first base-pts) (last base-pts) top) r g b)
-          (polygon-surface base-pts r g b)
-          (let aux ((pts base-pts))
-            (if
-             (> (length pts) 2)
-             (cons (polygon-surface (append (take pts 2) (list top)) r g b)
-                   (aux (drop pts 1)))
-             (list (polygon-surface (append pts (list top)) r g b))))))
+  (list (polygon-surface (list (first base-pts) (last base-pts) top) r g b)
+        (polygon-surface base-pts r g b)
+        (let aux ((pts base-pts))
+          (if
+           (> (length pts) 2)
+           (cons (polygon-surface (append (take pts 2) (list top)) r g b)
+                 (aux (drop pts 1)))
+           (list (polygon-surface (append pts (list top)) r g b))))))
 
 (define (irregularPyramid base-center rhos phis top [r 1.0] [g 1.0] [b 1.0])
   (let ([base-pts (for/list
@@ -155,6 +155,7 @@
      (cons (apply ffi:line args) (line (drop pts 3) r g b)))
    (let* ([args (append (list (length pts) (floats<-pts pts)) (map exact->inexact (list r g b)))])
      (list (apply ffi:line args)))))
+
 
 (define (polygon-surface pts [r 1.0] [g 1.0] [b 1.0])
   (if (> (length pts) 3)
@@ -207,6 +208,15 @@
       (apply ffi:box args)
       )
   )
+
+
+
+(define (extrude line hight [r 1.0] [g 1.0] [b 1.0])
+  (let ([up-dir (v*v (p-p (first line) (second line)) (p-p (second line) (third line)) hight)])
+    (polygon line)
+    (polygon (map (lambda (a) (p+v a up-dir)) line))
+    
+    ))
 
 (define (mirror shapes pt vec)
   (append (for/list ([shape (flatten shapes)])
@@ -297,6 +307,7 @@
   (xyz (media (cx p0) (cx p1))
        (media (cy p0) (cy p1))
        (media (cz p0) (cz p1))))
+
 
 ;;;;;;;;;;;;
 (provide loc->transformation-matrix)
