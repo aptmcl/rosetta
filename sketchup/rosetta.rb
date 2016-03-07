@@ -377,7 +377,12 @@ def setBoundary!(ent,curves)
 end
 
 def getBoundary(ent)
-  ent.get_attribute("rosetta","boundary").map{|id|resolveShape(id) }
+  b = ent.get_attribute("rosetta","boundary")
+  if b
+    b.map{|id|resolveShape(id) }
+  else
+    b
+  end
 end
 
 def shapeBoundary(ent)
