@@ -352,4 +352,3 @@
 (def-backend (delete-shape [s : Shape]))
 (def-backend (delete-shapes [s : Shapes]))
 
-(def-backend (current-out-backend) (connect-to-revit))

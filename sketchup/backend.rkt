@@ -564,10 +564,12 @@
         (xyz (car p) (cadr p) (caddr p)))))
 
 (define (disable-update)
-  ;Is there a way of disabling updates
+  ;Is there a way of disabling updates?
   #f)
 
 (define (enable-update)
-   ;Is there a way of disabling updates
+   ;Is there a way of enabling updates?
   #t)
 
+;;BIM
+(include "../base/bim.rkc")

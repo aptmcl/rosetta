@@ -47,7 +47,7 @@
          view
          view-top
          zoom-extents
-)
+         )
 
 (require racket/include)
 (include "../base/common.rkc")
@@ -897,3 +897,6 @@ The following example does not work as intended. Rotating the args to closed-spl
     (%closed com #t)
     (single-ref-or-union
      (%extrude-command-length (list com) height #t))))
+
+;;BIM
+(include "../base/bim.rkc")

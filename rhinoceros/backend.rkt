@@ -778,4 +778,5 @@ Command: _viewcapturetofile
        (%object-layer r new-layer))
      (void)]))
 
-
+;;BIM
+(include "../base/bim.rkc")

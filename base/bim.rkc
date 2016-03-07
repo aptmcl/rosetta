@@ -1,0 +1,119 @@
+(require (for-syntax racket/base))
+(require (for-syntax racket/syntax))
+
+
+(provide ;;BIM extensions
+ beam
+ column
+ ;;door
+ roof
+ slab
+ ;;wall
+ current-level
+ default-level-to-level-height
+ upper-level
+ (struct-out level))
+
+(struct level
+  ([height : Real])
+  #:type-name Level)
+
+(define current-level (make-parameter (level 0)))
+
+(define default-level-to-level-height (make-parameter 3))
+
+(define (upper-level [lvl : Level (current-level)]
+                     [height : Real (default-level-to-level-height)])
+  (level (+ (level-height lvl) height)))
+
+(struct bim-family
+  ([path : String]
+   [parameters : (Listof String)]
+   [layer : Layer])
+  #:type-name BIM-Family)
+
+(define (create-layer-from-path [path : String]) : Layer
+  (create-layer (last (regexp-match #rx"([a-zA-Z]+).rfa" path))))
+
+(define-for-syntax (build-name id fmt)
+  (format-id id #:source id fmt (syntax-e id)))
+
+(define-syntax (def-bim-family stx)
+  (syntax-case stx ()
+    [(def name (param ...))
+     (with-syntax ([struct-name (build-name #'name "~A-family")]
+                   [instance-name (build-name #'name "~A-family-element")]
+                   [load-name (build-name #'name "load-~A-family")]
+                   [default-name (build-name #'name "default-~A-family")]
+                   [layer-name (string-titlecase (symbol->string (syntax-e #'name)))]
+                   [([param-name param-type default] ...)
+                    (map (lambda (p)
+                           (syntax-case p (:)
+                             [[name : type default] #'[name type default]]
+                             #;[[name : type] #'[name type]]))
+                         (syntax->list #'(param ...)))])
+       (syntax/loc stx
+         (begin
+           (provide (struct-out struct-name)
+                    default-name
+                    load-name
+                    instance-name)
+           (struct struct-name bim-family
+             ([param-name : param-type] ...))
+           (define default-name (make-parameter (struct-name "" '() (create-layer layer-name) default ...)))
+           (define (load-name [path : String] [parameters : (Listof String) (list)])
+             (struct-name path parameters (create-layer-from-path path) default ...))
+           (define (instance-name [family : BIM-Family] param ...)
+             (struct-name (bim-family-path family)
+                          '()
+                          (bim-family-layer family)
+                          param-name ...)))))]))
+
+(def-bim-family beam
+  ([width : Real 10]
+   [height : Real 10]))
+
+(def-bim-family wall ())
+(def-bim-family slab
+  ([thickness : Real 1]))
+(def-bim-family roof ())
+
+(def-bim-family column
+  ([width : Real 10]))
+
+(def-bim-family door ())
+
+(def-shape (beam [p0 : Loc] [p1 : Loc] [family : Beam-Family (default-beam-family)])
+  (let ((s (right-cuboid (loc-in-world p0) (beam-family-width family) (beam-family-height family) (loc-in-world p1))))
+    (shape-layer s (bim-family-layer family))
+    s))
+
+(def-shape (column [center : Loc]
+                   [bottom-level : Level (current-level)]
+                   [top-level : Level (upper-level bottom-level)]
+                   [family : Column-Family (default-column-family)])
+  (let ((width (column-family-width family)))
+    (let ((s (box (+xyz (loc-in-world center) (/ width -2) (/ width -2) (level-height bottom-level))
+                  width
+                  width
+                  (- (level-height top-level) (level-height bottom-level)))))
+      (shape-layer s (bim-family-layer family))
+      s)))
+
+;(def-shape (door))
+(def-shape (slab [vertices : Locs] [level : Level (current-level)] [family : Slab-Family (default-slab-family)])
+  (let ((s (extrusion
+            (surface-polygon (map (lambda ([p : Loc])
+                                    (+z (loc-in-world p) (level-height level)))
+                                  vertices))
+            (slab-family-thickness family))))
+    (shape-layer s (bim-family-layer family))
+    s))
+        
+(def-shape (roof [vertices : Locs] [level : Level (current-level)] [family : Roof-Family (default-roof-family)])
+  (let ((s (extrusion
+            (surface-polygon (map (lambda ([p : Loc])
+                                    (+z (loc-in-world p) (level-height level)))
+                                  vertices)))))
+    (shape-layer s (bim-family-layer family))
+    s))
