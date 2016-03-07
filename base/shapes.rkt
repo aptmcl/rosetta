@@ -394,8 +394,8 @@
 
 (def-base-shape (text [str : String ""] [c : Loc (u0)] [h : Real 1]))
 (def-base-shape (text-centered [str : String ""] [c : Loc (u0)] [h : Real 1]))
-(def-base-shape 3D-shape (sphere [c : Loc (u0)] [r : Real 1]))
-(def-base-shape 3D-shape (torus [c : Loc (u0)] [re : Real 1] [ri : Real 1/2]))
+(def-base-shape 3D-shape (sphere [center : Loc (u0)] [radius : Real 1]))
+(def-base-shape 3D-shape (torus [center : Loc (u0)] [re : Real 1] [ri : Real 1/2]))
 (def-base-shape 3D-shape
   (cuboid [b0 : Loc (u0)]
           [b1 : Loc (+x b0 1)]
@@ -503,4 +503,7 @@
 
 ;;BIM
 
-(def-base-shape 3D-shape (beam [p0 : Loc] [p1 : Loc] [width : Real] [height : Real]))
+(def-base-shape 3D-shape (beam [p0 : Loc] [p1 : Loc] [family : Any]))
+(def-base-shape 3D-shape (column [center : Loc] [bottom-level : Any] [top-level : Any] [family : Any]))
+(def-base-shape 3D-shape (slab [vertices : Locs] [level : Any] [family : Any]))
+(def-base-shape 3D-shape (roof [vertices : Locs] [level : Any] [family : Any]))
