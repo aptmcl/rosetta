@@ -1,4 +1,4 @@
-#lang typed/racket/base
+#lang typed/racket/base/no-check
 (require (for-syntax racket/base racket/list))
 (require racket/function racket/string racket/match racket/port racket/file)
 (require (except-in math random-integer)
@@ -9,6 +9,7 @@
 
 (provide (all-defined-out) com-omit)
 
+(define-type Long Integer)
 (define-type Integers (Listof Integer))
 (define-type Shorts (Listof Integer))
 (define-type Com-Objects (Listof Com-Object))
@@ -38,6 +39,20 @@
             (vector (mf m 2 0) (mf m 2 1) (mf m 2 2) (mf m 2 3))
             (vector (mf m 3 0) (mf m 3 1) (mf m 3 2) (mf m 3 3)))))
 
+(define (ac-cm-color->color [color : AcCmColor]) : Color
+  (rgb (cast (red color) Byte)
+       (cast (green color) Byte)
+       (cast (blue color) Byte)))
+
+(define (color->ac-cm-color [color : Color]) : AcCmColor
+  (let ((ac-cm-color
+         (get-interface-object
+          (string-append "AutoCAD.AcCmColor."
+                         (substring (acadver) 0 2)))))
+    (set-rgb! ac-cm-color (rgb-red color) (rgb-green color) (rgb-blue color))
+    ac-cm-color))
+
+
 ;;Several types must be treated just as Com-Objects
 
 (define-type 3DFace Com-Object)
@@ -45,6 +60,7 @@
 (define-type 3DSolid Com-Object)
 (define-type AcadMaterials Com-Object)
 (define-type AcadSelectionSets Com-Object)
+(define-type AcCmColor Com-Object)
 (define-type All Com-Object)
 (define-type Application Com-Object)
 (define-type Arc Com-Object)
@@ -151,6 +167,7 @@
                                #'3DPolyline
                                #'3DSolid
                                #'PolygonMesh
+                               #'AcCmColor
                                #'Arc
                                #'Circle
                                #'Ellipse
@@ -192,7 +209,8 @@
                      [VarDouble2N Locs]
                      [VarDouble4x4 Loc]
                      [VarIdN Refs]
-                     [VarIntegerN Shorts]))
+                     [VarIntegerN Shorts]
+                     [AcCmColor Color]))
 
 ;;In most cases, upgrading from one type to another requires a conversion function for the type values
 
@@ -209,7 +227,9 @@
      [Locs        VarDouble2N  locs->vector-2-double-flonums]
      [Refs        VarIdN       list->vector]
      [VarIdN      Refs         vector->list]
-     [IdsOrVoid   Refs         ids-or-void->refs]))
+     [IdsOrVoid   Refs         ids-or-void->refs]
+     [AcCmColor   Color        ac-cm-color->color]
+     [Color       AcCmColor    color->ac-cm-color]))
 
 #|
 ; object properties
@@ -228,7 +248,6 @@
 (def-com-property position coord<-vector)
 (def-com-property (circle-radius "Radius") Float)
 (def-com-property start-angle)
-(def-com-property true-color (ac-cm-color<-color color<-ac-cm-color))
 (def-com-property custom-scale Float)
 
 (provide ac-simple-mesh ac-quad-surface-mesh ac-cubic-surface-mesh ac-bezier-surface-mesh)
@@ -256,48 +275,6 @@
 (provide convert-3dpolylines)
 (define (convert-3dpolylines objs)
   (apply append (map convert-3dpolyline objs)))
-
-; ac-cm-color methods
-
-#;
-(define (ac-cm-color-set-rgb! object red green blue)
-  (autocad-invoke object "SetRGB" red green blue))
-
-
-; ac-cm-color properties
-
-(define (get-ac-cm-color-blue object)
-  (com-get-property object "Blue"))
-
-(define (get-ac-cm-color-green object)
-  (com-get-property object "Green"))
-
-(define (get-ac-cm-color-red object)
-  (com-get-property object "Red"))
-
-; application methods
-
-(def-obj documents () com)
-;(def-obj active-document () com)
-(def-obj interface-object (String) com)
-
-(define ac-cm-color-name "AutoCAD.AcCmColor.18")
-
-; info: avoid caching because com-objects returned by 'GetInterfaceObject' seem to
-; be always different according to 'com-object-eq?'
-(define (application-get-ac-cm-color-interface-object)
-  (interface-object application ac-cm-color-name))
-
-; documents methods
-
-(def-obj open (String) Void)
-(def-obj add (String) com)
-
-; modelspace methods
-
-
-(define (variant-double v)
-  (type-describe (vector (real v) 0.0 0.0) '(variant double)))
 
 ; viewport
 
@@ -443,8 +420,9 @@
 (Blocks property idh_blocks.htm)
 (def-rw-property (BlockScale MLeaderStyle) Long)
 (def-rw-property (BlockScaling Block) AcBlockScaling)
-(def-ro-property (Blue AcCmColor) Long)
-(def-ro-property (BookName AcCmColor) String)
+|#
+(def-ro-property (blue AcCmColor) Long)
+#|(def-ro-property (BookName AcCmColor) String)
 (def-ro-property (BottomHeight Section) Long)
 (def-rw-property (BreaksEnabled Table) Boolean)
 (def-rw-property (BreakSize MLeaderStyle) Double)
@@ -468,8 +446,8 @@
 (def-rw-property (ClippingEnabled DwfUnderlay) Boolean)
 |#
 (def-rw-property (closed 3DPolyline) Boolean)
+(def-rw-property (color All) AcCmColor)
 #|
-(def-rw-property (Color All) acColor)
 (def-rw-property (ColorBookPath PreferencesFiles) String)
 (def-rw-property (ColorIndex AcCmColor) acColor)
 (def-rw-property (ColorMethod AcCmColor) acColorMethod)
@@ -646,8 +624,9 @@
 (def-rw-property (GradientName Hatch) String)
 (GraphicsWinLayoutBackgrndColor property idh_graphicswinlayoutbackgrndcolor.htm)
 (GraphicsWinModelBackgrndColor property idh_graphicswinmodelbackgrndcolor.htm)
-(def-ro-property (Green AcCmColor) Long)
-(def-rw-property (GridOn Viewport) Boolean)
+|#
+(def-ro-property (green AcCmColor) Long)
+#|(def-rw-property (GridOn Viewport) Boolean)
 (def-rw-property (GripColorSelected PreferencesSelection) acColor)
 (def-rw-property (GripColorUnselected PreferencesSelection) acColor)
 (def-rw-property (GripSize PreferencesSelection) Long)
@@ -969,7 +948,9 @@
 (def-rw-property (radius-ratio Ellipse) Double)
 #|
 (def-ro-property (RoOnly Document) Boolean)
-(def-ro-property (Red AcCmColor) Long)
+|#
+(def-ro-property (red AcCmColor) Long)
+#|
 (def-ro-property (ReferenceCount FileDependency) Long)
 (def-rw-property (RegenerateTableSuppressed Table) Boolean)
 (RegisteredApplications property idh_registeredapplications.htm)
@@ -1134,8 +1115,9 @@
 (def-ro-property (TotalLength Helix) Double)
 (def-rw-property (TranslateIDs XRecord) Boolean)
 (def-rw-property (Transparency Raster) Boolean)
-(TrueColor property idh_truecolor_property.htm)
-(def-rw-property (TrueColorImages PreferencesDisplay) Boolean)
+|#
+(def-rw-property (true-color All) AcCmColor)
+#|(def-rw-property (TrueColorImages PreferencesDisplay) Boolean)
 (def-ro-property (TurnHeight Helix) Double)
 (Turns property idh_turns.htm)
 (def-ro-property (TurnSlope Helix) ACAD_ANGLE)
@@ -1798,7 +1780,9 @@
 (def-com (SetPattern Hatch) ((PatternType AcPatternType) (PatternName String)) Void)
 (def-com (SetProjectFilePath PreferencesFiles) ((ProjectName String) (ProjectFilePath String)) Void)
 (SetRelativeDrawOrder method idh_setrelativedraworder.htm)
-(def-com (SetRGB AcCmColor) ((Red Long) (Green Long) (Blue Long)) Void)
+|#
+(def-com ((set-rgb! SetRGB) AcCmColor) ((Red Long) (Green Long) (Blue Long)) Void)
+#|
 (def-com (SetRotation Table) ((nRow Integer) (nCol Integer) (nContent Integer) (value Double)) Void)
 (def-com (SetRotation TableStyle) ((StringCellStyle String) (rotation Double)) Void)
 (def-com (SetRowHeight Table) ((row Long) (Height Double)) Void)

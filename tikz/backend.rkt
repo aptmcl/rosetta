@@ -1,4 +1,4 @@
-#lang typed/racket/base
+#lang typed/racket/base/no-check
 (require racket/math racket/list racket/file)
 
 #|;;; Generates a pdf using the tikz backend

@@ -1,4 +1,4 @@
-#lang typed/racket/base
+#lang typed/racket/base/no-check
 (require (for-syntax racket/base)
          racket/path racket/file racket/format)
 
@@ -234,6 +234,18 @@
                (let ([r1 (car rs)]
                      [rs (cdr rs)])
                  (loop rs (combine r1 combs) n)))))))
+
+
+;;Colors
+
+(define-type Color (U rgb))
+
+(struct rgb
+  ([red : Byte]
+   [green : Byte]
+   [blue : Byte]))
+
+(provide Color (struct-out rgb))
 
 ;;Renders and Films
 (provide render-dir

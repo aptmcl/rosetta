@@ -1,6 +1,5 @@
 #lang racket
-(provide (except-out (all-defined-out)
-                     extrusion-shell))
+(provide (except-out (all-defined-out)))
 
 (require "protobuf1/protobuf.rkt")
 (require "protobuf1/encoding.rkt")
@@ -8,6 +7,9 @@
 (require "Communication.rkt")
 (require rosetta/revit)
 (require srfi/26)
+;(require math/array)
+(require math/matrix)
+;(require htdp/matrix)
 
 #|
 Function used to create a circle
@@ -237,21 +239,6 @@ Example of usage: (create-hole-on-shell hpoints harcs hheight shellId)
     (write-msg "Cylinder" sphere-to-create)
     (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
 
-;(send (extrusion-shell (list (xy -1 0)(xy 1 0)(xy -1 0)) (z 10) 0 (list pi pi)))
-;Not used
-(define (extrusion-shell polygon vector base-height [poly-arcs (list)])
-  (let* ((sphere-to-create (extrusionmsg* #:vx (cx vector)
-                                          #:vy (cy vector)
-                                          #:vz (cz vector)
-                                          #:height base-height))
-         (sub-poly-list (get-sub-polys polygon))
-         (sub-poly-msg (intlistmsg* #:ilist sub-poly-list)))
-    (write-msg "Extrusion" sphere-to-create)
-    (send-points (flatten polygon))
-    (send-arcs poly-arcs)
-    (write-sized serialize sub-poly-msg output)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;       Polygons & Solids       ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -266,7 +253,9 @@ Example of usage: (create-hole-on-shell hpoints harcs hheight shellId)
 ;Returns the solid points of a vector applied to all given points
 (define (polygon-apply-vector points vector)
   (append points (map (lambda (p)
-                        (+xyz p (cx vector) (cy vector) (cz vector)))
+                        (if (number? vector)
+                            (+z p vector)
+                            (+xyz p (cx vector) (cy vector) (cz vector))))
                       points)))
 
 ;Returns edges for a polygon of n sides
@@ -411,7 +400,88 @@ Example of usage: (create-hole-on-shell hpoints harcs hheight shellId)
     (write-msg "MorphTrans" msg)
     (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
 
+(define-syntax-rule (mf m i j) (real->double-flonum (matrix-ref m i j)))
+
+(define (loc->matrix p)
+  (let ((m (world-transformation p)))
+    (list (mf m 0 0) (mf m 0 1) (mf m 0 2) (mf m 0 3)
+          (mf m 1 0) (mf m 1 1) (mf m 1 2) (mf m 1 3)
+          (mf m 2 0) (mf m 2 1) (mf m 2 2) (mf m 2 3))))
+
+#|
+(send (apply-matrix-to-morph (create-box (u0) 1 1 1) (list (cos pi/4) (- (sin pi/4)) 0 0
+                                                           (sin pi/4) (cos pi/4)     0 0
+                                                           0          0              1 0)))
+
+(send (apply-matrix-to-morph (create-box (u0) 1 1 1) (list 1 0 0 10
+                                                           0 1 0  0
+                                                           0 0 1  0)))
+
+(send (apply-matrix-to-morph (create-box (u0) 1 1 1) (list (cos pi/4) (- (sin pi/4)) 0 10
+                                                           (sin pi/4) (cos pi/4)     0 0
+                                                           0          0              1 0)))
+
+(send (apply-matrix-to-morph (create-box (+xyz (u0) -0.5 -0.5 -0.5) 1 1 1) (list (cos pi/4) (- (sin pi/4)) 0 0
+                                                           (sin pi/4) (cos pi/4)     0 0
+                                                           0          0              1 0)))
+|#
+
+(define (apply-matrix-to-point p m)
+  (xyz (+ (* (mf m 0 0) (cx p)) (* (mf m 0 1) (cy p)) (* (mf m 0 2) (cz p)) (mf m 0 3))
+       (+ (* (mf m 1 0) (cx p)) (* (mf m 1 1) (cy p)) (* (mf m 1 2) (cz p)) (mf m 1 3))
+       (+ (* (mf m 2 0) (cx p)) (* (mf m 2 1) (cy p)) (* (mf m 2 2) (cz p)) (mf m 2 3))))
+
+(define (apply-rotation-matrix-to-point p m)
+  (xyz (+ (* (mf m 0 0) (cx p)) (* (mf m 0 1) (cy p)) (* (mf m 0 2) (cz p)))
+       (+ (* (mf m 1 0) (cx p)) (* (mf m 1 1) (cy p)) (* (mf m 1 2) (cz p)))
+       (+ (* (mf m 2 0) (cx p)) (* (mf m 2 1) (cy p)) (* (mf m 2 2) (cz p)))))
+
+(define (apply-translation-matrix-to-point p m)
+  (xyz (+ (cx p) (mf m 0 3))
+       (+ (cy p) (mf m 1 3))
+       (+ (cz p) (mf m 2 3))))
+
+(define (apply-matrix-to-morph el matrix)
+  (let ((msg (applymatrix* #:guid el
+                           #:matrix matrix)))
+    (write-msg "ApplyMatrix" msg)
+    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
+
+(define (right-cuboid cb width height h/ct)
+  (let-values ([(cb dz) (position-and-height cb h/ct)])
+    (apply-matrix-to-morph 
+     (create-box (+xy (u0 world-cs) (- (/ width 2.0)) (- (/ height 2.0))) width height dz)
+     (loc->matrix cb))))
 
 
+#|
+;;Extrusion example
+(send (extrusion (list (xyz -94695.808 -107031.17999999999 0.0)
+       (xyz -94667.651 -107080.392 0.0)
+       (xyz -94651.74400000001 -107071.325 0.0)
+       (xyz -94658.07099999999 -107060.247 0.0)
+       (xyz -94658.68300000001 -107059.165 0.0)
+       (xyz -94662.55100000001 -107061.286 0.0)
+       (xyz -94667.344 -107052.934 0.0)
+       (xyz -94664.406 -107051.342 0.0)
+       (xyz -94669.03 -107042.771 0.0)
+       (xyz -94672.71400000001 -107044.78 0.0)
+       (xyz -94678.067 -107035.45100000001 0.0)
+       (xyz -94673.61100000001 -107033.038 0.0))
+ 11.781))
 
+(send (extrusion (list (xyz -94.695808 -107.03117999999999 0.0)
+       (xyz -94.667651 -107.080392 0.0)
+       (xyz -94.65174400000001 -107.071325 0.0)
+       (xyz -94.65807099999999 -107.060247 0.0)
+       (xyz -94.65868300000001 -107.059165 0.0)
+       (xyz -94.66255100000001 -107.061286 0.0)
+       (xyz -94.667344 -107.052934 0.0)
+       (xyz -94.664406 -107.051342 0.0)
+       (xyz -94.66903 -107.042771 0.0)
+       (xyz -94.67271400000001 -107.04478 0.0)
+       (xyz -94.678067 -107.03545100000001 0.0)
+       (xyz -94.67361100000001 -107.033038 0.0))
+ 11.781))
+|#
 

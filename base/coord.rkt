@@ -1,4 +1,4 @@
-#lang typed/racket/base
+#lang typed/racket/base/no-check
 (require racket/math math/matrix)
 (require "utils.rkt")
 
@@ -116,7 +116,26 @@
          loc-from-o-p/v
          vf
          vlength
-         perpendicular-vector)
+         perpendicular-vector
+         BBox
+         bbox
+         bbox-max
+         bbox-min
+         bbox-center
+         bbox-length
+         bbox-max-x
+         bbox-min-x
+         bbox-center-x
+         bbox-length-x
+         bbox-max-y
+         bbox-min-y
+         bbox-length-y
+         bbox-center-y
+         bbox-max-z
+         bbox-min-z
+         bbox-length-z
+         bbox-center-z
+         )
 
 ;;The circle system
 (define pi/6 (/ pi 6))
@@ -969,3 +988,55 @@
     (for/list : (Listof Loc) ((a (division angle (+ angle 2pi) edges #f))) 
       (+pol center r a))))
 
+
+;;Bounding boxes
+
+(define-type BBox (List Loc Loc Loc Loc Loc Loc Loc Loc))
+
+(define (bbox [p0 : Loc] [p1 : Loc]) : BBox
+  (let ((dx (- (cx p1) (cx p0)))
+        (dy (- (cy p1) (cy p0)))
+        (dz (- (cz p1) (cz p0))))
+    (list p0 (+x p0 dx) (+xy p0 dx dy) (+y p0 dy)
+          p1 (+x p1 dx) (+xy p1 dx dy) (+y p1 dy))))
+
+(define (bbox-min [bbox : BBox]) : Loc
+  (list-ref bbox 0))
+
+(define (bbox-max [bbox : BBox]) : Loc
+  (list-ref bbox 4))
+
+(define (bbox-min-x [bbox : BBox]) : Real (cx (bbox-min bbox)))
+(define (bbox-max-x [bbox : BBox]) : Real (cx (bbox-max bbox)))
+(define (bbox-min-y [bbox : BBox]) : Real (cy (bbox-min bbox)))
+(define (bbox-max-y [bbox : BBox]) : Real (cy (bbox-max bbox)))
+(define (bbox-min-z [bbox : BBox]) : Real (cz (bbox-min bbox)))
+(define (bbox-max-z [bbox : BBox]) : Real (cz (bbox-max bbox)))
+
+(define (bbox-center-x [bbox : BBox]) : Real
+  (/ (+ (bbox-min-x bbox) (bbox-max-x bbox)) 2))
+
+(define (bbox-center-y [bbox : BBox]) : Real
+  (/ (+ (bbox-min-y bbox) (bbox-max-y bbox)) 2))
+
+(define (bbox-center-z [bbox : BBox]) : Real
+  (/ (+ (bbox-min-z bbox) (bbox-max-z bbox)) 2))
+
+(define (bbox-center [bbox : BBox]) : Loc
+  (xyz (bbox-center-x bbox)
+       (bbox-center-y bbox)
+       (bbox-center-z bbox)))
+
+(define (bbox-length-x [bbox : BBox]) : Real
+  (- (bbox-max-x bbox) (bbox-min-x bbox)))
+
+(define (bbox-length-y [bbox : BBox]) : Real
+  (- (bbox-max-y bbox) (bbox-min-y bbox)))
+
+(define (bbox-length-z [bbox : BBox]) : Real
+  (- (bbox-max-z bbox) (bbox-min-z bbox)))
+
+(define (bbox-length [bbox : BBox]) : Vec
+  (vxyz (bbox-length-x bbox)
+        (bbox-length-y bbox)
+        (bbox-length-z bbox)))
