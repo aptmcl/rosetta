@@ -38,6 +38,7 @@
          point
          mirror
          view
+         extrude
          rotate)
 (define city ffi:city)
 (define (end_cycle?)
