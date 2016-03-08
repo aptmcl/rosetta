@@ -5,7 +5,8 @@
 (require "protobuf1/encoding.rkt")
 (require "Messages.rkt")
 (require "Communication.rkt")
-(require rosetta/revit)
+(require (except-in rosetta/revit
+                    box))
 (require srfi/26)
 ;(require math/array)
 (require math/matrix)
@@ -20,9 +21,9 @@ Function used to create a circle
  returns: circle id
 
 Example of usage: 
-(send (create-circle (xy 0 0) 1))
+(send (circle (xy 0 0) 1))
 |#
-(define (create-circle p radius)
+(define (circle p radius)
   (let ((circle-to-create (circlemessage* #:p0x (cx p)
                                           #:p0y (cy p)
                                           #:radius radius)))
@@ -35,14 +36,14 @@ Function used to create an arc
 Examples of usage:
 create an arc with center (0,0), radius 1,
  with an amplitude of 90o, on the 1o quadrant (x+, y+)
-(send (create-arc (xy 0 0) 1 0 0 (* 90 DEGRAD)))
+(send (arc (xy 0 0) 1 0 0 (* 90 DEGRAD)))
 
 by using begang instead of endang, we get the opposite result,
 the arc will be the opposite of the previous result. 
-(send (create-arc (xy 0 0) 1 0 (* 90 DEGRAD) 0))
+(send (arc (xy 0 0) 1 0 (* 90 DEGRAD) 0))
 
 |#
-(define (create-arc p radius angle begang endang)
+(define (arc p radius angle begang endang)
   (let ((arc-to-create (arcmessage* #:p0x (cx p)
                                     #:p0y (cy p)
                                     #:radius radius
@@ -65,9 +66,9 @@ the arc will be the opposite of the previous result.
 Function used to create a sphere
 
 Example of usage: 
-(send (create-sphere (xy 0 0) 1))
+(send (sphere (xy 0 0) 1))
 |#
-(define (create-sphere p radius #:level [level (current-level)])
+(define (sphere p radius #:level [level (current-level)])
   (let ((sphere-to-create (spheremessage* #:c0x (cx p)
                                           #:c0y (cy p)
                                           #:c0z (cz p)
@@ -78,9 +79,9 @@ Example of usage:
 
 #|
 Function to create a Complex Shell
-Example of usage: (create-complex-shell tmat lstpoints lstarcs 1 hpoints harcs hheight htmat 1.0 0.0)
+Example of usage: (complex-shell tmat lstpoints lstarcs 1 hpoints harcs hheight htmat 1.0 0.0)
 |#
-(define (create-complex-shell transmat listpoints listarcs numholes holepoints holearcs holeheight holetransmat reflectx reflecty)
+(define (complex-shell transmat listpoints listarcs numholes holepoints holearcs holeheight holetransmat reflectx reflecty)
   (let ((shell-to-create (shellcomplexmessage* #:numpoints (length listpoints)
                                                #:numarcs (length listarcs)
                                                #:numholes numholes
@@ -118,17 +119,17 @@ Example of usage: (create-complex-shell tmat lstpoints lstarcs 1 hpoints harcs h
 
 #|
 Function to create a Simple Shell
-Example of usage: (create-simple-shell lstpoints)
+Example of usage: (simple-shell lstpoints)
 |#
-(define (create-simple-shell listpoints)
-  (create-shell listpoints (list)))
+(define (simple-shell listpoints)
+  (shell listpoints (list)))
 
 #|
 Function to create a Shell
 This is the most primitive shell we can create 
-Example of usage: (create-shell lstpoints lstarcs)
+Example of usage: (shell lstpoints lstarcs)
 |#
-(define (create-shell listpoints listarcs)
+(define (shell listpoints listarcs)
   (let ((shell-to-create (shellmessage* #:numpoints (length listpoints)
                                         #:numarcs (length listarcs))))
     (write-msg "Shell" shell-to-create)
@@ -163,9 +164,9 @@ Example of usage: (translate-shell (list 0 5 0) shellId)
 #|
 Function to create a hole on a Shell
 Receives a point that represents the translation and the shell ID
-Example of usage: (create-hole-on-shell hpoints harcs hheight shellId)
+Example of usage: (hole-on-shell hpoints harcs hheight shellId)
 |#
-(define (create-hole-on-shell listpoints listarcs height shellId)
+(define (hole-on-shell listpoints listarcs height shellId)
   (let ((hole-msg (oldholemessage* #:height height
                                 #:guid shellId)))
     (write-msg "Hole" hole-msg)
@@ -174,7 +175,7 @@ Example of usage: (create-hole-on-shell hpoints harcs hheight shellId)
     (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))
     ))
 
-(define (create-morph reference-point coords edges polygons)
+(define (morph reference-point coords edges polygons)
   (let* ((msg (morphmsg* #:refx (cx reference-point)
                          #:refy (cy reference-point)
                          #:refz (cz reference-point)))
@@ -188,14 +189,14 @@ Example of usage: (create-hole-on-shell hpoints harcs hheight shellId)
     (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))
     ))
 
-(define (create-box-2points point1 point2 #:bottom-level [bottom-level (current-level)])
+(define (box-2points point1 point2 #:bottom-level [bottom-level (current-level)])
   (let ((x1 (cx point1))
         (y1 (cy point1))
         (z1 (cz point1))
         (x2 (cx point2))
         (y2 (cy point2))
         (z2 (cz point2)))
-    (create-morph
+    (morph
      (xyz 0 0 0)
      (list (xyz x1 y1 z1)
            (xyz x2 y1 z1)
@@ -224,10 +225,10 @@ Example of usage: (create-hole-on-shell hpoints harcs hheight shellId)
            (list (xy 3 0)(xy 8 0) (xy 7 1)(xy 11 1)))
      )))
 
-(define (create-box point1 length width height #:bottom-level [bottom-level (current-level)])
-  (create-box-2points point1 (+xyz point1 length width height) #:bottom-level bottom-level))
+(define (box point1 length width height #:bottom-level [bottom-level (current-level)])
+  (box-2points point1 (+xyz point1 length width height) #:bottom-level bottom-level))
 
-(define (create-cylinder p0 radius p1 #:level [level (current-level)])
+(define (cylinder p0 radius p1 #:level [level (current-level)])
   (let ((sphere-to-create (cylindermsg* #:p0x (cx p0)
                                         #:p0y (cy p0)
                                         #:p0z (cz p0)
@@ -272,13 +273,13 @@ Example of usage: (create-hole-on-shell hpoints harcs hheight shellId)
                         (xy n 0))
                       0 sides sides #f)))
 
-;(send (create-polygon-points (list (xy -1 -1)(xy 1 -1)(xy 1 1)(xy -1 1))))
+;(send (polygon-points (list (xy -1 -1)(xy 1 -1)(xy 1 1)(xy -1 1))))
 ;Creates a polygon given points. Points aren't closed.
-(define (create-polygon points)
+(define (polygon points)
   (let* ((sides (length points))
          (edges (polygon-edges sides))
          (polygon (internal-polygon sides)))
-    (create-morph (u0) points edges polygon)))
+    (morph (u0) points edges polygon)))
 
 ;Returns edges for a solid formed by points
 ;Points are given in counter-clockwise order,
@@ -317,15 +318,15 @@ Example of usage: (create-hole-on-shell hpoints harcs hheight shellId)
 ;Counter-clockwise order
 ;First half of points: base
 ;Second half of points: top 
-(define (create-solid solid-points)
+(define (solid solid-points)
   (let* ((sides (/ (length solid-points) 2))
          (edges (solid-edges solid-points))
          (polygons (internal-solid sides)))
-  (create-morph (u0) solid-points edges polygons)))
+  (morph (u0) solid-points edges polygons)))
 
 ;Does an extrusion given polygon-points and a vector for the extrusion
 (define (extrusion polygon-points vector)
-  (create-solid (polygon-apply-vector polygon-points vector)))
+  (solid (polygon-apply-vector polygon-points vector)))
 
 (define (pyramid-points p top sides radius [rotation 0])
   (if (number? top)
@@ -354,10 +355,10 @@ Example of usage: (create-hole-on-shell hpoints harcs hheight shellId)
                                   0 sides sides #f)))
     (append (list base) sides-pol)))
 
-(define (create-pyramid pyramid-points)
+(define (pyramid pyramid-points)
   (let ((edges (pyramid-edges pyramid-points))
         (polygons (internal-pyramid pyramid-points)))
-  (create-morph (u0) pyramid-points edges polygons)))
+  (morph (u0) pyramid-points edges polygons)))
 
 (define (morph-translate el x y z)
   (let ((msg (transformmsg* #:guid el
@@ -409,19 +410,19 @@ Example of usage: (create-hole-on-shell hpoints harcs hheight shellId)
           (mf m 2 0) (mf m 2 1) (mf m 2 2) (mf m 2 3))))
 
 #|
-(send (apply-matrix-to-morph (create-box (u0) 1 1 1) (list (cos pi/4) (- (sin pi/4)) 0 0
+(send (apply-matrix-to-morph (box (u0) 1 1 1) (list (cos pi/4) (- (sin pi/4)) 0 0
                                                            (sin pi/4) (cos pi/4)     0 0
                                                            0          0              1 0)))
 
-(send (apply-matrix-to-morph (create-box (u0) 1 1 1) (list 1 0 0 10
+(send (apply-matrix-to-morph (box (u0) 1 1 1) (list 1 0 0 10
                                                            0 1 0  0
                                                            0 0 1  0)))
 
-(send (apply-matrix-to-morph (create-box (u0) 1 1 1) (list (cos pi/4) (- (sin pi/4)) 0 10
+(send (apply-matrix-to-morph (box (u0) 1 1 1) (list (cos pi/4) (- (sin pi/4)) 0 10
                                                            (sin pi/4) (cos pi/4)     0 0
                                                            0          0              1 0)))
 
-(send (apply-matrix-to-morph (create-box (+xyz (u0) -0.5 -0.5 -0.5) 1 1 1) (list (cos pi/4) (- (sin pi/4)) 0 0
+(send (apply-matrix-to-morph (box (+xyz (u0) -0.5 -0.5 -0.5) 1 1 1) (list (cos pi/4) (- (sin pi/4)) 0 0
                                                            (sin pi/4) (cos pi/4)     0 0
                                                            0          0              1 0)))
 |#
@@ -450,7 +451,7 @@ Example of usage: (create-hole-on-shell hpoints harcs hheight shellId)
 (define (right-cuboid cb width height h/ct)
   (let-values ([(cb dz) (position-and-height cb h/ct)])
     (apply-matrix-to-morph 
-     (create-box (+xy (u0 world-cs) (- (/ width 2.0)) (- (/ height 2.0))) width height dz)
+     (box (+xy (u0 world-cs) (- (/ width 2.0)) (- (/ height 2.0))) width height dz)
      (loc->matrix cb))))
 
 
