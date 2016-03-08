@@ -10,7 +10,8 @@
 (require "protobuf1/protobuf.rkt")
 (require "protobuf1/syntax.rkt")
 (require "protobuf1/encoding.rkt")
-(require rosetta/revit)
+(require (except-in rosetta/revit
+                    box))
 (require srfi/26)
 
 (provide (all-defined-out)
@@ -103,16 +104,16 @@
                     ))
 
 (define (eight-spheres)
-  (create-sphere 0.0 0.0 0.0001 0.0 0.0)
-  (create-sphere 0.0 0.0 0.0001 0.0 1.0)
-  (create-sphere 0.0 0.0 0.0001 0.0 -1.0)
+  (sphere 0.0 0.0 0.0001 0.0 0.0)
+  (sphere 0.0 0.0 0.0001 0.0 1.0)
+  (sphere 0.0 0.0 0.0001 0.0 -1.0)
   
-  (create-sphere 0.0 0.0 0.0001 1.0 1.0)
-  (create-sphere 0.0 0.0 0.0001 1.0 -1.0)
+  (sphere 0.0 0.0 0.0001 1.0 1.0)
+  (sphere 0.0 0.0 0.0001 1.0 -1.0)
   
-  (create-sphere 0.0 0.0 0.0001 -1.0 0.0)
-  (create-sphere 0.0 0.0 0.0001 -1.0 1.0)
-  (create-sphere 0.0 0.0 0.0001 -1.0 -1.0)
+  (sphere 0.0 0.0 0.0001 -1.0 0.0)
+  (sphere 0.0 0.0 0.0001 -1.0 1.0)
+  (sphere 0.0 0.0 0.0001 -1.0 -1.0)
   )
 
 (define slabPoints (list (xy 0.0 0.0)
@@ -133,15 +134,15 @@
 (define (park object-index orig-pos rows columns distance-between-trees)
   (for ([c columns])
        (for ([r rows])
-            (create-object object-index (xy (+ (cx orig-pos) (* r distance-between-trees)) (+ (cy orig-pos)(* c distance-between-trees)))))))
+            (object object-index (xy (+ (cx orig-pos) (* r distance-between-trees)) (+ (cy orig-pos)(* c distance-between-trees)))))))
 
 (define (see-object n until step)
-  (create-object n (xy (+ (- until n) step) 0))
+  (object n (xy (+ (- until n) step) 0))
   (if (eq? n until)
       (list)
       (see-object (+ n 1) until (+ step 10))))
 
-(define (create-default-object orig-pos)
+(define (default-object orig-pos)
   (let ((msg (objectmsg* #:index 0
                          #:posx (cx orig-pos)
                          #:posy (cy orig-pos))))
@@ -157,79 +158,79 @@
 ;;
 ;; (send (write-msg-name "Test"))
 ;;
-;; (send (create-wall (xy 0.0 0.0) (xy 3.0 0.0) 3.0) (create-wall (xy 1.0 1.0) (xy 3.0 1.0) 3.0))
+;; (send (wall (xy 0.0 0.0) (xy 3.0 0.0) 3.0) (wall (xy 1.0 1.0) (xy 3.0 1.0) 3.0))
 ;;
 
 ;using IDs
-;; (send (define wallId (create-wall (xy 0.0 0.0) (xy 3.0 0.0) 3.0)) (define wallId2 (create-wall (xy 1.0 1.0) (xy 3.0 1.0) 3.0)))
-;; (send (define sphereId (create-sphere 0.0 0.0 0.0001 0.0 0.0)) (define sphereId2 (create-sphere 0.0 0.0 0.0001 1.0 1.0)))
+;; (send (define wallId (wall (xy 0.0 0.0) (xy 3.0 0.0) 3.0)) (define wallId2 (wall (xy 1.0 1.0) (xy 3.0 1.0) 3.0)))
+;; (send (define sphereId (sphere 0.0 0.0 0.0001 0.0 0.0)) (define sphereId2 (sphere 0.0 0.0 0.0001 1.0 1.0)))
 
 ;Wall
-;; (send (create-wall (xy 0.0 0.0) (xy 10.0 0.0) 10.0))
-;; (send (create-wall(xy 0.0 0.0) (xy 0.0 10.0) 3.0 0.3 (* 90 DEGRAD)) (create-wall(xy 0.0 10.0) (xy 0.0 0.0) 3.0 0.3 (* 90 DEGRAD)))
+;; (send (wall (xy 0.0 0.0) (xy 10.0 0.0) 10.0))
+;; (send (wall(xy 0.0 0.0) (xy 0.0 10.0) 3.0 0.3 (* 90 DEGRAD)) (wall(xy 0.0 10.0) (xy 0.0 0.0) 3.0 0.3 (* 90 DEGRAD)))
 
 ;Doors
-;; (send (define wallId (create-wall (xy 0.0 0.0) (xy 3.0 0.0) 3.0) )(create-door wallId 1.0 0.0) (define wallId2 (create-wall (xy 1.0 1.0) (xy 3.0 1.0) 3.0)) (create-door wallId2 1.0 1.0))
-;;= (send (create-door (create-wall (xy 0.0 0.0) (xy 3.0 0.0) 3.0) 1.0 0.0) (create-story-above 10) (create-door (create-wall (xy 0.0 0.0) (xy 3.0 0.0) 3.0) 1.0 0.0))
+;; (send (define wallId (wall (xy 0.0 0.0) (xy 3.0 0.0) 3.0) )(door wallId 1.0 0.0) (define wallId2 (wall (xy 1.0 1.0) (xy 3.0 1.0) 3.0)) (door wallId2 1.0 1.0))
+;;= (send (door (wall (xy 0.0 0.0) (xy 3.0 0.0) 3.0) 1.0 0.0) (story-above 10) (door (wall (xy 0.0 0.0) (xy 3.0 0.0) 3.0) 1.0 0.0))
 
 ;Window and Door
-;; (send (define wallId (create-wall (xy 0.0 0.0) (xy 5.0 0.0) 3.0)) (create-window wallId 4.0 0.635) (create-door wallId 1.0 0.0))
+;; (send (define wallId (wall (xy 0.0 0.0) (xy 5.0 0.0) 3.0)) (window wallId 4.0 0.635) (door wallId 1.0 0.0))
 
 ;creating a chapel
-;; (send (create-chapel))
+;; (send (chapel))
 
 ;Shell
-;; (send (create-complex-shell tmat lstpoints lstarcs 1 hpoints harcs hheight htmat 0.0 0.0))
-;; (send (create-simple-shell lstpoints))
-;; (send (create-shell lstpoints lstarcs))
-;; (send (rotate-shell "x" 90 (create-shell lstpoints lstarcs)))
-;; (send (let ((shell-id (create-shell lstpoints lstarcs)))(rotate-shell "x" 90 shell-id)(rotate-shell "y" 90 shell-id)))
-;; (send (rotate-shell "y" 90 (rotate-shell "x" 90 (create-shell lstpoints lstarcs))))
-;; (send (translate-shell (list 0 5 0) (create-shell lstpoints lstarcs)))
-;; (send (translate-shell (list 11 11 0) (rotate-shell "x" 90 (create-shell lstpoints lstarcs))))
+;; (send (complex-shell tmat lstpoints lstarcs 1 hpoints harcs hheight htmat 0.0 0.0))
+;; (send (simple-shell lstpoints))
+;; (send (shell lstpoints lstarcs))
+;; (send (rotate-shell "x" 90 (shell lstpoints lstarcs)))
+;; (send (let ((shell-id (shell lstpoints lstarcs)))(rotate-shell "x" 90 shell-id)(rotate-shell "y" 90 shell-id)))
+;; (send (rotate-shell "y" 90 (rotate-shell "x" 90 (shell lstpoints lstarcs))))
+;; (send (translate-shell (list 0 5 0) (shell lstpoints lstarcs)))
+;; (send (translate-shell (list 11 11 0) (rotate-shell "x" 90 (shell lstpoints lstarcs))))
 
 ;Shell Hole
-;; (send (create-hole-on-slab hpoints harcs hheight (translate-shell (list 11 11 0) (rotate-shell "x" 90 (create-shell lstpoints lstarcs)))))
-;; (send (create-hole-on-slab hpoints harcs hheight (create-shell lstpoints lstarcs)))
-;; (send (create-hole-on-slab hpoints harcs hheight (create-hole-on-slab hpoints harcs hheight (create-shell lstpoints lstarcs))))
-;; (send (rotate-shell "y" 180 (create-hole-on-slab hpoints harcs hheight (create-shell lstpoints lstarcs))))
-;; (send (create-hole-on-slab hpoints harcs hheight (rotate-shell "y" 180 (create-hole-on-slab hpoints harcs hheight (create-shell lstpoints lstarcs)))))
+;; (send (hole-on-slab hpoints harcs hheight (translate-shell (list 11 11 0) (rotate-shell "x" 90 (shell lstpoints lstarcs)))))
+;; (send (hole-on-slab hpoints harcs hheight (shell lstpoints lstarcs)))
+;; (send (hole-on-slab hpoints harcs hheight (hole-on-slab hpoints harcs hheight (shell lstpoints lstarcs))))
+;; (send (rotate-shell "y" 180 (hole-on-slab hpoints harcs hheight (shell lstpoints lstarcs))))
+;; (send (hole-on-slab hpoints harcs hheight (rotate-shell "y" 180 (hole-on-slab hpoints harcs hheight (shell lstpoints lstarcs)))))
 
 ;Curtain Walls
-;; (send (create-curtain-wall cPoints cArcs 5))
-;;= (send (create-curtain-wall cPoints cArcs 5) (create-story-above 10) (create-curtain-wall cPoints cArcs 5))
-;; (send (add-arcs (create-curtain-wall cPoints (list) 5) cArcs))
-;; (send (add-arcs (add-arcs (create-curtain-wall cPoints (list) 5) cArcs) cArcs))
+;; (send (curtain-wall cPoints cArcs 5))
+;;= (send (curtain-wall cPoints cArcs 5) (story-above 10) (curtain-wall cPoints cArcs 5))
+;; (send (add-arcs (curtain-wall cPoints (list) 5) cArcs))
+;; (send (add-arcs (add-arcs (curtain-wall cPoints (list) 5) cArcs) cArcs))
 
 ;Translate Curtain Wall
-;; (send (translate-element (xyz 0 0 10) (create-curtain-wall cPoints cArcs 5)))
+;; (send (translate-element (xyz 0 0 10) (curtain-wall cPoints cArcs 5)))
 
 ;Slab
-;; (send (create-slab slabPoints (list) 0.0))
-;; (send (rotate-element (create-slab slabPoints (list) 0.0) "z" (* 45 DEGRAD)))
-;; (send (create-slab cPoints cArcs 0.0))
+;; (send (slab slabPoints (list) 0.0))
+;; (send (rotate-element (slab slabPoints (list) 0.0) "z" (* 45 DEGRAD)))
+;; (send (slab cPoints cArcs 0.0))
 
 ;Create walls or curtain walls on a regular slab
-;; (send (create-walls-from-slab (create-slab slabPoints (list) 0.0) 5.0))
-;;= (send (create-walls-from-slab (create-slab slabPoints (list) 0.0) 5.0) (create-story-above 5) (create-walls-from-slab (create-slab slabPoints (list)) 5.0))
-;; (send (create-cwalls-from-slab (create-slab slabPoints (list) 0.0) 5.0))
+;; (send (walls-from-slab (slab slabPoints (list) 0.0) 5.0))
+;;= (send (walls-from-slab (slab slabPoints (list) 0.0) 5.0) (story-above 5) (walls-from-slab (slab slabPoints (list)) 5.0))
+;; (send (cwalls-from-slab (slab slabPoints (list) 0.0) 5.0))
 
 ;Create walls or curtain walls on an irregular slab
-;; (send (create-walls-from-slab (create-slab slabPoints cArcs 0.0) 5.0))
-;; (send (create-cwalls-from-slab (create-slab slabPoints cArcs 0.0) 5.0))
+;; (send (walls-from-slab (slab slabPoints cArcs 0.0) 5.0))
+;; (send (cwalls-from-slab (slab slabPoints cArcs 0.0) 5.0))
 
 ;Create Slab For Absolute Tower
-;; (send (create-slab ATslab1 (list) 0.0))
-;; (send (rotate-element (create-slab ATslab1 (list) 0.0) "z" (* 90 DEGRAD)))
+;; (send (slab ATslab1 (list) 0.0))
+;; (send (rotate-element (slab ATslab1 (list) 0.0) "z" (* 90 DEGRAD)))
 
 ;Trim Elements
-;; (send (trim-elements (create-wall (xy -5.0 5.0) (xy 15.0 5.0) 3.0) (create-slab slabPoints (list)) ))
+;; (send (trim-elements (wall (xy -5.0 5.0) (xy 15.0 5.0) 3.0) (slab slabPoints (list)) ))
 
 ;PolyWall
-;;(send (create-multi-wall (list (xy 0.0 0.0) (xy -10.0 0.0) (xy -10.0 10.0) (xy 0.0 10.0)) (list) 3.0 0.0 1.0))
+;;(send (multi-wall (list (xy 0.0 0.0) (xy -10.0 0.0) (xy -10.0 10.0) (xy 0.0 10.0)) (list) 3.0 0.0 1.0))
 ;;;;create door into polywall
-;;;; (send (define laux1 (create-multi-wall (list (xy 0.0 0.0) (xy -10.0 0.0) (xy -10.0 10.0) (xy 0.0 10.0)) (list) 3.0 0.0 1.0)))
-;;;; followed by (send (create-door (car laux1) 1.0 0.0))
+;;;; (send (define laux1 (multi-wall (list (xy 0.0 0.0) (xy -10.0 0.0) (xy -10.0 10.0) (xy 0.0 10.0)) (list) 3.0 0.0 1.0)))
+;;;; followed by (send (door (car laux1) 1.0 0.0))
 
 ;True PolyWall - Problems with windows and orientation
 ;;(send (wallTest (list (xy 0.0 0.0) (xy -10.0 0.0) (xy -10.0 10.0) (xy 0.0 10.0)) (list) 3.0 0.0 1.0))
@@ -237,26 +238,26 @@
 ;;(send (wallTest (list (xy 10.0 0.0) (xy 0.0 0.0) (xy 0.0 10.0) (xy 10.0 10.0)) (list) 3.0 0.0 1.0))
 
 ;Intersect Wall
-;; (send (intersect-wall (create-wall (xy 5.0 0.0) (xy 15.0 0.0) 3.0) (create-slab slabPoints (list)) ))
-;; (send (intersect-wall (create-wall (xy -5.0 5.0) (xy 15.0 5.0) 3.0) (create-slab slabPoints (list)) ))
-;; (send (intersect-wall (create-wall (xy 40.0 0.0) (xy 40.0 50.0) 3.0) (create-slab slabPoints (list)) #t))
+;; (send (intersect-wall (wall (xy 5.0 0.0) (xy 15.0 0.0) 3.0) (slab slabPoints (list)) ))
+;; (send (intersect-wall (wall (xy -5.0 5.0) (xy 15.0 5.0) 3.0) (slab slabPoints (list)) ))
+;; (send (intersect-wall (wall (xy 40.0 0.0) (xy 40.0 50.0) 3.0) (slab slabPoints (list)) #t))
 
 ;Column
-;; (send (create-column (xyz 0.0 0.0 0.0) 0.0 10.0 true 360 5.0 5.0))
+;; (send (column (xyz 0.0 0.0 0.0) 0.0 10.0 true 360 5.0 5.0))
 
 ;Story
-;; (send (create-story-below 10.0) (create-slab slabPoints (list)) (create-story-below 10.0) (create-slab slabPoints (list)) (create-story-below 10.0) (create-slab slabPoints (list)))
-;; (send (create-story-above 10.0) (create-story-above 10.0) (define current-story-information (check-story)))
-;; (send (create-story-below 10.0) (create-story-below 10.0) (define current-story-information (check-story)))
-;; (send (create-story 10) (create-story 20) (create-story 10))
+;; (send (story-below 10.0) (slab slabPoints (list)) (story-below 10.0) (slab slabPoints (list)) (story-below 10.0) (slab slabPoints (list)))
+;; (send (story-above 10.0) (story-above 10.0) (define current-story-information (check-story)))
+;; (send (story-below 10.0) (story-below 10.0) (define current-story-information (check-story)))
+;; (send (story 10) (story 20) (story 10))
 
 ;Delete
-;; (send (delete-elements (create-wall (xy -5.0 5.0) (xy 15.0 5.0) 3.0)))
-;;= (send (define wallIDAux (create-wall (xy 0.0 0.0) (xy 3.0 0.0) 3.0)) (create-door wallIDAux 1.0 0.0) (delete-elements wallIDAux))
+;; (send (delete-elements (wall (xy -5.0 5.0) (xy 15.0 5.0) 3.0)))
+;;= (send (define wallIDAux (wall (xy 0.0 0.0) (xy 3.0 0.0) 3.0)) (door wallIDAux 1.0 0.0) (delete-elements wallIDAux))
 
 
 ;Mixed Tests
-;; (send (create-wall (xy 0.0 0.0) (xy 3.0 0.0) 3.0) (create-curtain-wall cPoints cArcs 5) (create-story-above 10) (create-wall (xy 0.0 0.0) (xy 3.0 0.0) 3.0)(create-curtain-wall cPoints cArcs 5))
+;; (send (wall (xy 0.0 0.0) (xy 3.0 0.0) 3.0) (curtain-wall cPoints cArcs 5) (story-above 10) (wall (xy 0.0 0.0) (xy 3.0 0.0) 3.0)(curtain-wall cPoints cArcs 5))
 
 
 
@@ -282,35 +283,35 @@
                            (+xy p (- (+ daux6 (/ t 2))) (- (+ daux6 (/ t 2))))))
 
 
-(define (create-several-stories number)
+(define (several-stories number)
   (for ([i number])
     (let* ((slab-points-aux (points-superellipse (xy 0 0) 26 21 1.75 50))
            (slab-points (append slab-points-aux (list (car slab-points-aux))))
-           ;(slab-id (create-slab slab-points (list)))
-           ;(slab-id (create-slab cPoints cArcs))
-           (slab-id (create-slab slabPoints))
+           ;(slab-id (slab slab-points (list)))
+           ;(slab-id (slab cPoints cArcs))
+           (slab-id (slab slabPoints))
            )
-      (create-walls-from-slab slab-id 10)
-      ;(create-hole-slab slab-id central-hole)
-      (create-hole-slab slab-id hole-points)
+      (walls-from-slab slab-id 10)
+      ;(hole-slab slab-id central-hole)
+      (hole-slab slab-id hole-points)
       ;(rotate-element-z slab-id (* i 10))
       
-      (checked-create-story-above 10))))
+      (checked-story-above 10))))
 
 (define (test-slab)
-  (define slab-id (create-slab slabPoints))
-  (create-walls-from-slab slab-id 10)
-  (create-hole-slab slab-id hole-points)
-  (checked-create-story-above 10)
-  (set! slab-id (create-slab slabPoints))
-  (create-walls-from-slab slab-id 10)
-  (create-hole-slab slab-id hole-points)
+  (define slab-id (slab slabPoints))
+  (walls-from-slab slab-id 10)
+  (hole-slab slab-id hole-points)
+  (checked-story-above 10)
+  (set! slab-id (slab slabPoints))
+  (walls-from-slab slab-id 10)
+  (hole-slab slab-id hole-points)
   ;(delete-elements slab-id)
   )
 |#
 
-#| DIFFERENT WAY OF DOING create-slab FUNCTION - USING KEYWORDS
-(define create-slab 
+#| DIFFERENT WAY OF DOING slab FUNCTION - USING KEYWORDS
+(define slab 
   (lambda (listpoints #:listarcs [listarcs (list)] #:bottomOffset [bottomOffset 0] #:material [material 60] #:thickness [thickness 0.0])
     (let ((slab-msg (slabmessage* #:level bottomOffset
                                   #:material material

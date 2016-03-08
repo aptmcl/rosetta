@@ -5,7 +5,8 @@
 (require "protobuf1/protobuf.rkt")
 (require "protobuf1/encoding.rkt")
 (require "Messages.rkt")
-(require rosetta/revit)
+(require (except-in rosetta/revit
+                    box))
 (require srfi/26)
 
 (define visual-feedback? (make-parameter #f))
@@ -106,6 +107,7 @@
                                            #:pz lst-z) output)))
 
 ;;Function to send list of points using repeated fields with XYZ Rosetta implementation
+#|
 (define (send-points lst)
   (let ((lst-x (list))
         (lst-y (list))
@@ -118,6 +120,22 @@
     (write-sized serialize (pointsmessage* #:px lst-x 
                                            #:py lst-y 
                                            #:pz lst-z) output)))
+|#
+(define (prepare-points-to-send lst)
+  (let ((lst-x (list))
+        (lst-y (list))
+        (lst-z (list)))
+    (for-each (lambda (point)
+                (set! lst-x (append lst-x (list (cx point))))
+                (set! lst-y (append lst-y (list (cy point))))
+                (set! lst-z (append lst-z (list (cz point)))))
+              lst)
+    (pointsmessage* #:px lst-x 
+                    #:py lst-y 
+                    #:pz lst-z)))
+
+(define (send-points lst)
+  (write-sized serialize (prepare-points-to-send lst) output))
 
 ;;Function to send list of arcs
 (define (send-list-arcs lst)
@@ -148,7 +166,6 @@
  the following arcs.
  Ex.: List with two arcs, will apply the first arc to
       line(p1, p2), and the second arc to line(p2, p3)
-|#
 (define (send-arcs lst)
   (let ((lst-beg-index (list))
         (lst-end-index (list))
@@ -163,6 +180,24 @@
     (write-sized serialize (polyarcsmessage* #:begindex lst-beg-index 
                                              #:endindex lst-end-index 
                                              #:arcangle lst-arc-angle) output)))
+|#
+
+(define (prepare-arcs-to-send lst)
+  (let ((lst-beg-index (list))
+        (lst-end-index (list))
+        (lst-arc-angle (list))
+        (index 1))
+    (for-each (lambda (arc)
+                (set! lst-beg-index (append lst-beg-index (list index)))
+                (set! lst-end-index (append lst-end-index (list (+ index 1))))
+                (set! lst-arc-angle (append lst-arc-angle (list  arc)))
+                (set! index (+ index 1)))
+              lst)
+    (polyarcsmessage* #:begindex lst-beg-index 
+                      #:endindex lst-end-index 
+                      #:arcangle lst-arc-angle)))
+(define (send-arcs lst)
+  (write-sized serialize (prepare-arcs-to-send lst) output))
 
 #|
 Function to update file materials
