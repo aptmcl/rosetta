@@ -9,7 +9,8 @@
 (require "objects.rkt")
 (require "../base/utils.rkt"
          "../base/coord.rkt"
-         "../base/shapes.rkt")
+         "../base/shapes.rkt"
+         "../base/connection.rkt")
 (require srfi/26)
 
 
@@ -22,27 +23,27 @@
 
 (define (get-levels)
   (write-msg-name "GetLevels")
-  (read-sized (cut deserialize (levelrepeated*) <>) input))
+  (read-sized (cut deserialize (levelrepeated*) <>) (connection-in (bim-connection))))
 
 (define (get-walls)
   (write-msg-name "GetWalls")
-  (read-sized (cut deserialize (wallrepeated*) <>)input))
+  (read-sized (cut deserialize (wallrepeated*) <>) (connection-in (bim-connection))))
 
 (define (get-slabs)
   (write-msg-name "GetSlabs")
-  (read-sized (cut deserialize (slabrepeated*) <>)input))
+  (read-sized (cut deserialize (slabrepeated*) <>) (connection-in (bim-connection))))
 
 (define (get-columns)
   (write-msg-name "GetColumns")
-  (read-sized (cut deserialize (columnrepeated*) <>)input))
+  (read-sized (cut deserialize (columnrepeated*) <>) (connection-in (bim-connection))))
 
 (define (get-objects)
   (write-msg-name "GetObjects")
-  (read-sized (cut deserialize (objectrepeated*) <>)input))
+  (read-sized (cut deserialize (objectrepeated*) <>) (connection-in (bim-connection))))
 
 (define (get-roofs)
   (write-msg-name "GetRoofs")
-  (read-sized (cut deserialize (roofrepeated*) <>)input))
+  (read-sized (cut deserialize (roofrepeated*) <>) (connection-in (bim-connection))))
 
 (define (recreate-levels [level-list (get-levels)])
   (for ([n (length (levelrepeated-levels level-list))])
@@ -132,7 +133,7 @@ ArchiCAD not being selected.
 |#
 (define (select-element)
   (write-msg-name "SelectElement")
-  (elementid-guid (read-sized (cut deserialize (elementid*) <>)input)))
+  (read-guid))
 
 (define (highlight-element elem-id)
   (let* ((eleList (if (list? elem-id)
