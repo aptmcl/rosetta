@@ -1,4 +1,4 @@
-#lang typed/racket/base #:no-optimize
+#lang typed/racket/base/no-check
 (require racket/math
          racket/list
          racket/function)
@@ -8,8 +8,65 @@
 (provide (all-from-out "../base/coord.rkt"))
 (provide (all-from-out "../base/utils.rkt"))
 (provide (all-from-out "../base/shapes.rkt"))
+(require (prefix-in % "racketSide.rkt"))
 (provide immediate-mode?
          current-backend-name
+#|         mt
+         ft
+         box
+         boxb
+         cylinder
+         cylinderb
+         cylinder-metric
+         sphere
+         sphere-metric
+         wall-h
+         wall-l
+         curtain-wall
+         mass-wall
+         insert-door
+         insert-door-relative
+         insert-window
+         delete-element
+         create-level
+         upper-level
+         current-level
+         get-level
+         delete-level
+         create-round-floor
+         create-floor
+         create-floor-opening
+         create-stairs-run
+         intersect-wall-floor
+         default-level-to-level-height
+         disconnect-from-revit
+         create-wall
+         slab
+         roof
+         create-walls-from-slab
+         create-hole-slab
+         column
+         intersect-wall
+         current-level-elevation
+         create-railings
+         get-wall-volume
+         create-stairs
+         levels-info
+         walls-info
+         create-topo-surface
+         create-building-pad
+         get-level-by-name
+         highlight-element
+         get-selected-element
+         mass-sweep
+         extrusion-mass
+         import-dwg
+         move-element
+         rotate-element
+         beam
+         load-family
+         family-element
+|#         
 #|         all-shapes
          bounding-box
          delete-shape
@@ -39,16 +96,13 @@
 |#)
 
 (define-type Ref Any)
+(define-type Shape Any)
+(define-type Shapes Any)
 
-(require/typed "racketSide.rkt"
-               [(boxb %boxb) (-> Loc Real Real Real Ref)]
-               [(extrusion-mass %extrusion-mass) (-> Locs Real Ref)]
-               [(connect-to-revit-family %connect-to-revit-family) (-> Void)]
-               [(disconnect-from-revit %disconnect-from-revit) (-> Void)])
+(provide Ref Shape Shapes)
 
 ;(require (prefix-in % "racketSide.rkt"))
 
-(provide (rename-out [%connect-to-revit-family connect-to-revit-family]))
 (provide (rename-out [%disconnect-from-revit disconnect-from-revit]))
 
 #|
@@ -769,3 +823,162 @@ The following example does not work as intended. Rotating the args to closed-spl
     (%extrusion-mass (append points (list (car points))) height)))
 
 ;(def-shape (rectangular-mass [center : Loc] [width : Real] [length : Real] [height : Real]))
+
+(require (for-syntax racket/base racket/list racket/syntax))
+
+
+(provide ;;BIM extensions
+ level
+ beam
+ column
+ ;;door
+ roof
+ slab
+ ;;wall
+ current-level
+ default-level-to-level-height
+ upper-level
+ def-bim-family
+ )
+
+(define (level height)
+  (%create-level #:height height))
+
+(define current-level %current-level)
+
+(define default-level-to-level-height %default-level-to-level-height)
+
+(define (upper-level [lvl : Level (current-level)]
+                     [height : Real (default-level-to-level-height)])
+  (%upper-level #:level lvl
+                #:height height))
+
+(struct bim-family
+  ([path : String]
+   [map : (Listof (Cons Keyword (Option Any)))]
+   [id : Any])
+  #:type-name BIM-Family)
+
+(define-for-syntax (build-name fmt id)
+  (format-id id #:source id fmt (syntax-e id)))
+
+(define-for-syntax (build-keyword id)
+  (string->keyword (symbol->string (syntax->datum id))))
+
+(define-syntax (def-bim-family stx)
+  (syntax-case stx ()
+    [(def name (param ...))
+     (with-syntax ([struct-name (build-name "~A-family" #'name)]
+                   [instance-name (build-name "~A-family-element" #'name)]
+                   [load-name (build-name "load-~A-family" #'name)]
+                   [default-name (build-name "default-~A-family" #'name)]
+                   [layer-name (string-titlecase (symbol->string (syntax-e #'name)))]
+                   [([param-name param-key param-type param-default class-comb instance-comb] ...)
+                    (map (lambda (p)
+                           (syntax-case p (:)
+                             [[name : type default]
+                              (with-syntax ([key (build-keyword #'name)])
+                                #'[name key type default
+                                        (key [name : (Option Any) #f])
+                                        (key [name : type default])])]
+                             #;[[name : type] #'[name type]]))
+                         (syntax->list #'(param ...)))])
+       (with-syntax ([class-params
+                      (append* (map syntax->list (syntax->list #'(class-comb ...))))]
+                     [instance-params
+                      (append* (map syntax->list (syntax->list #'(instance-comb ...))))])
+         (syntax/loc stx
+           (begin
+             (provide (struct-out struct-name)
+                      default-name
+                      load-name
+                      instance-name)
+             (struct struct-name bim-family
+               ([param-name : param-type] ...))
+             (define default-name (make-parameter (struct-name "" '() (%idstrc* #:id 0) param-default ...)))
+             (define (load-name [path : String] . class-params)
+               (struct-name path
+                            (list (cons 'param-key param-name) ...)
+                            (%load-family path)
+                            param-default ...))
+             (define (instance-name [family : BIM-Family] . instance-params)
+               (struct-name (bim-family-path family)
+                            (bim-family-map family)
+                            (let ((kvs (filter car
+                                               (map (lambda (kv v)
+                                                      (cons (cdr kv) v))
+                                                    (bim-family-map family)
+                                                    (list param-name ...)))))
+                              (%family-element (bim-family-id family)
+                                               #:parameter-names (map car kvs)
+                                               #:parameter-values (map cdr kvs)))
+                            param-name ...))))))]))
+#;
+(define-syntax (def-bim-family stx)
+  (syntax-case stx ()
+    [(def name (param ...))
+     (with-syntax ([struct-name (build-name #'name "~A-family")]
+                   [instance-name (build-name #'name "~A-family-element")]
+                   [load-name (build-name #'name "load-~A-family")]
+                   [default-name (build-name #'name "default-~A-family")]
+                   [layer-name (string-titlecase (symbol->string (syntax-e #'name)))]
+                   [([param-name param-type default] ...)
+                    (map (lambda (p)
+                           (syntax-case p (:)
+                             [[name : type default] #'[name type default]]
+                             #;[[name : type] #'[name type]]))
+                         (syntax->list #'(param ...)))])
+       (syntax/loc stx
+         (begin
+           (provide (struct-out struct-name)
+                    default-name
+                    load-name
+                    instance-name)
+           (struct struct-name bim-family
+             ([param-name : param-type] ...))
+           (define default-name (make-parameter (struct-name "" (list) (%idstrc* #:id 0) default ...)))
+           (define (load-name [path : String] [map : (Listof String) (list)])
+             (struct-name path map (%load-family path) default ...))
+           (define (instance-name [family : BIM-Family] param ...)
+             (struct-name (bim-family-path family)
+                          (bim-family-parameters family)
+                          (%family-element (bim-family-id family)
+                                           #:parameter-names (bim-family-parameters family)
+                                           #:parameter-values (list param-name ...))
+                          param-name ...)))))]))
+
+
+
+(def-bim-family beam
+  ([width : Real 10]
+   [height : Real 10]))
+
+(def-bim-family wall ())
+(def-bim-family slab
+  ([thickness : Real 1]))
+(def-bim-family roof ())
+
+(def-bim-family column
+  ([width : Real 10]))
+
+(def-bim-family door ())
+
+
+(def-shape (beam [p0 : Loc] [p1 : Loc] [family : Beam-Family (default-beam-family)])
+  (%create-beam (loc-in-world p0) (loc-in-world p1) (bim-family-id family)))
+
+(def-shape (column [center : Loc]
+                   [bottom-level : Level (current-level)]
+                   [top-level : Level (upper-level bottom-level)]
+                   [family : Any (default-column-family)])
+  (%create-column (loc-in-world center)
+                  #:bottom-level bottom-level
+                  #:top-level top-level
+                  #:width (column-family-width family)
+                  #:family (bim-family-id family)))
+
+(def-shape (slab [vertices : Locs] [level : Any (current-level)] [family : Any (default-slab-family)])
+  (%create-slab (map loc-in-world vertices) #:bottom-level level #:family (bim-family-id family)))
+
+(def-shape (roof [vertices : Locs] [level : Any (current-level)] [family : Any (default-roof-family)])
+  (%create-roof (map loc-in-world vertices) #:bottom-level level #:family (bim-family-id family)))

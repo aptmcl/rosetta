@@ -6,9 +6,7 @@
 
 (define addon-in-use 32)
 
-(define-runtime-path base (build-path 'up))
-
-(define from-addon (build-path base "x64" "RosettaArchiCAD.apx"))
+(define-runtime-path from-addon (build-path "x64" "RosettaArchiCAD.apx"))
 
 (define to-folder (string->some-system-path "C:\\Program Files\\GRAPHISOFT\\ArchiCAD 18\\Add-ons" 'windows)) 
 

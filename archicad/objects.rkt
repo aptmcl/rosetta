@@ -5,10 +5,9 @@
 (require "protobuf1/protobuf.rkt")
 (require "protobuf1/encoding.rkt")
 (require "Messages.rkt")
-(require "Communication.rkt")
-(require "Geometry.rkt")
-(require (except-in rosetta/revit
-                    box))
+(require "communication.rkt")
+(require "geometry.rkt")
+(require "../base/coord.rkt")
 (require srfi/26)
 
 (define DEGRAD (/ pi 180.0))

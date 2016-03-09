@@ -2,6 +2,7 @@
 
 ;;(require (except-in (planet aml/rosetta) box cylinder sphere surface-grid union))
 (require "../base/coord.rkt")
+(require "../base/connection.rkt")
 (require "rosetta/protobuf1/protobuf.rkt")
 (require "rosetta/protobuf1/encoding.rkt")
 (require srfi/26)
@@ -19,26 +20,32 @@
 
 ;;;;;;;Installation;;;;;;;;;;;;;;;;;;;;;
 
-(define (move-addon-files)
-  (display "Checking plugin...")
-  (when (and (directory-exists? "C:\\ProgramData\\Autodesk\\Revit\\Addins\\2015")
-             (file-exists? addin)
-             (file-exists? google)
-             (file-exists? proto)
-             (file-exists? dll))
-    (display "Installing plugin...")
-    (rename-file-or-directory addin "C:\\ProgramData\\Autodesk\\Revit\\Addins\\2015\\RosettaToRevit.addin" #t)
-    (rename-file-or-directory google "C:\\Autodesk\\Google.ProtocolBuffers.dll" #t)
-    (rename-file-or-directory proto "C:\\Autodesk\\protobuf-net.dll" #t)
-    (rename-file-or-directory dll "C:\\Autodesk\\RosettaToRevit.dll" #t))
-  (displayln "done!"))
+(define moved-addon-files? #f)
 
-(move-addon-files)
+(define (move-addon-files)
+  (unless moved-addon-files?
+    (display "Checking plugin...")
+    (when (and (directory-exists? "C:\\ProgramData\\Autodesk\\Revit\\Addins\\2015")
+               (file-exists? addin)
+               (file-exists? google)
+               (file-exists? proto)
+               (file-exists? dll))
+      (display "Installing plugin...")
+      (rename-file-or-directory addin "C:\\ProgramData\\Autodesk\\Revit\\Addins\\2015\\RosettaToRevit.addin" #t)
+      (rename-file-or-directory google "C:\\Autodesk\\Google.ProtocolBuffers.dll" #t)
+      (rename-file-or-directory proto "C:\\Autodesk\\protobuf-net.dll" #t)
+      (rename-file-or-directory dll "C:\\Autodesk\\RosettaToRevit.dll" #t))
+    (displayln "done!")
+    (set! moved-addon-files? #t)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define input #f)
-(define output #f)
+(define revit-conn #f)
+
+(define (revit-connection)
+  (unless revit-conn
+    (connect-to-revit))
+  revit-conn)
 
 ;;;;;;;Conversions;;;;;;;;;;;;;;;;;;;;;;
 
@@ -49,19 +56,28 @@
   (measure))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(provide idstrc*) ;;HACK Martelada
 
 (define current-level (make-parameter null))
 
 (define default-level-to-level-height (make-parameter (mt 3)))
 
+(define default-beam-family (make-parameter (idstrc* #:id 0)))
+
+(define default-wall-family (make-parameter (idstrc* #:id 0)))
+
+(define default-slab-family (make-parameter (idstrc* #:id 0)))
+
+(define default-roof-family (make-parameter (idstrc* #:id 0)))
+
+(define default-column-family (make-parameter (idstrc* #:id 0)))
+
+(define default-door-family (make-parameter (idstrc* #:id 0)))
+
 (define server-addr "localhost")
 
 (define (connect-to-revit)
-  (connect-to-revit-family)
-  (set! current-level (make-parameter (get-level 0 "Level 1")))
-  (delete-level "Level 2"))
-
-(define (connect-to-revit-family)
+  (move-addon-files)
   (let rec((n 10))
     (with-handlers ((exn:fail? (lambda (e)
                                  (displayln "Please, start the Revit->Rosetta plugin.")
@@ -70,40 +86,42 @@
                                      (rec (- n 1))
                                      (raise e)))))
       (call-with-values(lambda () (tcp-connect server-addr 53800))
-                       (lambda (a b)
-                         (set! input a)
-                         (set! output b)
-                         (file-stream-buffer-mode input 'none)
-                         (file-stream-buffer-mode output 'none)
+                       (lambda (in out)
+                         (file-stream-buffer-mode in 'none)
+                         (file-stream-buffer-mode out 'none)
+                         (set! revit-conn (connection in out))
                          ;;I'm not sure this is the correct place to do this.
                          ;;I just know it must run before closing the socket
                       #;   (plumber-add-flush! (current-plumber)
                                              (lambda (e)
                                                (plumber-flush-handle-remove! e)
-                                               (disconnect-from-revit)))))))
+                                               (disconnect-from-revit)))))
+      (when (project-document?)
+        (set! current-level (make-parameter (get-level 0 "Level 1")))
+        (delete-level "Level 2"))))
   (void))
 
-(define (close-ports)
-  (close-input-port input)
-  (close-output-port output))
+(define (project-document?)
+  (write-sized serialize (namestrc* #:name "isProject") (connection-out (revit-connection)))
+  (boolstrc-answer (read-sized (cut deserialize (boolstrc*) <>) (connection-in (revit-connection)))))
 
 ;;Rosetta functions
 
 (define-syntax-rule
   (send/no-rcv name body ...)
-  (begin
+  (let ((output (connection-out (revit-connection))))
     (write-sized serialize (namestrc* #:name name) output)
     (write-sized serialize body output) ...))
 
 (define-syntax-rule
   (send/rcv-id name body ...)
-  (begin
+  (let ((input (connection-in (revit-connection))))
     (send/no-rcv name body ...)
     (read-sized (cut deserialize (idstrc*) <>) input)))
 
 (define-syntax-rule
   (send/rcv-polyid name body ...)
-  (begin
+  (let ((input (connection-in (revit-connection))))
     (send/no-rcv name body ...)
     (polyidstrc-ids (read-sized (cut deserialize (polyidstrc*) <>) input))))
 
@@ -159,6 +177,16 @@
                                #:p1coordy (cy p1)
                                #:p1coordz (cz p1))))
 
+(define (cylinder-metric p0 r p1)
+  (send/rcv-id "cylinderMetric"
+               (cylinderbstrc* #:p0coordx (cx p0)
+                               #:p0coordy (cy p0)
+                               #:p0coordz (cz p0)
+                               #:radius r
+                               #:p1coordx (cx p1)
+                               #:p1coordy (cy p1)
+                               #:p1coordz (cz p1))))
+
 (define (sphere p r)
   (send/rcv-polyid "sphere"
                    (spherestrc* #:p0coordx (- (cx p) r)
@@ -171,11 +199,19 @@
                                 #:p2coordy (+ (cy p) r)
                                 #:p2coordz (cz p))))
 
+(define (sphere-metric p r)
+  (send/rcv-id "sphereMetric"
+                   (spherestrc* #:p0coordx (- (cx p) r)
+                                #:p0coordy (cy p)
+                                #:p0coordz (cz p)
+                                #:p1coordx (+ (cx p) r)
+                                #:p1coordy (cy p)
+                                #:p1coordz (cz p)
+                                #:p2coordx (cx p)
+                                #:p2coordy (+ (cy p) r)
+                                #:p2coordz (cz p))))
+
 ;;;;;;;;;;;;;;;;;;;;BIM Function;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-(define (test-new) 
-  (write-sized serialize (namestrc* #:name "test") output))
 
 (define (wall p0 p1 level)
   (send/rcv-id "wall"
@@ -242,18 +278,20 @@
                               #:height height
                               #:level-id level)))
 
-(define (insert-door id loc)
+(define (insert-door id loc #:family[family (default-door-family)])
   (send/rcv-id "insertDoor"
                (insertdoorstrc* #:hostid (idstrc-id id)
                                 #:p0coordx (cx loc)
                                 #:p0coordy (cy loc)
-                                #:p0coordz (cz loc))))
+                                #:p0coordz (cz loc)
+                                #:family family)))
 
-(define (insert-door-relative id deltaX deltaY)
+(define (insert-door-relative id deltaX deltaY #:family[family (default-door-family)])
   (send/rcv-id "insertDoor1"
                (insertdoorbstrc* #:hostid (idstrc-id id)
                                  #:deltax deltaX
-                                 #:deltay deltaY)))
+                                 #:deltay deltaY
+                                 #:family family)))
 
 (define (insert-window id deltaX deltaY)
   (send/rcv-id "insertWindow"
@@ -299,14 +337,6 @@
                            #:p1coordz (cz p1)
                            #:level level)))
 
-(define (column p0 blevel tlevel)
-  (send/rcv-id "createColumn"
-               (columnstrc* #:p0coordx (cx p0)
-                            #:p0coordy (cy p0)
-                            #:p0coordz (cz p0)
-                            #:baselevel blevel
-                            #:toplevel tlevel)))
-
 (define (create-floor-opening p0 p1 floor)
   (send/no-rcv "createOpening"
                (flooropeningstrc* #:p0coordx (cx p0)
@@ -315,14 +345,7 @@
                                   #:p1coordx (cx p1)
                                   #:p1coordy (cy p1)
                                   #:p1coordz (cz p1)
-                                  #:floorid (idstrc-id floor)) output))
-
-
-(define (floor-from-points lista level)
-  (let ((l (convert-list lista)))
-    (send/rcv-id "createFloorFromPoints"
-                 (polylinefloorstrc* #:floor level 
-                                     #:points l))))
+                                  #:floorid (idstrc-id floor))))
 
 (define (create-stairs-run blevel tlevel bp0 bp1 tp0 tp1)
   (send/no-rcv "stairsRun"
@@ -346,31 +369,34 @@
 
 (define (disconnect-from-revit)
   (send/no-rcv "disconnect")
-  (close-ports)
+  (shutdown-connection (revit-connection))
   (void))
 
 ;;;;;;;;New 2.0 Operator ;;;;;;;;;;;;;;;
 
 
-(define (create-wall guide #:bottom-level[bottom-level (current-level)] #:top-level[top-level (upper-level #:level bottom-level)])
+(define (create-wall guide #:bottom-level[bottom-level (current-level)] #:top-level[top-level (upper-level #:level bottom-level)] #:family[family (default-wall-family)])
   (let ((pts (convert-list guide)))
     (send/rcv-polyid "polyWall"
                      (polywallstrc* #:pts pts
                                     #:levelb bottom-level
-                                    #:levelt top-level))))
+                                    #:levelt top-level
+                                    #:familyid family))))
 
-(define (create-slab guide #:bottom-level [bottom-level (current-level)])
+(define (create-slab guide #:bottom-level [bottom-level (current-level)] #:family[family (default-slab-family)])
   (let ((pts (convert-list guide)))
     (send/rcv-id "createFloorFromPoints"
                  (polylinefloorstrc* #:floor bottom-level 
-                                     #:points pts))))
+                                     #:points pts
+                                     #:familyid family))))
 
 
-(define (create-roof guide #:bottom-level[bottom-level (current-level)])
+(define (create-roof guide #:bottom-level[bottom-level (current-level)] #:family [family (default-roof-family)])
   (let ((pts (convert-list guide)))
     (send/rcv-id "createRoof"
                  (polylinefloorstrc* #:floor bottom-level 
-                                     #:points pts))))
+                                     #:points pts
+                                     #:familyid family))))
 
 (define (create-walls-from-slab slab-id height #:bottom-level[bottom-level (current-level)])
   (send/rcv-polyid "wallsFromSlabs"
@@ -384,13 +410,15 @@
                  (holeslabstrc* #:slabid slab-id
                                 #:pts pts))))
 
-(define (create-column center #:bottom-level[bottom-level (current-level)] #:top-level[top-level (upper-level #:level bottom-level)])
+(define (create-column center #:bottom-level [bottom-level (current-level)] #:top-level [top-level (upper-level #:level bottom-level)] #:width [width 0] #:family [family (default-column-family)])
   (send/rcv-id "createColumn"
                (columnstrc* #:p0coordx (cx center)
                             #:p0coordy (cy center)
                             #:p0coordz (cz center)
                             #:baselevel bottom-level
-                            #:toplevel top-level)))
+                            #:toplevel top-level
+                            #:width width
+                            #:familyid family)))
 
 (define (intersect-wall idw idf)
   (send/rcv-id "intersectWF" idw idf))
@@ -398,15 +426,17 @@
 (define (current-level-elevation)
   (send/no-rcv "levelElevation"
                (current-level))
-  (doublestrc-height (read-sized (cut deserialize (doublestrc*) <>) input)))
+  (doublestrc-height (read-sized (cut deserialize (doublestrc*) <>)
+                                 (connection-in (revit-connection)))))
 
 (define (create-railings slabid)
   (send/no-rcv "createRailings"
-               (railingsstrc* #:slabid slabid) output))
+               (railingsstrc* #:slabid slabid)))
 
 (define (get-wall-volume wallid)
   (send/no-rcv "getWallVolume" wallid)
-  (doublevolumestrc-volume (read-sized (cut deserialize (doublevolumestrc*) <>) input)))
+  (doublevolumestrc-volume (read-sized (cut deserialize (doublevolumestrc*) <>)
+                                       (connection-in (revit-connection)))))
 
 (define (create-stairs blevel tlevel bp tp)
   (send/rcv-id "createStairs"
@@ -421,11 +451,13 @@
 
 (define (levels-info)
   (send/no-rcv "getLevelsInfo")
-  (polylevelstrc-levels (read-sized (cut deserialize (polylevelstrc*) <>) input)))
+  (polylevelstrc-levels (read-sized (cut deserialize (polylevelstrc*) <>)
+                                    (connection-in (revit-connection)))))
 
 (define (walls-info)
   (send/no-rcv "getWallsInfo")
-  (polywallinfostrc-walls (read-sized (cut deserialize (polywallinfostrc*) <>) input)))
+  (polywallinfostrc-walls (read-sized (cut deserialize (polywallinfostrc*) <>)
+                                      (connection-in (revit-connection)))))
 
 (define (create-topo-surface points)
   (let ((pts (convert-list points)))
@@ -467,6 +499,45 @@
   (send/no-rcv "importDWG")
   (send/no-rcv file))
 
+(define (move-element element vector)
+  (send/no-rcv "moveElement"
+               (movestrc* #:element element
+                          #:vectorx (cx vector)
+                          #:vectory (cy vector)
+                          #:vectorz (cz vector))))
+
+(define (rotate-element element angle p0 p1)
+  (send/no-rcv "rotateElement"
+               (rotatestrc* #:element element
+                            #:angle angle
+                            #:p0x (cx p0)
+                            #:p0y (cy p0)
+                            #:p0z (cz p0)
+                            #:p1x (cx p1)
+                            #:p1y (cy p1)
+                            #:p1z (cz p1))))
+
+(define (create-beam p0 p1 family)
+  (send/rcv-id "createBeam"
+               (beaminfostrc* #:p0coordx (cx p0)
+                              #:p0coordy (cy p0)
+                              #:p0coordz (cz p0)
+                              #:p1coordx (cx p1)
+                              #:p1coordy (cy p1)
+                              #:p1coordz (cz p1)
+                              #:family family)))
+
+(define (load-family path)
+  (send/rcv-id "loadFamily"
+               (namestrc* #:name path)))
+
+(define (family-element family #:flag-override[flag-override #f] #:parameter-names[parameter-names (list)] #:parameter-values[parameter-values (list)])
+  (send/rcv-id "familyElement"
+               (familyelementstrc* #:familyid family
+                                   #:flag flag-override
+                                   #:names parameter-names
+                                   #:values parameter-values)))
+
 ;;;;;;;;Auxiliary Funtions;;;;;;;;;;;;;;
 
 (define (convert-list lista)
@@ -484,47 +555,3 @@
     m))
 
 ;;;;;;;;;;Comment;;;;;;;;;;;;;;;;
-
-#;(define (surface-grid malha)
-  (let ((m (convert-matrix malha)))
-    (write-sized serialize (namestrc* #:name "surfaceGrid") output)
-    (write-sized serialize (matrixstrc* #:lines m) output)))
-
-#;(define (create-stairs-landing stairsId bottomleftp topleftp bottomrightp toprightp)
-  (write-sized serialize (namestrc* #:name "stairsLanding") output)
-  (write-sized serialize (landingstrc* #:bottomleftcornerx (cx bottomleftp)
-                                       #:bottomleftcornery (cy bottomleftp)
-                                       #:bottomleftcornerz (cz bottomleftp)
-                                       #:topleftcornerx (cx topleftp)
-                                       #:topleftcornery (cy topleftp)
-                                       #:topleftcornerz (cz topleftp)
-                                       #:bottomrightcornerx (cx bottomrightp)
-                                       #:bottomrightcornery (cy bottomrightp)
-                                       #:bottomrightcornerz (cz bottomrightp)
-                                       #:toprightcornerx (cx toprightp)
-                                       #:toprightcornery (cy toprightp)
-                                       #:toprightcornerz (cz toprightp)
-                                       #:stairsrunid stairsId)))
-
-#;(define (finish-wall-face-interior wall)
-  (write-sized serialize (namestrc* #:name "wallFinishFaceInterior") output)
-  (write-sized serialize wall output))
-
-#;(define (delete-all-elements)
-  (write-sized serialize (namestrc* #:name "deleteAllElements") output))
-
-#;(define (slab-wall p0 p1 p2 p3 level)
-  (write-sized serialize (namestrc* #:name "slabWall") output)
-  (write-sized serialize (slabwallstrc* #:bottomleftcornerx (cx p0)
-                                        #:bottomleftcornery (cy p0)
-                                        #:bottomleftcornerz (cz p0)
-                                        #:topleftcornerx (cx p1)
-                                        #:topleftcornery (cy p1)
-                                        #:topleftcornerz (cz p1)
-                                        #:bottomrightcornerx (cx p3)
-                                        #:bottomrightcornery (cy p3)
-                                        #:bottomrightcornerz (cz p3)
-                                        #:toprightcornerx (cx p2)
-                                        #:toprightcornery (cy p2)
-                                        #:toprightcornerz (cz p2)
-                                        #:level-id level)))

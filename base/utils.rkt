@@ -1,4 +1,4 @@
-#lang typed/racket/base
+#lang typed/racket/base/no-check
 (require (for-syntax racket/base)
          racket/path racket/file racket/format)
 
@@ -38,7 +38,7 @@
                ((#f) #'<)
                (else #'pred))
             i n)
-           ([(v) (+ a (/ (* i (- b a)) n))])
+           ([(v) (if (= i n) b (+ a (/ (* i (- b a)) n)))]) ;Extra test to avoid rounding errors
            #true
            #true
            ((+ i 1)))]])))
@@ -235,6 +235,18 @@
                      [rs (cdr rs)])
                  (loop rs (combine r1 combs) n)))))))
 
+
+;;Colors
+
+(define-type Color (U rgb))
+
+(struct rgb
+  ([red : Byte]
+   [green : Byte]
+   [blue : Byte]))
+
+(provide Color (struct-out rgb))
+
 ;;Renders and Films
 (provide render-dir
          render-user-dir
@@ -298,12 +310,13 @@
   path)
 
 
-(provide film-filename film-frame start-film frame-filename)
-
-(define film-filename (make-parameter ""))
-(define film-frame (make-parameter 0))
+(provide film-active? film-filename film-frame start-film frame-filename)
+(define film-active? : (Parameterof Boolean) (make-parameter #f))
+(define film-filename : (Parameterof String) (make-parameter ""))
+(define film-frame : (Parameterof Natural) (make-parameter 0))
 
 (define (start-film [name : String])
+  (film-active? #t)
   (film-filename name)
   (film-frame 0))
 

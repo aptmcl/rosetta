@@ -98,6 +98,7 @@ end
 
 ### Alternative
 def returnShape(s)
+# NOTE: s.guid in ComponentInstance only applies to Sketchup 2014+
   if (s.class==Sketchup::Group) or (s.class==Sketchup::ComponentInstance)
     s.guid
   else #if (s.class==Sketchup::Face)
@@ -376,7 +377,12 @@ def setBoundary!(ent,curves)
 end
 
 def getBoundary(ent)
-  ent.get_attribute("rosetta","boundary").map{|id|resolveShape(id) }
+  b = ent.get_attribute("rosetta","boundary")
+  if b
+    b.map{|id|resolveShape(id) }
+  else
+    b
+  end
 end
 
 def shapeBoundary(ent)
@@ -890,6 +896,7 @@ def faceCentroid(face)
    Geom::Point3d.new(cx/n, cy/n, cz/n)
 end
 
+=begin
 # extrude
 
 def extrudeCurve(id,v)
@@ -1025,7 +1032,7 @@ clverts.each{|verts|
 }
 
 end#def
-
+=end
 
 # sweep
 def addSweep(idPath, idProfile)
@@ -1647,9 +1654,9 @@ def mirror(id,x,y,z,a,b,c)
   Sketchup.active_model.start_operation("Mirror", true)
   d = -a*x-b*y-c*z
   trans = Geom::Transformation.new([-2*a*a+1,-2*b*a,   -2*c*a, 0,
-									-2*a*b,  -2*b*b+1, -2*c*b, 0,
-									-2*a*c,  -2*b*c, -2*c*c+1, 0,
-									-2*a*d,  -2*b*d,   -2*c*d, 1])
+				    -2*a*b,  -2*b*b+1, -2*c*b, 0,
+                                    -2*a*c,  -2*b*c, -2*c*c+1, 0,
+                                    -2*a*d,  -2*b*d,   -2*c*d, 1])
   sh.transform!(trans)
   Sketchup.active_model.commit_operation
   returnShape(sh)
@@ -1662,6 +1669,43 @@ def boundingBox(id)
   bb = resolveShape(id).bounds
   "%s|%s" % [bb.corner(0).to_a,bb.corner(7).to_a]
 end
+
+###############################################################################
+# layers
+
+def addLayer(name)
+  Sketchup.active_model.layers.add(name)
+  ""
+end
+
+def setLayerRGB(name, r, g, b)
+  Sketchup.active_model.layers[name].color = Sketchup::Color.new(r, g, b)
+end
+
+def currentLayer()
+  Sketchup.active_model.active_layer.name
+end
+
+def setCurrentLayer(name)
+  Sketchup.active_model.active_layer = Sketchup.active_model.layers[name]
+end
+
+def shapeLayer(id)
+  resolveShape(id).layer.name
+end
+
+def setShapeLayer(id, name)
+  resolveShape(id).layer = Sketchup.active_model.layers[name]
+end
+
+def shapeRGBA(id)
+  resolveShape(id).material.color.to_a
+end
+
+def setShapeRGB(id, r, g, b)
+  resolveShape(id).material = Sketchup::Color.new(r, g, b)
+end
+
 
 ###############################################################################
 # view operations

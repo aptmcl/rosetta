@@ -1,4 +1,4 @@
-#lang typed/racket/base
+#lang typed/racket/base/no-check
 (require racket/math racket/list racket/match racket/function)
 (require "../base/utils.rkt"
          "../base/coord.rkt"
@@ -17,6 +17,8 @@
          delete-shape
          delete-shapes
          delete-all-shapes
+         create-layer
+         current-layer
          curve-start-point
          curve-end-point
          enable-update
@@ -25,6 +27,10 @@
          ;prompt-integer
          ;prompt-real
          ;prompt-shape
+         ;select-shape
+         ;select-shapes
+         shape-layer
+         shape-color
          view
          view-top
          render-view
@@ -344,8 +350,8 @@
                    (cx normal) (cy normal) (cz normal)
                    re ri))))
 
-(def-shape (surface [profile : (Curve-Shape Ref)])
-  (%addSurface (shape-refs profile)))
+(def-shape* (surface [profiles : (Curve-Shape Ref) *])
+  (%addSurface (shapes-refs profiles)))
 
 (def-shape* (join-curves [shapes : (Curve-Shape Ref) *])
   (%joinCurves (shapes-refs shapes)))
@@ -458,6 +464,62 @@
   (addExtrusion (sketchup-shape-ref profile)
                 (cx n) (cy n) (cz n)))
 
+
+
+
+;;Layers and Colors
+
+;;Color
+(define shape-color
+  (case-lambda
+    [([shape : Shape])
+     (%shapeRGBA (shape-ref shape))]
+    [([shape : Shape] [new-color : Color])
+     (%setShapeRGB (shape-ref shape) (rgb-red new-color) (rgb-green new-color) (rgb-blue new-color))
+     (void)]))
+
+
+;;Layers&Materials
+(define-type Layer String)
+(define-type Material String)
+
+(define (create-layer [name : String] [color : (Option Color) #f]) : Layer
+  (%addLayer name)
+  (when color
+    (%setLayerRGB name (rgb-red color) (rgb-green color) (rgb-blue color)))
+  name)
+
+(define current-layer
+  (case-lambda
+    [()
+     (%currentLayer)]
+    [([new-layer : Layer])
+     (%setCurrentLayer new-layer)]))
+
+(define shape-layer
+  (case-lambda
+    [([shape : Shape])
+     (%shapeLayer (shape-ref shape))]
+    [([shape : Shape] [new-layer : Layer])
+     (%setShapeLayer (shape-ref shape) new-layer)
+     (void)]))
+#;
+(define (create-material [name : String]) : Material
+  (%add-material name)
+  name)
+
+#;
+(define shape-material
+  (case-lambda
+    [([shape : Shape])
+     (%material (shape-ref shape))]
+    [([shape : Shape] [new-material : Material])
+     (%material (shape-ref shape) new-material)
+     (void)]))
+
+;;
+
+
 (provide fast-view)
 (define (fast-view) : Void
   (void))
@@ -502,10 +564,12 @@
         (xyz (car p) (cadr p) (caddr p)))))
 
 (define (disable-update)
-  ;Is there a way of disabling updates
+  ;Is there a way of disabling updates?
   #f)
 
 (define (enable-update)
-   ;Is there a way of disabling updates
+   ;Is there a way of enabling updates?
   #t)
 
+;;BIM
+(include "../base/bim.rkc")

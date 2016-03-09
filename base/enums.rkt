@@ -1,4 +1,5 @@
-#lang typed/racket
+#lang typed/racket/base/no-check
+(require (for-syntax racket/base))
 
 (provide define-enum define-incr-enum)
 

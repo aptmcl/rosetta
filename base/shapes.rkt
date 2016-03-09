@@ -1,4 +1,4 @@
-#lang typed/racket/base
+#lang typed/racket/base/no-check
 (require (for-syntax racket/base))
 (require (for-syntax racket/syntax))
 (require (for-syntax racket/list))
@@ -386,13 +386,16 @@
 
 (def-base-shape 2D-shape (surface-circle [center : Loc (u0)] [radius : Real 1]))
 (def-base-shape 2D-shape (surface-arc [center : Loc (u0)] [radius : Real 1] [start-angle : Real 0] [amplitude : Real pi]))
+(def-base-shape 2D-shape (surface-elliptic-arc [center : Loc (u0)] [radius-x : Real 1] [radius-y : Real 1] [start-angle : Real 0] [amplitude : Real pi]))
+(def-base-shape 2D-shape (surface-ellipse [center : Loc (u0)] [radius-x : Real 1] [radius-y : Real 1]))
 (def-base-shape 2D-shape (surface-polygon [vertices : (Listof Loc) (list (u0) (ux) (uy))]))
 (def-base-shape 2D-shape (surface-regular-polygon [edges : Integer 3] [center : Loc (u0)] [radius : Real 1] [angle : Real 0] [inscribed? : Boolean #f]))
 (def-base-shape 2D-shape (surface-rectangle [c : Loc (u0)] [dx/c1 : (U Real Loc) 1] [dy : Real 1]))
+
 (def-base-shape (text [str : String ""] [c : Loc (u0)] [h : Real 1]))
 (def-base-shape (text-centered [str : String ""] [c : Loc (u0)] [h : Real 1]))
-(def-base-shape 3D-shape (sphere [c : Loc (u0)] [r : Real 1]))
-(def-base-shape 3D-shape (torus [c : Loc (u0)] [re : Real 1] [ri : Real 1/2]))
+(def-base-shape 3D-shape (sphere [center : Loc (u0)] [radius : Real 1]))
+(def-base-shape 3D-shape (torus [center : Loc (u0)] [re : Real 1] [ri : Real 1/2]))
 (def-base-shape 3D-shape
   (cuboid [b0 : Loc (u0)]
           [b1 : Loc (+x b0 1)]
@@ -423,16 +426,14 @@
 (def-base-shape (offset shape distance))
 (def-base-shape (offset-curve shape direction distance normal))
 |#
-(def-base-shape (revolve [shape : (shape R)] [p0 : Loc (u0)] [v : Vec (vz 1)] [start-angle : Real 0] [amplitude : Real 2pi]))
-#|
-(def-base-shape (thicken shape [h 1]))
-|#
+(def-base-shape (revolve [shape : (shape R)] [p0 : Loc (u0)] [v : Loc (vz 1)] [start-angle : Real 0] [amplitude : Real 2pi]))
+(def-base-shape (thicken [shape : (shape R)] [h : Real 1]))
 (def-base-shape (join-curves [shapes : (Listof (Curve-Shape R))]))
 #|(def-base-shape (join-surfaces shapes))
 (def-base-shape (inner-solid shapes))
 (def-base-shape (solid shapes))
 |#
-(def-base-shape 2D-shape (surface [profile : (Curve-Shape R)]))
+(def-base-shape 2D-shape (surface [profiles : (Listof (Curve-Shape R))]))
 #|
 (def-base-shape (planar-surface shapes))
 |#
@@ -443,20 +444,9 @@
 
 (def-base-shape (sweep [path : (Curve-Shape R)] [profile : (Extrudable-Shape R)] [rotation : Real 0] [scale : Real 1]))
 (def-base-shape (loft [profiles : (Listof (Extrudable-Shape R))]
-                      [ruled? : Boolean #f] [solid? : Boolean #f] [closed? : Boolean #f]))
-(def-base-shape (loft-guided [profiles : (Listof (Extrudable-Shape R))]
-                             [paths : (Listof (Curve-Shape R))]
-                             [ruled? : Boolean #f] [solid? : Boolean #f] [closed? : Boolean #f]))
-(def-base-shape (loft-curves [profiles : (Listof (Extrudable-Shape R))]
-                             [ruled? : Boolean #f] [solid? : Boolean #f] [closed? : Boolean #f]))
-(def-base-shape (loft-curve-point [profile : (Curve-Shape R)]
-                                  [point : (Point-Shape R)]
-                                  [solid? : Boolean #f]))
-(def-base-shape (loft-surfaces [profiles : (Listof (Surface-Shape R))]
-                               [ruled? : Boolean #f] [solid? : Boolean #f] [closed? : Boolean #f]))
-(def-base-shape (loft-surface-point [profile : (Surface-Shape R)]
-                                    [point : (Point-Shape R)]
-                                    [solid? : Boolean #f]))
+                      [paths : (Listof (Curve-Shape R))]
+                      [ruled? : Boolean #f]
+                      [closed? : Boolean #f]))
 (def-base-shape (slice [shape : (shape R)] [p : Loc (u0)] [n : Vec (vz 1)]))
 #|
 (def-base-shape (half-space p n))
@@ -505,17 +495,15 @@
       (let ((d (p-p dx/c1 c)))
         (values (cx d) (cy d)))))
 
-(provide curve?)
-(define #:forall (R) (curve? [s : (shape R)]) : Boolean
-  (or (line? s)
-      (closed-line? s)
-      (spline? s)
-      (closed-spline? s)
-      (circle? s)
-      (arc? s)))
-
 ;;Mass modeling
 ;;These are operations more suitable for BIM
 
 (def-base-shape 3D-shape (polygonal-mass [points : Locs] [height : Real]))
 (def-base-shape 3D-shape (rectangular-mass [center : Loc] [width : Real] [length : Real] [height : Real]))
+
+;;BIM
+
+(def-base-shape 3D-shape (beam [p0 : Loc] [p1 : Loc] [family : Any]))
+(def-base-shape 3D-shape (column [center : Loc] [bottom-level : Any] [top-level : Any] [family : Any]))
+(def-base-shape 3D-shape (slab [vertices : Locs] [level : Any] [family : Any]))
+(def-base-shape 3D-shape (roof [vertices : Locs] [level : Any] [family : Any]))

@@ -1,4 +1,4 @@
-#lang typed/racket/base
+#lang typed/racket/base/no-check
 (require (for-syntax racket/base))
 (require racket/port)
 
@@ -11,6 +11,9 @@
 
 (provide Connection
          tracing-connection
+         debuging-connection
+         debuging-connection?
+         (struct-out connection)
          accept-connection
          shutdown-connection
          establish-connection
@@ -59,17 +62,20 @@
      (- end start))
    void))
 
-(provide debuging-connection?)
 (define debuging-connection? : (Parameterof Boolean) (make-parameter #f))
+
+(define (debuging-connection [in : Input-Port] [out : Output-Port]) : Connection
+  (connection in
+              (if (debuging-connection?)
+                  (broadcast-port out (current-error-port))
+                  out)))
+
 ;;Client protocol
 
 (define (accept-connection port-no)
   (define listener (tcp-listen port-no 1 #t))
   (define-values (i o) (tcp-accept listener)) ;;we only accept a client, for now
-  (connection i
-              (if (debuging-connection?)
-                  (broadcast-port o (current-error-port))
-                  o)))
+  (debuging-connection i o))
   
 (define (shutdown-connection conn)
   (close-input-port (connection-in conn))

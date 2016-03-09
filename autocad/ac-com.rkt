@@ -1,6 +1,6 @@
-#lang typed/racket/base
-(require (for-syntax racket/base))
-(require racket/function racket/string racket/match racket/port)
+#lang typed/racket/base/no-check
+(require (for-syntax racket/base racket/list))
+(require racket/function racket/string racket/match racket/port racket/file)
 (require (except-in math random-integer)
          "../base/typed-com.rkt"
          "../base/utils.rkt"
@@ -9,6 +9,7 @@
 
 (provide (all-defined-out) com-omit)
 
+(define-type Long Integer)
 (define-type Integers (Listof Integer))
 (define-type Shorts (Listof Integer))
 (define-type Com-Objects (Listof Com-Object))
@@ -27,7 +28,7 @@
 (define-type VarDouble4x4 (Variant Double4x4))
 (define-type VarDouble3N (Variant (Vectorof Double)))
 (define-type VarDouble2N (Variant (Vectorof Double)))
-(define-type VarIntegerN (Variant (Vectorof Integer)))
+(define-type VarIntegerN Type-Described #;(Variant (Vectorof Integer)))
 
 (define-syntax-rule (mf m i j) (real->double-flonum (matrix-ref m i j)))
 
@@ -38,6 +39,20 @@
             (vector (mf m 2 0) (mf m 2 1) (mf m 2 2) (mf m 2 3))
             (vector (mf m 3 0) (mf m 3 1) (mf m 3 2) (mf m 3 3)))))
 
+(define (ac-cm-color->color [color : AcCmColor]) : Color
+  (rgb (cast (red color) Byte)
+       (cast (green color) Byte)
+       (cast (blue color) Byte)))
+
+(define (color->ac-cm-color [color : Color]) : AcCmColor
+  (let ((ac-cm-color
+         (get-interface-object
+          (string-append "AutoCAD.AcCmColor."
+                         (substring (acadver) 0 2)))))
+    (set-rgb! ac-cm-color (rgb-red color) (rgb-green color) (rgb-blue color))
+    ac-cm-color))
+
+
 ;;Several types must be treated just as Com-Objects
 
 (define-type 3DFace Com-Object)
@@ -45,6 +60,7 @@
 (define-type 3DSolid Com-Object)
 (define-type AcadMaterials Com-Object)
 (define-type AcadSelectionSets Com-Object)
+(define-type AcCmColor Com-Object)
 (define-type All Com-Object)
 (define-type Application Com-Object)
 (define-type Arc Com-Object)
@@ -65,36 +81,69 @@
 (define-type PolygonMesh Com-Object)
 (define-type Polyline Com-Object)
 (define-type Profile Com-Object)
+(define-type PViewport Com-Object)
 (define-type Ray Com-Object)
 (define-type Region Com-Object)
 (define-type SelectionSet Com-Object)
 (define-type Spline Com-Object)
 (define-type Text Com-Object)
+(define-type Viewport Com-Object)
 (define-type Views Com-Object)
 
 (define-type VarIdN (Variant (Vectorof Id)))
 
 ; initialization
 
-(define-cached (application) : Com-Object
-  (let ((clsid (progid->clsid "AutoCAD.Application")))
-    (with-handlers ((exn?
-                     (λ (e)
-                       (display "Starting AutoCAD...")
-                       (flush-output)
-                       (begin0
-                           (com-create-instance clsid)
-                         (displayln "done!")))))
-      (com-get-active-object clsid))))
+(define (initialize) : Void
+  (let* ((app
+          (let ((clsid (progid->clsid "AutoCAD.Application")))
+            (with-handlers ((exn?
+                             (λ (e)
+                               (display "Starting AutoCAD...")
+                               (flush-output)
+                               (begin0
+                                 (com-create-instance clsid)
+                                 (displayln "done!")))))
+              (com-get-active-object clsid))))
+         (doc (cast (com-get-property app "ActiveDocument") Com-Object))
+         (mod (cast (com-get-property doc "ModelSpace") Com-Object))
+         (utl (cast (com-get-property doc "Utility") Com-Object)))
+    (set! application (lambda () app))
+    (set! active-document (lambda () doc))
+    (set! active-modelspace (lambda () mod))
+    (set! utility (lambda () utl))
+    (com-set-property! app "Visible" #t)
+    (reset-ucs)
+    (delobj 0)
+    (osmode 0) 
+    ;(nomutt 1)
+    ;(cmdecho 0)
+    ;(expert 5)
+    
+    ;(objectsnap)
+    ;(surfaceassociativity 0)
+    ;(surfacemodelingmode 1)
+    ;(solidhist 0)
+    
+    ;(start-undo-mark)
+    ;(undo-off)
+    ))
 
-(define-cached (active-document) : Com-Object
-  (cast (com-get-property (application) "ActiveDocument") Com-Object))
+(define (application) : Com-Object
+  (initialize)
+  (application))
 
-(define-cached (active-modelspace) : Com-Object
-  (cast (com-get-property (active-document) "ModelSpace") Com-Object))
+(define (active-document) : Com-Object
+  (initialize)
+  (active-document))
 
-(define-cached (utility) : Com-Object
-  (cast (com-get-property (active-document) "Utility") Com-Object))
+(define (active-modelspace) : Com-Object
+  (initialize)
+  (active-modelspace))
+
+(define (utility) : Com-Object
+  (initialize)
+  (utility))
 
 (define-cached (autolisp-functions) : Com-Object
   (vl-load-com)
@@ -118,6 +167,7 @@
                                #'3DPolyline
                                #'3DSolid
                                #'PolygonMesh
+                               #'AcCmColor
                                #'Arc
                                #'Circle
                                #'Ellipse
@@ -129,11 +179,13 @@
                                #'PolyfaceMesh
                                #'Polyline
                                #'Profile
+                               #'PViewport
                                #'Ray
                                #'Id
                                #'Region
                                #'Spline
                                #'Text
+                               #'Viewport
                                #'AcadMaterials
                                #'AcadSelectionSets
                                #'Object
@@ -157,7 +209,8 @@
                      [VarDouble2N Locs]
                      [VarDouble4x4 Loc]
                      [VarIdN Refs]
-                     [VarIntegerN Shorts]))
+                     [VarIntegerN Shorts]
+                     [AcCmColor Color]))
 
 ;;In most cases, upgrading from one type to another requires a conversion function for the type values
 
@@ -174,7 +227,9 @@
      [Locs        VarDouble2N  locs->vector-2-double-flonums]
      [Refs        VarIdN       list->vector]
      [VarIdN      Refs         vector->list]
-     [IdsOrVoid   Refs         ids-or-void->refs]))
+     [IdsOrVoid   Refs         ids-or-void->refs]
+     [AcCmColor   Color        ac-cm-color->color]
+     [Color       AcCmColor    color->ac-cm-color]))
 
 #|
 ; object properties
@@ -193,7 +248,6 @@
 (def-com-property position coord<-vector)
 (def-com-property (circle-radius "Radius") Float)
 (def-com-property start-angle)
-(def-com-property true-color (ac-cm-color<-color color<-ac-cm-color))
 (def-com-property custom-scale Float)
 
 (provide ac-simple-mesh ac-quad-surface-mesh ac-cubic-surface-mesh ac-bezier-surface-mesh)
@@ -221,48 +275,6 @@
 (provide convert-3dpolylines)
 (define (convert-3dpolylines objs)
   (apply append (map convert-3dpolyline objs)))
-
-; ac-cm-color methods
-
-#;
-(define (ac-cm-color-set-rgb! object red green blue)
-  (autocad-invoke object "SetRGB" red green blue))
-
-
-; ac-cm-color properties
-
-(define (get-ac-cm-color-blue object)
-  (com-get-property object "Blue"))
-
-(define (get-ac-cm-color-green object)
-  (com-get-property object "Green"))
-
-(define (get-ac-cm-color-red object)
-  (com-get-property object "Red"))
-
-; application methods
-
-(def-obj documents () com)
-;(def-obj active-document () com)
-(def-obj interface-object (String) com)
-
-(define ac-cm-color-name "AutoCAD.AcCmColor.18")
-
-; info: avoid caching because com-objects returned by 'GetInterfaceObject' seem to
-; be always different according to 'com-object-eq?'
-(define (application-get-ac-cm-color-interface-object)
-  (interface-object application ac-cm-color-name))
-
-; documents methods
-
-(def-obj open (String) Void)
-(def-obj add (String) com)
-
-; modelspace methods
-
-
-(define (variant-double v)
-  (type-describe (vector (real v) 0.0 0.0) '(variant double)))
 
 ; viewport
 
@@ -306,15 +318,16 @@
 (def-rw-property (ActiveLinetype Document) Linetype)
 (ActiveMaterial property idh_activematerial.htm)
 (def-rw-property (ActiveProfile PreferencesProfiles) String)
-(def-rw-property (ActivePViewport Document) PViewport)
 |#
+(def-rw-property (active-p-viewport Document) PViewport)
 (def-ro-property (active-selection-set Document) SelectionSet)
 #|
 (def-rw-property (ActiveSpace Document) acActiveSpace)
 (def-rw-property (ActiveTextStyle Document) TextStyle)
 (ActiveUCS property idh_activeucs.htm)
-(def-rw-property (ActiveViewport Document) Viewport)
-(def-rw-property (ADCInsertUnitsDefaultSource PreferencesUser) AcInsertUnits)
+|#
+(def-rw-property (active-viewport Document) Viewport)
+#|(def-rw-property (ADCInsertUnitsDefaultSource PreferencesUser) AcInsertUnits)
 (def-rw-property (ADCInsertUnitsDefaultTarget PreferencesUser) AcInsertUnits)
 (def-ro-property (AdjustForBackground DwfUnderlay) Long)
 (def-ro-property (AffectsGraphics FileDependency) Boolean)
@@ -407,8 +420,9 @@
 (Blocks property idh_blocks.htm)
 (def-rw-property (BlockScale MLeaderStyle) Long)
 (def-rw-property (BlockScaling Block) AcBlockScaling)
-(def-ro-property (Blue AcCmColor) Long)
-(def-ro-property (BookName AcCmColor) String)
+|#
+(def-ro-property (blue AcCmColor) Long)
+#|(def-ro-property (BookName AcCmColor) String)
 (def-ro-property (BottomHeight Section) Long)
 (def-rw-property (BreaksEnabled Table) Boolean)
 (def-rw-property (BreakSize MLeaderStyle) Double)
@@ -417,7 +431,9 @@
 (def-rw-property (CanonicalMediaName Layout) String)
 (def-ro-property (Caption Application) String)
 (def-rw-property (CategoryName View) String)
-(def-rw-property (Center Arc) Double)
+|#
+(def-rw-property (center Arc) VarDouble3)
+#|
 (def-rw-property (CenterMarkSize DimDiametric) Double)
 (def-rw-property (CenterPlot Layout) Boolean)
 (def-rw-property (CenterPoint DimArcLength) Variant)
@@ -430,8 +446,8 @@
 (def-rw-property (ClippingEnabled DwfUnderlay) Boolean)
 |#
 (def-rw-property (closed 3DPolyline) Boolean)
+(def-rw-property (color All) AcCmColor)
 #|
-(def-rw-property (Color All) acColor)
 (def-rw-property (ColorBookPath PreferencesFiles) String)
 (def-rw-property (ColorIndex AcCmColor) acColor)
 (def-rw-property (ColorMethod AcCmColor) acColorMethod)
@@ -608,8 +624,9 @@
 (def-rw-property (GradientName Hatch) String)
 (GraphicsWinLayoutBackgrndColor property idh_graphicswinlayoutbackgrndcolor.htm)
 (GraphicsWinModelBackgrndColor property idh_graphicswinmodelbackgrndcolor.htm)
-(def-ro-property (Green AcCmColor) Long)
-(def-rw-property (GridOn Viewport) Boolean)
+|#
+(def-ro-property (green AcCmColor) Long)
+#|(def-rw-property (GridOn Viewport) Boolean)
 (def-rw-property (GripColorSelected PreferencesSelection) acColor)
 (def-rw-property (GripColorUnselected PreferencesSelection) acColor)
 (def-rw-property (GripSize PreferencesSelection) Long)
@@ -738,7 +755,9 @@
 (def-rw-property (LeaderType MLeader) AcMLeaderType)
 (def-rw-property (Left Toolbar) Integer)
 (def-ro-property (Length Line) Double)
-(def-rw-property (LensLength PViewport) Double)
+|#
+(def-rw-property (lens-length PViewport) Double)
+#|
 (def-rw-property (Limits Document) Double)
 (def-rw-property (LinearScaleFactor DimAligned) Double)
 (def-rw-property (LineSpacingDistance MText) Double)
@@ -761,8 +780,10 @@
 (LowerLeftCorner property idh_lowerleftcorner.htm)
 (def-rw-property (Macro PopupMenuItem) String)
 (def-rw-property (MainDictionary PreferencesFiles) String)
-(def-rw-property (MajorAxis Ellipse) Double)
-(def-rw-property (MajorRadius Ellipse) Double)
+|#
+(def-rw-property (major-axis Ellipse) Double)
+(def-rw-property (major-radius Ellipse) Double)
+#|
 (def-ro-property (Mask LayerStateManager) enum)
 |#
 (def-rw-property (material All) String)
@@ -786,8 +807,10 @@
 (Menus property idh_menus.htm)
 (def-ro-property (MinimumTableHeight Table) Double)
 (def-ro-property (MinimumTableWidth Table) Double)
-(def-ro-property (MinorAxis Ellipse) Double)
-(def-rw-property (MinorRadius Ellipse) Double)
+|#
+(def-ro-property (minor-axis Ellipse) Double)
+(def-rw-property (minor-radius Ellipse) Double)
+#|
 (def-ro-property (MLineScale MLine) Double)
 (def-rw-property (Mode Attribute) acAttributeMode)
 (ModelCrosshairColor property idh_modelcrosshaircolor.htm)
@@ -920,10 +943,14 @@
 (def-rw-property (QNewTemplateFile PreferencesFiles) String)
 (def-rw-property (QuietErrorMode Plot) Boolean)
 (def-ro-property (RadiiOfGyration 3DSolid) Double)
-(def-rw-property (Radius Arc) Double)
-(def-rw-property (RadiusRatio Ellipse) Double)
+|#
+(def-rw-property (radius Arc) Double)
+(def-rw-property (radius-ratio Ellipse) Double)
+#|
 (def-ro-property (RoOnly Document) Boolean)
-(def-ro-property (Red AcCmColor) Long)
+|#
+(def-ro-property (red AcCmColor) Long)
+#|
 (def-ro-property (ReferenceCount FileDependency) Long)
 (def-rw-property (RegenerateTableSuppressed Table) Boolean)
 (RegisteredApplications property idh_registeredapplications.htm)
@@ -1088,8 +1115,9 @@
 (def-ro-property (TotalLength Helix) Double)
 (def-rw-property (TranslateIDs XRecord) Boolean)
 (def-rw-property (Transparency Raster) Boolean)
-(TrueColor property idh_truecolor_property.htm)
-(def-rw-property (TrueColorImages PreferencesDisplay) Boolean)
+|#
+(def-rw-property (true-color All) AcCmColor)
+#|(def-rw-property (TrueColorImages PreferencesDisplay) Boolean)
 (def-ro-property (TurnHeight Helix) Double)
 (Turns property idh_turns.htm)
 (def-ro-property (TurnSlope Helix) ACAD_ANGLE)
@@ -1121,7 +1149,9 @@
 (def-ro-property (Value32 DynamicBlockReferenceProperty) DynamicBlockReferenceProperty)
 (def-ro-property (VBE Application) VBE)
 (def-rw-property (Verify Attribute) Boolean)
-(def-ro-property (Version Application) String)
+|#
+(def-ro-property (version Application) String)
+#|
 (def-ro-property (VersionGUID FileDependency) String)
 (def-rw-property (VertCellMargin Table) Double)
 (VerticalDirection property idh_verticaldirection.htm)
@@ -1241,7 +1271,7 @@
 |#
 (def-com (add-point ModelSpace) ((Pt VarDouble3)) Point)
 ;;AML FIX THE ANY
-(def-com (add-polyface-mesh ModelSpace) ((VerticesList VarDouble3N) (FaceList Any #;VarIntegerN)) PolyfaceMesh)
+(def-com (add-polyface-mesh ModelSpace) ((VerticesList VarDouble3N) (FaceList VarIntegerN)) PolyfaceMesh)
 (def-com (add-polyline ModelSpace) ((VerticesList VarDouble3N)) Polyline)
 #|
 (def-com (AddPViewport PaperSpace) ((Center VarDouble3) (Width Double) (Height Double)) PViewport)
@@ -1750,7 +1780,9 @@
 (def-com (SetPattern Hatch) ((PatternType AcPatternType) (PatternName String)) Void)
 (def-com (SetProjectFilePath PreferencesFiles) ((ProjectName String) (ProjectFilePath String)) Void)
 (SetRelativeDrawOrder method idh_setrelativedraworder.htm)
-(def-com (SetRGB AcCmColor) ((Red Long) (Green Long) (Blue Long)) Void)
+|#
+(def-com ((set-rgb! SetRGB) AcCmColor) ((Red Long) (Green Long) (Blue Long)) Void)
+#|
 (def-com (SetRotation Table) ((nRow Integer) (nCol Integer) (nContent Integer) (value Double)) Void)
 (def-com (SetRotation TableStyle) ((StringCellStyle String) (rotation Double)) Void)
 (def-com (SetRowHeight Table) ((row Long) (Height Double)) Void)
@@ -1818,9 +1850,14 @@
 
 ;;array of shorts
 (define (Integers->VarShortN [v : Integers]) : VarIntegerN ;;HACK: improve this when the new ffi/com is out
-  (error "FIX THIS")
-  #;(for/vector ([e (in-list v)])
-      (type-describe e 'short-int)))
+  #;
+  (for/vector ([e (in-list v)])
+    (type-describe e 'short-int))
+  (type-describe
+   (list->vector v)
+   `(variant (array ,(length v) short-int))))
+
+
 
 (define (Com-Objects->VarIdN [c : Com-Objects]) : VarIdN
   (display "Converting from") (displayln c)
@@ -1854,10 +1891,46 @@
     [(def-autolisp (name param ...) type)
      (def-autolisp ((name name) param ...) type)]))
 
+(def-autolisp ((al-handent handent) [id String]) Com-Object)
+(def-autolisp ((al-eval eval) [e Com-Object]) Any)
+(def-autolisp ((al-read read) [s String]) Com-Object)
+
+
+(define-type AutoLISP-Type (U Real String))
+
+;;Defines an AutoLISP function
+(provide defun)
+(define-syntax (defun stx)
+  (syntax-case stx ()
+    ((def name params body ...)
+     (with-syntax ([name-str (string-upcase (symbol->string (syntax-e #'name)))]
+                   [real-params
+                    (takef (syntax->list #'params)
+                           (lambda (stx)
+                             (not (eq? (syntax->datum stx) '/))))]
+                   [str (format "~S"
+                                (syntax->datum
+                                 #'(defun name params
+                                     (vl-princ-to-string
+                                      (progn
+                                       body ...)))))])
+       (syntax/loc stx
+         (define name : (-> AutoLISP-Type * Any)
+           (lambda args
+             (al-eval (al-read str))
+             (let ((ref (cast (com-get-property* (autolisp-functions) "Item" name-str) Com-Object)))
+               (define new-func : (-> AutoLISP-Type * Any)
+                 (lambda args
+                   (with-input-from-string
+                    (cast (apply com-invoke ref "funcall" args) String)
+                    read)))
+               (set! name new-func)
+               (apply name args)))))))))
+
+#|
+;These functions are not safe as the Lisp object might have been moved by the Lisp GC
 (def-autolisp ((al-nth nth) [i Integer] [l Com-Object]) Any)
 (def-autolisp ((al-length length) [l Com-Object]) Integer)
-(def-autolisp ((al-handent handent) [id String]) Com-Object)
-
 (define (loc<-al-com [c : Com-Object]) : Loc
   (xyz (cast (al-nth 0 c) Real)
        (cast (al-nth 1 c) Real)
@@ -1875,15 +1948,26 @@
     (for/list : (Listof Any) ((i (in-range n)))
       (al-nth i c))))
 
-(def-autolisp (vlax-curve-getStartPoint [c Com-Object]) Com-Object)
-(def-autolisp (vlax-curve-getEndPoint [c Com-Object]) Com-Object)
+;(def-autolisp (entget [c Com-Object]) Com-Object)
+;(def-autolisp (assoc [k Com-Object] [l Com-Object]) Com-Object)
+|#
 (def-autolisp (vlax-curve-getStartParam [c Com-Object]) Real)
 (def-autolisp (vlax-curve-getEndParam [c Com-Object]) Real)
 (def-autolisp (vlax-curve-getDistAtParam [c Com-Object] [t Real]) Real)
 (def-autolisp (vlax-curve-getParamAtDist [c Com-Object] [length Real]) Real)
+#|
+;These functions are not safe as the Lisp object might have been moved by the Lisp GC
+(def-autolisp (vlax-curve-getStartPoint [c Com-Object]) Com-Object)
+(def-autolisp (vlax-curve-getEndPoint [c Com-Object]) Com-Object)
 (def-autolisp (vlax-curve-getFirstDeriv [c Com-Object] [t Real]) Com-Object)
 (def-autolisp (vlax-curve-getSecondDeriv [c Com-Object] [t Real]) Com-Object)
 (def-autolisp (vlax-curve-getPointAtParam [c Com-Object] [t Real]) Com-Object)
+|#
+(defun safe-vlax-curve-getStartPoint (c) (vlax-curve-getStartPoint (handent c)))
+(defun safe-vlax-curve-getEndPoint (c) (vlax-curve-getEndPoint (handent c)))
+(defun safe-vlax-curve-getFirstDeriv (c r) (vlax-curve-getFirstDeriv (handent c) r))
+(defun safe-vlax-curve-getSecondDeriv (c r) (vlax-curve-getSecondDeriv (handent c) r))
+(defun safe-vlax-curve-getPointAtParam (c r) (vlax-curve-getPointAtParam (handent c) r))
 
 (provide curve-start-point
          curve-end-point
@@ -1896,11 +1980,25 @@
          curve-frame-at
          curve-frame-at-length)
 
+(define (loc<-list [l : Any]) : Loc
+  (let ((l (cast l (List Real Real Real))))
+    (xyz (list-ref l 0)
+         (list-ref l 1)
+         (list-ref l 2)
+         world-cs)))
+
+(define (vec<-list [l : Any]) : Vec
+  (let ((l (cast l (List Real Real Real))))
+    (vxyz (list-ref l 0)
+          (list-ref l 1)
+          (list-ref l 2)
+          world-cs)))
+
 (define (curve-start-point [c : Com-Object]) : Loc
-  (loc<-al-com (vlax-curve-getStartPoint (al-handent (handle c)))))
+  (loc<-list (safe-vlax-curve-getStartPoint (handle c))))
 
 (define (curve-end-point [c : Com-Object]) : Loc
-  (loc<-al-com (vlax-curve-getEndPoint (al-handent (handle c)))))
+  (loc<-list (safe-vlax-curve-getEndPoint (handle c))))
 
 (define (curve-start-param [c : Com-Object]) : Real
   (vlax-curve-getStartParam (al-handent (handle c))))
@@ -1916,13 +2014,13 @@
   (curve-frame-at c (vlax-curve-getParamAtDist (al-handent (handle c)) d)))
 
 (define (curve-tangent-at [c : Com-Object] [t : Real]) : Vec
-  (vec<-al-com (vlax-curve-getFirstDeriv (al-handent (handle c)) t)))
+  (vec<-list (safe-vlax-curve-getFirstDeriv (handle c) t)))
 
 (define (curve-normal-at [c : Com-Object] [t : Real]) : Vec
-  (vec<-al-com (vlax-curve-getSecondDeriv (al-handent (handle c)) t)))
+  (vec<-list (safe-vlax-curve-getSecondDeriv (handle c) t)))
 
 (define (curve-point-at [c : Com-Object] [t : Real]) : Loc
-  (loc<-al-com (vlax-curve-getPointAtParam (al-handent (handle c)) t)))
+  (loc<-list (safe-vlax-curve-getPointAtParam (handle c) t)))
 
 (define (xvec-for [t : Vec] [n : Vec])
   (define (~zero? [x : Real]) : Boolean
@@ -1940,55 +2038,6 @@
      nv
      (v*v nv (v*r tv -1)))))
 
-#|
-
-
-(define-syntax (def-autolisp stx)
-  (syntax-case stx ()
-    ((def (name autolisp-name))
-     (syntax/loc stx 
-       (define (name . args)
-         (let ((ref (com-get-property autolisp-functions "Item" 'autolisp-name)))
-           (set! name (lambda args
-                        (apply com-invoke ref "funcall" args))))
-         (apply name args))))
-    ((def name (param ...) rtype)
-     (with-syntax ((str (string-upcase (symbol->string (syntax-e #'name)))))
-       (syntax/loc stx
-         (def (name str)))))))
-
-(def-autolisp (al-read "read"))
-(def-autolisp (al-eval "eval"))
-(def-autolisp (al-length "length"))
-(def-autolisp (al-nth "nth"))
-(def-autolisp (al-handent "handent"))
-
-;;Defines an AutoLISP function
-(define-syntax (defun stx)
-  (syntax-case stx ()
-    ((defun name params body ...)
-     (with-syntax ([name-str (symbol->string (syntax-e #'name))]
-                   [real-params
-                    (takef (syntax->list #'params)
-                           (lambda ([stx : Syntax]) : Boolean
-                             (not (eq? (syntax->datum stx) '/))))])
-       (syntax/loc stx
-         (define name
-           (let ((form (syntax->datum #'(defun name params body ...))))
-             (lambda real-params
-               (al-eval (al-read (format "~S" form)))
-               (let ((ref (com-get-property* autolisp-functions "Item" name-str)))
-                 (set! name (lambda args
-                              (apply com-invoke ref "funcall" args)))
-                 (name . real-params))))))))))
-
-|#
-;;Extras
-
-(define-syntax (defun stx)
-  (syntax-case stx ()
-    ((defun name params body ...)
-     #'(define name (lambda all (void))))))
 
 ;;Helpers
 (provide add-closed-line)
@@ -2157,24 +2206,6 @@
     [(def name)
      (syntax/loc stx
        (def name Any))]))
-#;
-(define-syntax (def-autocad-variable stx)
-  (syntax-case stx ()
-    [(def (name str) type)
-     (syntax/loc stx
-       (begin
-         (provide name)
-         (define name
-           (case-lambda
-             (() (cast (get-variable str) type))
-             (([val : type]) (set-variable str val))))))]
-    [(def name type)
-     (with-syntax ((str (string-upcase (symbol->string (syntax-e #'name)))))
-       (syntax/loc stx
-         (def (name str) type)))]
-    [(def name)
-     (syntax/loc stx
-       (def name Any))]))
 
 (def-autocad-variable delobj)
 (def-autocad-variable facetersmoothlev Integer)
@@ -2187,7 +2218,7 @@
 (def-autocad-variable loftparam Integer)
 (def-autocad-variable nomutt)
 (def-autocad-variable perspective)
-(def-autocad-variable skystatus)
+(def-autocad-variable skystatus Skystatus)
 (def-autocad-variable sunstatus)
 (def-autocad-variable cmdecho)
 (def-autocad-variable lenslength Real)
@@ -2214,6 +2245,14 @@
            (begin body ...)
            (unless (= previous new)
              (name previous))))))))
+
+;; skystatus values
+(provide skystatus:off skystatus:background skystatus:background-and-illumination)
+(define-type Skystatus (U 0 1 2))
+(define skystatus:off : Skystatus 0)
+(define skystatus:background : Skystatus 1)
+(define skystatus:background-and-illumination : Skystatus 2)
+
 
 ;;; target
 
@@ -2295,11 +2334,16 @@
            type))))
 
 (provide curve?)
-(define (curve? [obj : Com-Object])
+(define (curve? [obj : Com-Object]) : Boolean
   (and (member (object-name obj)
-               '("AcDb3dPolyline" "AcDb2dPolyline"
-                                  "AcDbArc" "AcDbCircle" "AcDbEllipse"
-                                  "AcDbPolyline" "AcDbLine" "AcDbSpline"))
+               '("AcDb3dPolyline"
+                 "AcDb2dPolyline"
+                 "AcDbArc"
+                 "AcDbCircle"
+                 "AcDbEllipse"
+                 "AcDbPolyline"
+                 "AcDbLine"
+                 "AcDbSpline"))
        #t))
 
 (provide acceptable-surface?)
@@ -2319,7 +2363,23 @@
                   "AcDbExtrudedSurface"
                   "AcDbSweptSurface"))
        #t))
-  
+
+(provide as-surface)
+(define (as-surface [obj : Com-Object]) : Com-Object
+  (let ((name (object-name obj)))
+    (cond ((string=? name "AcDbRegion")
+           (begin0
+             (conv-to-surface-command obj)
+             (delete obj)))
+          ((string=? name "AcDbPolygonMesh")
+           (let ((s (mesh-smooth-command obj 0)))
+             (begin0
+               (conv-to-surface-command s 1)
+               (delete obj)
+               (delete s))))
+          (else
+           obj))))
+
 (define (convert-3dpolyline [obj : Com-Object]) : (Listof Com-Object)
   (let ((type (object-name obj)))
     (cond ((string=? type "AcDb3dPolyline")
@@ -2479,6 +2539,15 @@
    (handents objects)
    vbCr))
 
+(provide loft-objects-path-string)
+(define (loft-objects-path-string [objects : Com-Objects] [path : Com-Object] [solid? : Boolean])
+  (format
+   "._loft _mo ~A ~A~A_path ~A\n"
+   (if solid? "_so" "_su")
+   (handents objects)
+   vbCr;" "
+   (handent path)))
+
 (provide loft-objects-guides-string)
 (define (loft-objects-guides-string [objects : Com-Objects] [guides : Com-Objects] [solid? : Boolean])
   (format
@@ -2581,9 +2650,8 @@
 
 (def-new-shape-cmd (mesh-smooth-command [object : Com-Object] [smooth-level : Integer 0])
   (with-autocad-variable (facetersmoothlev smooth-level)
-    (format "._meshsmooth ~A~A~A"
+    (format "._meshsmooth ~A~A"
             (handent object)
-            vbCr
             vbCr)))
 
 (def-new-shape-cmd (conv-to-surface-command [object : Com-Object] [smooth-level : Integer 0])
@@ -2603,21 +2671,15 @@
             (handents objects)
             vbCr))
 
-#|
 ;;Thicken
 
-(define (thicken-string object length)
+(def-new-shape-cmd (thicken-command [object : Com-Object] [length : Real])
   (format "._thicken ~A~A~A\n"
           (handent object)
           vbCr
           length))
 
-;;HACK replace with def-new-shape-cmd?
-(provide thicken-command)
-(define (thicken-command object length)
-  (new-shape-from
-   (thicken-string object length)))
-
+#|
 ;;Helix
 (def-new-shape-cmd conic-helix (p0 r0 p1 r1 turns)
   (format "._helix ~A ~A ~A _Turns ~A _Axis ~A\n" 
@@ -2858,8 +2920,11 @@
 
 ;;Render
 
-(def-cmd (render-command [quality : String] [width : Integer] [height : Integer] [filename : String])
-  (format "._-render ~A _R ~A ~A _yes ~A\n" quality width height filename))
+(def-cmd (render-command [width : Integer] [height : Integer] [filename : Path-String])
+  ;;Rendering changed a lot in AutoCAD 2016
+  (if (regexp-match? #rx"^20" (version (application)))
+      (format "._-render ~A _R ~A ~A _yes ~A\n" "H" width height filename)
+      (format "._-render ~A _R ~A ~A _yes ~A\n" "P" width height filename)))
 
 (provide save-screen-png)
 (define (save-screen-png [filename : String]) : Void
@@ -2900,23 +2965,6 @@
       (filedia prev-filedia)))
   (void))
 
-
-
-(provide view-parameters)
-(define (view-parameters) : (List Loc Loc Real)
-  (send-command "-VIEW _S foo\n")
-  (let ((view (last-item (views (active-document)))))
-    (begin0
-        (list (direction view)
-              (target view)
-              ;(lens-length (active-viewport active-document))
-              (let-values (((types data) (get-x-data view "ACAD")))
-                (cast data Real)))
-      ;;(delete view)
-      (send-command "-VIEW _D foo\n")
-      )))
-
-
 (provide 2d-view)
 (define (2d-view [center : (Option Loc) #f] [magnification : Real 1]) : (Values Loc Real)
   (if center
@@ -2949,16 +2997,15 @@
 (defun alisp-get-view (/ params)
   (setq params (tblsearch "VIEW" "foo"))
   (setq params (cddr params))
-  (vl-princ-to-string
-   (list (mapcar '+ (cdr (assoc 12 params)) (cdr (assoc 11 params)))
-         (cdr (assoc 12 params))
-         (cdr (assoc 42 params)))))
+  (list (mapcar '+ (cdr (assoc 12 params)) (cdr (assoc 11 params)))
+        (cdr (assoc 12 params))
+        (cdr (assoc 42 params))))
 
 (provide get-view)
 (define (get-view) : (Values Loc Loc Real)
   (send-command (format "-VIEW _S foo\n"))
   (begin0
-    (match (with-input-from-string (cast (alisp-get-view) String) read) ;HACK: Move type to function def.
+    (match (alisp-get-view)
       [(list (list xa ya za) (list xb yb zb) l)
        (values (xyz (cast xa Real) (cast ya Real) (cast za Real) world-cs)
                (xyz (cast xb Real) (cast yb Real) (cast zb Real) world-cs)
@@ -2996,28 +3043,3 @@
       (let ((filtered-objs (if predicate (filter predicate objs) objs)))
         (unless (null? filtered-objs)
           (copy-objects doc filtered-objs (active-modelspace)))))))
-
-
-;;Finally, to start everything
-(provide start)
-(define (start)
-  (application)
-  (active-document)
-  (active-modelspace)
-  (utility)
-  (com-set-property! (application) "Visible" #t)
-  (reset-ucs)
-  (delobj 0)
-  (osmode 0) 
-  ;(nomutt 1)
-  ;(cmdecho 0)
-  ;(expert 5)
-  
-  ;(objectsnap)
-  ;(surfaceassociativity 0)
-  ;(surfacemodelingmode 1)
-  ;(solidhist 0)
-  
-  ;(start-undo-mark)
-  ;(undo-off)
-)

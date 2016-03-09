@@ -103,7 +103,8 @@
             ((failed-subtraction? r)
              (for-each rec (failed-subtraction-refs r)))
             (else
-             body ...)))))
+             body ...
+	     (void))))))
 
 (define (copy-ref-op [r : RefOp]) : RefOp
   (cond ((failed-union? r)
@@ -443,6 +444,17 @@ In order to implement this, we need to create shapes that represent failed opera
          (subtract-*-*
           (subtract-*-1 r0s (car r1s))
           (cdr r1s)))))
+
+
+;;Additional stuff
+(: view (->* () ((Option Loc) (Option Loc) (Option Real)) (Values Loc Loc Real)))
+
+(provide view-expression)
+(define (view-expression) ;: (List Symbol (List Symbol Loc Loc Loc) (List Symbol Loc Loc Loc) Real)
+  (let-values (((c t l) (view)))
+    `(view (xyz ,(cx c) ,(cy c) ,(cz c))
+           (xyz ,(cx t) ,(cy t) ,(cz t))
+           ,l)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;END OF COMMON PART

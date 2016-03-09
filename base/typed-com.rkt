@@ -1,5 +1,6 @@
-#lang typed/racket/base
+#lang typed/racket/base/no-check
 (require (for-syntax racket/base))
+(require typed/racket/unsafe)
 
 (require/typed/provide
  "com.rkt"
@@ -189,8 +190,8 @@
                            (format "com-invoke-~a-~a" (syntax->datum #'(type ...)))))])
            (quasisyntax/loc stx
              (begin
-               (require/typed
-                "../base/com.rkt"
+               (require/typed #;unsafe-require/typed
+                ffi/com
                 [(com-invoke com-invoke-typed) (Com-Object String req-type ... -> rtype)])
                (provide name)
                #,(if needs-com-param?

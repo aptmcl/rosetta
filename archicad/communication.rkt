@@ -5,8 +5,7 @@
 (require "protobuf1/protobuf.rkt")
 (require "protobuf1/encoding.rkt")
 (require "Messages.rkt")
-(require (except-in rosetta/revit
-                    box))
+(require "../base/coord.rkt")
 (require srfi/26)
 
 (define visual-feedback? (make-parameter #f))
@@ -221,7 +220,7 @@ The file is merely used for consulting
 
 (define (check-level)
   (write-msg-name "CheckStory")
-  (read-sized (cut deserialize (storyinfo*) <>)input))
+  (read-sized (cut deserialize (storyinfo*) <>) input))
 
 #|
 Function to create a level given a height, this uses absolute height

@@ -5,10 +5,11 @@
 (require "protobuf1/protobuf.rkt")
 (require "protobuf1/encoding.rkt")
 (require "Messages.rkt")
-(require "Communication.rkt")
-(require "BIMObjects.rkt")
-(require (except-in rosetta/revit
-                    box))
+(require "communication.rkt")
+(require "objects.rkt")
+(require "../base/utils.rkt"
+         "../base/coord.rkt"
+         "../base/shapes.rkt")
 (require srfi/26)
 
 
