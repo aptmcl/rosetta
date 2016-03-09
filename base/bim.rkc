@@ -1,5 +1,4 @@
-(require (for-syntax racket/base))
-(require (for-syntax racket/syntax))
+(require (for-syntax racket/base racket/list racket/syntax))
 
 
 (provide ;;BIM extensions
@@ -28,46 +27,60 @@
 
 (struct bim-family
   ([path : String]
-   [parameters : (Listof String)]
+   [map : (Listof (Cons Keyword (Option Any)))]
    [layer : Layer])
   #:type-name BIM-Family)
 
 (define (create-layer-from-path [path : String]) : Layer
   (create-layer (last (regexp-match #rx"([a-zA-Z]+).rfa" path))))
 
-(define-for-syntax (build-name id fmt)
+(define-for-syntax (build-name fmt id)
   (format-id id #:source id fmt (syntax-e id)))
+
+(define-for-syntax (build-keyword id)
+  (string->keyword (symbol->string (syntax->datum id))))
 
 (define-syntax (def-bim-family stx)
   (syntax-case stx ()
     [(def name (param ...))
-     (with-syntax ([struct-name (build-name #'name "~A-family")]
-                   [instance-name (build-name #'name "~A-family-element")]
-                   [load-name (build-name #'name "load-~A-family")]
-                   [default-name (build-name #'name "default-~A-family")]
+     (with-syntax ([struct-name (build-name "~A-family" #'name)]
+                   [instance-name (build-name "~A-family-element" #'name)]
+                   [load-name (build-name "load-~A-family" #'name)]
+                   [default-name (build-name "default-~A-family" #'name)]
                    [layer-name (string-titlecase (symbol->string (syntax-e #'name)))]
-                   [([param-name param-type default] ...)
+                   [([param-name param-key param-type param-default class-comb instance-comb] ...)
                     (map (lambda (p)
                            (syntax-case p (:)
-                             [[name : type default] #'[name type default]]
+                             [[name : type default]
+                              (with-syntax ([key (build-keyword #'name)])
+                                #'[name key type default
+                                        (key [name : (Option Any) #f])
+                                        (key [name : type default])])]
                              #;[[name : type] #'[name type]]))
                          (syntax->list #'(param ...)))])
-       (syntax/loc stx
-         (begin
-           (provide (struct-out struct-name)
-                    default-name
-                    load-name
-                    instance-name)
-           (struct struct-name bim-family
-             ([param-name : param-type] ...))
-           (define default-name (make-parameter (struct-name "" '() (create-layer layer-name) default ...)))
-           (define (load-name [path : String] [parameters : (Listof String) (list)])
-             (struct-name path parameters (create-layer-from-path path) default ...))
-           (define (instance-name [family : BIM-Family] param ...)
-             (struct-name (bim-family-path family)
-                          '()
-                          (bim-family-layer family)
-                          param-name ...)))))]))
+       (with-syntax ([class-params
+                      (append* (map syntax->list (syntax->list #'(class-comb ...))))]
+                     [instance-params
+                      (append* (map syntax->list (syntax->list #'(instance-comb ...))))])
+         (syntax/loc stx
+           (begin
+             (provide (struct-out struct-name)
+                      default-name
+                      load-name
+                      instance-name)
+             (struct struct-name bim-family
+               ([param-name : param-type] ...))
+             (define default-name (make-parameter (struct-name "" '() (create-layer layer-name) param-default ...)))
+             (define (load-name [path : String] . class-params)
+               (struct-name path
+                            (list (cons 'param-key param-name) ...)
+                            (create-layer-from-path path)
+                            param-default ...))
+             (define (instance-name [family : BIM-Family] . instance-params)
+               (struct-name (bim-family-path family)
+                            (bim-family-map family)
+                            (bim-family-layer family)
+                            param-name ...))))))]))
 
 (def-bim-family beam
   ([width : Real 10]

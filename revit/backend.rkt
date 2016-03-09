@@ -824,8 +824,7 @@ The following example does not work as intended. Rotating the args to closed-spl
 
 ;(def-shape (rectangular-mass [center : Loc] [width : Real] [length : Real] [height : Real]))
 
-(require (for-syntax racket/base))
-(require (for-syntax racket/syntax))
+(require (for-syntax racket/base racket/list racket/syntax))
 
 
 (provide ;;BIM extensions
@@ -839,6 +838,7 @@ The following example does not work as intended. Rotating the args to closed-spl
  current-level
  default-level-to-level-height
  upper-level
+ def-bim-family
  )
 
 (define (level height)
@@ -855,13 +855,65 @@ The following example does not work as intended. Rotating the args to closed-spl
 
 (struct bim-family
   ([path : String]
-   [parameters : (Listof String)]
+   [map : (Listof (Cons Keyword (Option Any)))]
    [id : Any])
   #:type-name BIM-Family)
 
-(define-for-syntax (build-name id fmt)
+(define-for-syntax (build-name fmt id)
   (format-id id #:source id fmt (syntax-e id)))
 
+(define-for-syntax (build-keyword id)
+  (string->keyword (symbol->string (syntax->datum id))))
+
+(define-syntax (def-bim-family stx)
+  (syntax-case stx ()
+    [(def name (param ...))
+     (with-syntax ([struct-name (build-name "~A-family" #'name)]
+                   [instance-name (build-name "~A-family-element" #'name)]
+                   [load-name (build-name "load-~A-family" #'name)]
+                   [default-name (build-name "default-~A-family" #'name)]
+                   [layer-name (string-titlecase (symbol->string (syntax-e #'name)))]
+                   [([param-name param-key param-type param-default class-comb instance-comb] ...)
+                    (map (lambda (p)
+                           (syntax-case p (:)
+                             [[name : type default]
+                              (with-syntax ([key (build-keyword #'name)])
+                                #'[name key type default
+                                        (key [name : (Option Any) #f])
+                                        (key [name : type default])])]
+                             #;[[name : type] #'[name type]]))
+                         (syntax->list #'(param ...)))])
+       (with-syntax ([class-params
+                      (append* (map syntax->list (syntax->list #'(class-comb ...))))]
+                     [instance-params
+                      (append* (map syntax->list (syntax->list #'(instance-comb ...))))])
+         (syntax/loc stx
+           (begin
+             (provide (struct-out struct-name)
+                      default-name
+                      load-name
+                      instance-name)
+             (struct struct-name bim-family
+               ([param-name : param-type] ...))
+             (define default-name (make-parameter (struct-name "" '() (%idstrc* #:id 0) param-default ...)))
+             (define (load-name [path : String] . class-params)
+               (struct-name path
+                            (list (cons 'param-key param-name) ...)
+                            (%load-family path)
+                            param-default ...))
+             (define (instance-name [family : BIM-Family] . instance-params)
+               (struct-name (bim-family-path family)
+                            (bim-family-map family)
+                            (let ((kvs (filter car
+                                               (map (lambda (kv v)
+                                                      (cons (cdr kv) v))
+                                                    (bim-family-map family)
+                                                    (list param-name ...)))))
+                              (%family-element (bim-family-id family)
+                                               #:parameter-names (map car kvs)
+                                               #:parameter-values (map cdr kvs)))
+                            param-name ...))))))]))
+#;
 (define-syntax (def-bim-family stx)
   (syntax-case stx ()
     [(def name (param ...))
@@ -894,6 +946,8 @@ The following example does not work as intended. Rotating the args to closed-spl
                                            #:parameter-names (bim-family-parameters family)
                                            #:parameter-values (list param-name ...))
                           param-name ...)))))]))
+
+
 
 (def-bim-family beam
   ([width : Real 10]
