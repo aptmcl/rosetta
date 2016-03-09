@@ -6,7 +6,8 @@
 (require "Messages.rkt")
 (require "communication.rkt")
 (require "../base/utils.rkt"
-         "../base/coord.rkt")
+         "../base/coord.rkt"
+         "../base/connection.rkt")
 (require srfi/26)
 ;(require math/array)
 (require math/matrix)
@@ -24,11 +25,10 @@ Example of usage:
 (send (circle (xy 0 0) 1))
 |#
 (define (circle p radius)
-  (let ((circle-to-create (circlemessage* #:p0x (cx p)
-                                          #:p0y (cy p)
-                                          #:radius radius)))
-    (write-msg "Circle" circle-to-create)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
+  (send/rcv-id "Circle"
+               (circlemessage* #:p0x (cx p)
+                               #:p0y (cy p)
+                               #:radius radius)))
 
 #| 
 Function used to create an arc
@@ -44,16 +44,12 @@ the arc will be the opposite of the previous result.
 
 |#
 (define (arc p radius angle begang endang)
-  (let ((arc-to-create (arcmessage* #:p0x (cx p)
-                                    #:p0y (cy p)
-                                    #:radius radius
-                                    #:angle angle
-                                    #:begang begang
-                                    #:endang endang)))
-    (write-msg "Arc" arc-to-create)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
-
-
+  (send/rcv-id "Arc" (arcmessage* #:p0x (cx p)
+                                  #:p0y (cy p)
+                                  #:radius radius
+                                  #:angle angle
+                                  #:begang begang
+                                  #:endang endang)))
 
 ;;Auxiliar Function
 (define (get-sub-polys sub-poly-list)
@@ -69,13 +65,11 @@ Example of usage:
 (send (sphere (xy 0 0) 1))
 |#
 (define (sphere p radius #:level [level (current-level)])
-  (let ((sphere-to-create (spheremessage* #:c0x (cx p)
-                                          #:c0y (cy p)
-                                          #:c0z (cz p)
-                                          #:radius radius
-                                          #:level (storyinfo-index level))))
-    (write-msg "Sphere" sphere-to-create)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
+  (send/rcv-id "Sphere" (spheremessage* #:c0x (cx p)
+                                        #:c0y (cy p)
+                                        #:c0z (cz p)
+                                        #:radius radius
+                                        #:level (storyinfo-index level))))
 
 #|
 Function to create a Complex Shell
@@ -91,31 +85,18 @@ Example of usage: (complex-shell tmat lstpoints lstarcs 1 hpoints harcs hheight 
                                                #:reflectx reflectx
                                                #:reflecty reflecty)))
     (write-msg "ComplexShell" shell-to-create)
-    (for-each (lambda (point)
-                (write-sized serialize (doublemessage* #:d point) output)) 
-              transmat)
-    
-    (for-each (lambda (point)
-                (write-sized serialize (pointmessage* #:p0x (car point) #:p0y (cdr point)) output)) 
-              listpoints)
-    
-    (for-each (lambda (arc)
-                (write-sized serialize (polyarcmessage* #:begindex (car arc) #:endindex (car (cdr arc)) #:arcangle (car (cdr (cdr arc)))) output)) 
-              listarcs)
-    
-    (for-each (lambda (point)
-                (write-sized serialize (pointmessage* #:p0x (car point) #:p0y (cdr point)) output)) 
-              holepoints)
-    
-    (for-each (lambda (arc)
-                (write-sized serialize (polyarcmessage* #:begindex (car arc) #:endindex (car (cdr arc)) #:arcangle (car (cdr (cdr arc)))) output)) 
-              holearcs)
-    
-    (for-each (lambda (point)
-                (write-sized serialize (doublemessage* #:d point) output)) 
-              holetransmat)
-    
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
+    (for-each send-double transmat)
+    (send-list-points listpoints)
+    (let ((output (connection-out (bim-connection))))
+      (for-each (lambda (arc)
+                  (write-sized serialize (polyarcmessage* #:begindex (car arc) #:endindex (car (cdr arc)) #:arcangle (car (cdr (cdr arc)))) output)) 
+                listarcs)
+      (send-list-points holepoints)
+      (for-each (lambda (arc)
+                  (write-sized serialize (polyarcmessage* #:begindex (car arc) #:endindex (car (cdr arc)) #:arcangle (car (cdr (cdr arc)))) output)) 
+                holearcs)
+      (for-each send-double holetransmat)
+      (read-guid))))
 
 #|
 Function to create a Simple Shell
@@ -130,23 +111,21 @@ This is the most primitive shell we can create
 Example of usage: (shell lstpoints lstarcs)
 |#
 (define (shell listpoints listarcs)
-  (let ((shell-to-create (shellmessage* #:numpoints (length listpoints)
-                                        #:numarcs (length listarcs))))
-    (write-msg "Shell" shell-to-create)
-    (send-points listpoints)
-    (send-arcs-complex listarcs)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
+  (send/no-rcv "Shell" (shellmessage* #:numpoints (length listpoints)
+                                      #:numarcs (length listarcs)))
+  (send-points listpoints)
+  (send-arcs-complex listarcs)
+  (read-guid))
+
 #|
 Function to rotate a Shell
 Receives the axis in which the shell will rotate, the angle and the shellId
 Example of usage: (rotate-shell "x" 90 shellId)
 |#
 (define (rotate-shell axis angle shellId)
-  (let ((rot-shell-msg (rotshellmessage* #:axis axis
-                                         #:angle angle
-                                         #:guid shellId)))
-    (write-msg "RotateShell" rot-shell-msg)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
+  (send/rcv-id "RotateShell" (rotshellmessage* #:axis axis
+                                               #:angle angle
+                                               #:guid shellId)))
 
 #|
 Function to translate a Shell
@@ -154,12 +133,10 @@ Receives a point that represents the translation and the shell ID
 Example of usage: (translate-shell (list 0 5 0) shellId)
 |#
 (define (translate-shell point shellId)
-  (let ((t-shell-msg (tshellmessage* #:tx (car point)
-                                     #:ty (car (cdr point))
-                                     #:tz (car (cdr (cdr point)))
-                                     #:guid shellId)))
-    (write-msg "TranslateShell" t-shell-msg)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
+  (send/rcv-id "TranslateShell" (tshellmessage* #:tx (car point)
+                                                #:ty (car (cdr point))
+                                                #:tz (car (cdr (cdr point)))
+                                                #:guid shellId)))
 
 #|
 Function to create a hole on a Shell
@@ -172,7 +149,7 @@ Example of usage: (hole-on-shell hpoints harcs hheight shellId)
     (write-msg "Hole" hole-msg)
     (send-points listpoints)
     (send-arcs-complex listarcs)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))
+    (read-guid)
     ))
 
 (define (morph reference-point coords edges polygons)
@@ -185,9 +162,9 @@ Example of usage: (hole-on-shell hpoints harcs hheight shellId)
     (send-points coords)
     (send-points edges)
     (send-points (flatten polygons))
-    (write-sized serialize msg-poly-sizes output)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))
-    ))
+    (let ((output (connection-out (bim-connection))))
+      (write-sized serialize msg-poly-sizes output))
+    (read-guid)))
 
 (define (box-2points point1 point2 #:bottom-level [bottom-level (current-level)])
   (let ((x1 (cx point1))
@@ -229,7 +206,7 @@ Example of usage: (hole-on-shell hpoints harcs hheight shellId)
   (box-2points point1 (+xyz point1 length width height) #:bottom-level bottom-level))
 
 (define (cylinder p0 radius p1 #:level [level (current-level)])
-  (let ((sphere-to-create (cylindermsg* #:p0x (cx p0)
+  (send/rcv-id "Cylinder" (cylindermsg* #:p0x (cx p0)
                                         #:p0y (cy p0)
                                         #:p0z (cz p0)
                                         #:p1x (cx p1)
@@ -237,8 +214,6 @@ Example of usage: (hole-on-shell hpoints harcs hheight shellId)
                                         #:p1z (cz p1)
                                         #:radius radius
                                         #:level (storyinfo-index level))))
-    (write-msg "Cylinder" sphere-to-create)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;       Polygons & Solids       ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -361,27 +336,23 @@ Example of usage: (hole-on-shell hpoints harcs hheight shellId)
   (morph (u0) pyramid-points edges polygons)))
 
 (define (morph-translate el x y z)
-  (let ((msg (transformmsg* #:guid el
-                            #:op "t"
-                            #:x x
-                            #:y y
-                            #:z z
-                            #:angle 0
-                            #:scale 0)))
-    (write-msg "MorphTrans" msg)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
+  (send/rcv-id "MorphTrans" (transformmsg* #:guid el
+                                           #:op "t"
+                                           #:x x
+                                           #:y y
+                                           #:z z
+                                           #:angle 0
+                                           #:scale 0)))
 
 ;axis: "x" "y" "z"
 (define (morph-rotate el angle axis)
-  (let ((msg (transformmsg* #:guid el
-                            #:op axis
-                            #:x 0
-                            #:y 0
-                            #:z 0
-                            #:angle angle
-                            #:scale 0)))
-    (write-msg "MorphTrans" msg)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
+  (send/rcv-id "MorphTrans" (transformmsg* #:guid el
+                                           #:op axis
+                                           #:x 0
+                                           #:y 0
+                                           #:z 0
+                                           #:angle angle
+                                           #:scale 0)))
 
 (define (morph-rotate-x el angle)
   (morph-rotate el angle "x"))
@@ -391,15 +362,13 @@ Example of usage: (hole-on-shell hpoints harcs hheight shellId)
   (morph-rotate el angle "z"))
 
 (define (morph-scale el scale)
-  (let ((msg (transformmsg* #:guid el
-                            #:op "s"
-                            #:x 0
-                            #:y 0
-                            #:z 0
-                            #:angle 0
-                            #:scale scale)))
-    (write-msg "MorphTrans" msg)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
+  (send/rcv-id "MorphTrans" (transformmsg* #:guid el
+                                           #:op "s"
+                                           #:x 0
+                                           #:y 0
+                                           #:z 0
+                                           #:angle 0
+                                           #:scale scale)))
 
 (define-syntax-rule (mf m i j) (real->double-flonum (matrix-ref m i j)))
 
@@ -443,10 +412,8 @@ Example of usage: (hole-on-shell hpoints harcs hheight shellId)
        (+ (cz p) (mf m 2 3))))
 
 (define (apply-matrix-to-morph el matrix)
-  (let ((msg (applymatrix* #:guid el
-                           #:matrix matrix)))
-    (write-msg "ApplyMatrix" msg)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
+  (send/rcv-id "ApplyMatrix" (applymatrix* #:guid el
+                                           #:matrix matrix)))
 
 (define (right-cuboid cb width height h/ct)
   (let-values ([(cb dz) (position-and-height cb h/ct)])

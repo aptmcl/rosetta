@@ -7,7 +7,8 @@
 (require "Messages.rkt")
 (require "communication.rkt")
 (require "geometry.rkt")
-(require "../base/coord.rkt")
+(require "../base/coord.rkt"
+         "../base/connection.rkt")
 (require srfi/26)
 
 (define DEGRAD (/ pi 180.0))
@@ -91,7 +92,7 @@ Make the wall always double slanted whatever the angles?
                             #:profilename profile-name))))
     (write-msg "NewWall" msg)
     (send-points guide)
-    (let ((result (read-sized (cut deserialize (elementidlist*) <>)input)))
+    (let ((result (read-guids*)))
       (if (and (elementidlist-crashmaterial result) 
                (crash-on-no-material?))
           (begin 
@@ -120,29 +121,24 @@ Example of usage:
               #:width [width -10000]
               #:bottom [bottom 0]
               #:height [height -10000])
-  (let ((door-to-create (doormessage* #:guid guid
-                                      #:objloc objloc
-                                      #:zpos bottom
-                                      #:height height
-                                      #:width width
-                                      #:hole #f
-                                      #:name type-of-door
-                                      )))
-    (write-msg "Door" door-to-create)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
+  (send/rcv-id "Door" (doormessage* #:guid guid
+                                    #:objloc objloc
+                                    #:zpos bottom
+                                    #:height height
+                                    #:width width
+                                    #:hole #f
+                                    #:name type-of-door)))
 
 ;;TODO Review this function
 (define (hole-in-wall guid objloc [width -10000] [bottom 0] [height -10000])
-  (let ((door-to-create (doormessage* #:guid guid
-                                      #:objloc objloc
-                                      #:zpos bottom
-                                      #:height height
-                                      #:width width
-                                      #:hole #t
-                                      #:name ""
-                                      )))
-    (write-msg "Door" door-to-create)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
+  (send/rcv-id "Door" (doormessage* #:guid guid
+                                    #:objloc objloc
+                                    #:zpos bottom
+                                    #:height height
+                                    #:width width
+                                    #:hole #t
+                                    #:name ""
+                                    )))
 
 ;;TODO Review this function
 (define (hole-in-wall-test guid list-points [list-arcs (list)])
@@ -150,7 +146,7 @@ Example of usage:
     (write-msg "HoleTest" msg)
     (send-points list-points)
     (send-arcs list-arcs)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
+    (read-guid)))
 
 #|
 Function used to create a window into a existing wall
@@ -169,12 +165,10 @@ Example of usage:
                 objloc
                 #:type-of-window [type-of-window "Window 18"]
                 #:zpos [zpos 0])
-  (let ((window-to-create (windowmessage* #:guid guid
-                                          #:objloc objloc
-                                          #:zpos zpos
-                                          #:name type-of-window)))
-    (write-msg "Window" window-to-create)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
+  (send/rcv-id "Window" (windowmessage* #:guid guid
+                                        #:objloc objloc
+                                        #:zpos zpos
+                                        #:name type-of-window)))
 
 #|
 Function to create a Curtain Wall
@@ -197,7 +191,7 @@ Example of usage:
     (write-msg "CurtainWall" c-wall-msg)
     (send-points guide)
     (send-arcs listarcs)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
+    (read-guid)))
 
 #|
 Function to create a Slab
@@ -258,14 +252,18 @@ Example of usage:
     (write-msg "NewSlab" slab-msg)  
     ;(send-points guide)
     (send-points (car slab-info))
-    ;(elementid-guid (read-sized (cut deserialize (elementid*) <>)input))
-    (let ((result (read-sized (cut deserialize (elementid*) <>)input)))
-      (if (and (elementid-crashmaterial result) 
-               (crash-on-no-material?))
-          (begin 
-            (disconnect)
-            (error "The material does not exist"))
-          (elementid-guid result)))))
+    ;(read-guid)
+    (read-material-guid)))
+
+(define (read-material-guid)
+  (let ((result (read-guid-aux)))
+    (if (and (elementid-crashmaterial result) 
+             (crash-on-no-material?))
+        (begin 
+          (disconnect)
+          (error "The material does not exist"))
+        (elementid-guid result))))
+
 
 #|
 Function to create a hole on a slab
@@ -283,7 +281,7 @@ Example of usage:
     (write-msg "HoleSlab" slab-msg)  
     (send-points (append listpoints (list (car listpoints))))
     (send-arcs listarcs)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
+    (read-guid)))
 
 
 #|
@@ -299,8 +297,8 @@ Example of usage:
 (define (internal-walls-from-slab slab-id height thickness material reference-line type)
   (let ((ele-id-msg (wallsfromslab* #:guid slab-id #:height height #:thickness thickness #:material material #:type type #:referenceline reference-line)))
     (write-msg "WallsSlab" ele-id-msg)
-    ;(elementidlist-guid (read-sized (cut deserialize (elementidlist*) <>)input))
-    (let ((result (read-sized (cut deserialize (elementidlist*) <>)input)))
+    ;(elementidlist-guid (read-guids))
+    (let ((result (read-guids*)))
       (if (and (elementidlist-crashmaterial result) 
                (crash-on-no-material?))
           (begin 
@@ -340,7 +338,7 @@ Example of usage:
                                 #:crashmaterial #f)))
     (write-msg "CWallsSlab" ele-id-msg)
     (send-double height)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
+    (read-guid)))
 
 #|
 Function to create a column
@@ -390,14 +388,8 @@ Example of usage:
                               #:bottomindex (storyinfo-index bottom-level)
                               #:upperindex (storyinfo-index top-level)))))
     (write-msg "NewColumn" msg)
-    ;(elementid-guid (read-sized (cut deserialize (elementid*) <>)input))
-    (let ((result (read-sized (cut deserialize (elementid*) <>)input)))
-      (if (and (elementid-crashmaterial result) 
-               (crash-on-no-material?))
-          (begin 
-            (disconnect)
-            (error "The material does not exist"))
-          (elementid-guid result)))))
+    ;(read-guid)
+    (read-material-guid)))
 
 ;(send (columns-from-slab (slab (list (xy -1 -1)(xy 1 -1)(xy 1 1)(xy -1 1)(xy -1 -1))) 5))
 (define columns-from-slab-material-default (make-parameter "GENERIC - STRUCTURAL"))
@@ -414,14 +406,8 @@ Example of usage:
                                 #:width width
                                 #:material material)))
     (write-msg "ColumnsSlab" msg)
-    ;(elementid-guid (read-sized (cut deserialize (elementid*) <>)input))
-    (let ((result (read-sized (cut deserialize (elementidlist*) <>)input)))
-      (if (and (elementidlist-crashmaterial result) 
-               (crash-on-no-material?))
-          (begin 
-            (disconnect)
-            (error "The material does not exist"))
-          (elementidlist-guid result)))))
+    ;(read-guid)
+    (read-material-guid)))
 
 (define (beam p0
               p1
@@ -442,14 +428,8 @@ Example of usage:
                         #:angle (- pi/2 (sph-psi (p-p p1 p0)))
                         #:material material)))
     (write-msg "Beam" msg)
-    ;(elementid-guid (read-sized (cut deserialize (elementid*) <>)input))
-    (let ((result (read-sized (cut deserialize (elementid*) <>)input)))
-      (if (and (elementid-crashmaterial result) 
-               (crash-on-no-material?))
-          (begin 
-            (disconnect)
-            (error "The material does not exist"))
-          (elementid-guid result)))))
+    ;(read-guid)
+    (read-material-guid)))
 
 (define (split-params-list lsst)
   (let ((names (list))
@@ -569,7 +549,7 @@ Example of usage:
                               #:paramtype (list-ref splitted-list 9)
                               #:isarray (list-ref splitted-list 10)))))
     (write-msg "Object" msg)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))
+    (read-guid)
     ))
 
 #|
@@ -611,15 +591,8 @@ Function to create stairs
                           )))
     ;(list names int-values double-values string-values bool-values lst-int-values lst-double-values lst-string-values lst-bool-values param-types is-array?)
     (write-msg "Stairs" msg)
-    ;(elementid-guid (read-sized (cut deserialize (elementid*) <>)input))
-    (let ((result (read-sized (cut deserialize (elementid*) <>)input)))
-      (if (and (elementid-crashmaterial result)
-               (crash-on-no-name?))
-          (begin 
-            (disconnect)
-            (error "The name does not exist"))
-          (elementid-guid result)))      
-    ))
+    ;(read-guid)
+    (read-material-guid)))
 #|
 Function to create a library part
 At the moment does not return anything. It would be more interesting than returning an idex, to be able to use the name given to the library part.
@@ -695,14 +668,8 @@ Example of usage:
                             #:bottomlevel (storyinfo-index bottom-level))))
     (write-msg "NewRoof" roof-msg)  
     (send-points (car roof-info))
-    ;(elementid-guid (read-sized (cut deserialize (elementid*) <>)input))
-    (let ((result (read-sized (cut deserialize (elementid*) <>)input)))
-      (if (and (elementid-crashmaterial result) 
-               (crash-on-no-material?))
-          (begin 
-            (disconnect)
-            (error "The material does not exist"))
-          (elementid-guid result)))))
+    ;(read-guid)
+    (read-material-guid)))
 #|
 Function to create a poly roof
 |#
@@ -719,16 +686,11 @@ Function to create a poly roof
     (write-msg "PolyRoof" msg)
     (send-points (flatten listpoints))
     (send-arcs listarcs)
-    (write-sized serialize sub-poly-msg output)
-    (write-sized serialize roof-levels-msg output)
-    ;(elementid-guid (read-sized (cut deserialize (elementid*) <>)input))
-    (let ((result (read-sized (cut deserialize (elementid*) <>)input)))
-      (if (and (elementid-crashmaterial result) 
-               (crash-on-no-material?))
-          (begin 
-            (disconnect)
-            (error "The material does not exist"))
-          (elementid-guid result)))
+    (let ((output (connection-out (bim-connection))))
+      (write-sized serialize sub-poly-msg output)
+      (write-sized serialize roof-levels-msg output))
+    ;(read-guid)
+    (read-material-guid)
     ))
 
 (define poly-roof-material-default (make-parameter "GENERIC - STRUCTURAL"))
@@ -771,14 +733,8 @@ Function to create a poly roof
     (write-msg "Mesh" slab-msg)  
     (send-points guide)
     (send-points level-lines)
-    ;(elementid-guid (read-sized (cut deserialize (elementid*) <>)input))
-    (let ((result (read-sized (cut deserialize (elementid*) <>)input)))
-      (if (and (elementid-crashmaterial result) 
-               (crash-on-no-material?))
-          (begin 
-            (disconnect)
-            (error "The material does not exist"))
-          (elementid-guid result)))))
+    ;(read-guid)
+    (read-material-guid)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;Functions to manipulate objects;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -795,7 +751,7 @@ Example of usage:
                                 #:crashmaterial #f)))
     (write-msg "AddArcs" ele-id-msg)
     (send-arcs listarcs)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))
+    (read-guid)
     ))
 
 #|NOT WORKING
@@ -810,7 +766,7 @@ Example of usage:
                               #:tz (cz point)
                               #:guid ID)))
     (write-msg "Translate" t-msg)
-    ;;(elementid-guid (read-sized (cut deserialize (elementid*) <>)input))
+    ;;(read-guid)
     ))
 #|
 Function to rotate an element on the z-axis
@@ -827,29 +783,25 @@ Example of usage:
                            #:angle angle
                            #:copy copy)))
     (write-msg "RotateZ" r-msg)
-    (define return-list (elementidlist-guid (read-sized (cut deserialize (elementidlist*) <>)input)))
+    (define return-list (elementidlist-guid (read-guids*)))
     (if (equal? (length return-list) 1) (car return-list) return-list)
-    ;(elementid-guid (read-sized (cut deserialize (elementid*) <>)input))
+    ;(read-guid)
     ))
 
 #|
 Function to mirror an element on the x-axis
 |#
 (define (mirror-element-x ID [copy #t])
-  (let ((msg (mirrormsg* #:guid ID
-                         #:axis "x"
-                         #:copy copy)))
-    (write-msg "Mirror" msg)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
+  (send/rcv-id "Mirror" (mirrormsg* #:guid ID
+                                    #:axis "x"
+                                    #:copy copy)))
 #|
 Function to mirror an element on the y-axis
 |#
 (define (mirror-element-y ID [copy #t])
-  (let ((msg (mirrormsg* #:guid ID
-                         #:axis "y"
-                         #:copy copy)))
-    (write-msg "Mirror" msg)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
+  (send/rcv-id "Mirror" (mirrormsg* #:guid ID
+                                    #:axis "y"
+                                    #:copy copy)))
 
 #|NOT WORKING
 Function to trim an element
@@ -857,10 +809,8 @@ Receives the ID of two elements to trim
 Example of usage: (trim-element idWall idSlab)
 |#
 (define (trim-elements ID1 ID2)
-  (let ((t-msg (trimmsg* #:guid1 ID1
-                         #:guid2 ID2)))
-    (write-msg "Trim" t-msg)
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))))
+  (send/rcv-id "Trim" (trimmsg* #:guid1 ID1
+                                #:guid2 ID2)))
 
 #|
 Function to intersect a wall with an element
@@ -876,7 +826,7 @@ Example of usage:
   (let ((i-msg (intersectmsg* #:guid1 ID1
                               #:guid2 ID2)))
     (if destructive (write-msg "DestructiveIntersectWall" i-msg)(write-msg "IntersectWall" i-msg))
-    (elementid-guid (read-sized (cut deserialize (elementid*) <>)input))
+    (read-guid)
     ))
 #|
 Function to create a profile.
@@ -889,12 +839,10 @@ Example:
                  points
                  #:arcs [arcs (list)]
                  #:material [material "GENERIC - STRUCTURAL"])
-  (let ((msg (profilemsg* #:pts (prepare-points-to-send (append points (list (car points))))
-                          #:arcs (prepare-arcs-to-send arcs)
-                          #:material material
-                          #:name name)))
-    (write-msg "Profile" msg)
-    name)) 
+  (send/no-rcv "Profile" (profilemsg* #:pts (prepare-points-to-send (append points (list (car points))))
+                                      #:arcs (prepare-arcs-to-send arcs)
+                                      #:material material
+                                      #:name name)))
 
 #|
 Function to delete list of elements
