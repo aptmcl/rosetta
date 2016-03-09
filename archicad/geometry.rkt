@@ -3,7 +3,7 @@
 
 (require "protobuf1/protobuf.rkt")
 (require "protobuf1/encoding.rkt")
-(require "Messages.rkt")
+(require "messages.rkt")
 (require "communication.rkt")
 (require "../base/utils.rkt"
          "../base/coord.rkt"

@@ -430,5 +430,9 @@
   (required struct:polyarcsmessage arcs 2)
   (required primitive:string material 3)
   (required primitive:string name 4)))
+(define-message-type layermsg ((required primitive:string name 1)))
+(define-message-type
+ layerelementmsg
+ ((required primitive:string guid 1) (required primitive:string layer 2)))
 
 (provide (all-defined-out))

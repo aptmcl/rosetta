@@ -978,7 +978,7 @@ The following example does not work as intended. Rotating the args to closed-spl
                   #:family (bim-family-id family)))
 
 (def-shape (slab [vertices : Locs] [level : Any (current-level)] [family : Any (default-slab-family)])
-  (%create-slab (map loc-in-world vertices) #:bottom-level level #:family (bim-family-id family)))
+  (%create-slab (map loc-in-world (append vertices (list (car vertices)))) #:bottom-level level #:family (bim-family-id family)))
 
 (def-shape (roof [vertices : Locs] [level : Any (current-level)] [family : Any (default-roof-family)])
-  (%create-roof (map loc-in-world vertices) #:bottom-level level #:family (bim-family-id family)))
+  (%create-roof (map loc-in-world (append vertices (list (car vertices)))) #:bottom-level level #:family (bim-family-id family)))

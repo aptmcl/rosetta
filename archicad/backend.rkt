@@ -13,6 +13,7 @@
 (require (prefix-in % "communication.rkt"))
 (provide immediate-mode?
          current-backend-name
+         (rename-out [%disconnect disconnect])
 #|         mt
          ft
          box
@@ -850,8 +851,14 @@ The following example does not work as intended. Rotating the args to closed-spl
   (%upper-level #:level lvl
                 #:height height))
 
-(define (create-layer [str : String])
-  str)
+(define (create-layer [name : String])
+  (let ((msg (layermsg* #:name name)))
+    (write-msg "Layer" msg)))
+
+(define (shape-layer [name : String] [guid : Any])
+  (let ((msg (layerelementmsg* #:layer name
+                               #:guid guid)))
+    (write-msg "LayerElem" msg)))
 
 (require racket/include)
 (include "../base/bimdefs.rkc")
