@@ -6,7 +6,7 @@
 (require "Messages.rkt")
 (require "Communication.rkt")
 (require (except-in rosetta/revit
-                    box))
+                    box upper-level default-level-to-level-height current-level))
 (require srfi/26)
 ;(require math/array)
 (require math/matrix)
