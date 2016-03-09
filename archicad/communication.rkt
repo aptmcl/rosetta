@@ -323,3 +323,11 @@ Example of usage:
                            #:extension (last (string-split path ".")))))
     (write-msg "OpenFile" msg)))
 
+(define (create-layer name)
+  (let ((msg (layermsg* #:name name)))
+    (write-msg "Layer" msg)))
+
+(define (shape-layer name guid)
+  (let ((msg (layerelementmsg* #:layer name
+                               #:guid guid)))
+    (write-msg "LayerElem" msg)))
