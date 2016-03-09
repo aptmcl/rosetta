@@ -824,6 +824,20 @@ The following example does not work as intended. Rotating the args to closed-spl
 
 (require (for-syntax racket/base racket/list racket/syntax))
 
+(provide ;;BIM extensions
+ level
+ beam
+ column
+ ;;door
+ roof
+ slab
+ ;;wall
+ current-level
+ default-level-to-level-height
+ upper-level
+ def-bim-family
+ )
+
 (define (level height)
   (%create-level #:height height))
 
@@ -836,11 +850,11 @@ The following example does not work as intended. Rotating the args to closed-spl
   (%upper-level #:level lvl
                 #:height height))
 
-(require racket/include)
-(include "../base/bimdefs.rkc")
-
 (define (create-layer [str : String])
   str)
+
+(require racket/include)
+(include "../base/bimdefs.rkc")
 
 (def-shape (beam [p0 : Loc] [p1 : Loc] [family : Beam-Family (default-beam-family)])
   (%beam (loc-in-world p0) (loc-in-world p1)

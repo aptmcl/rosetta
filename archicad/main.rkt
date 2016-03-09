@@ -21,11 +21,6 @@
                        "objects.rkt"
                        "inspector.rkt"))
 
-(define do-not-install? #f)
-(define (do-not-install! bool)
-  (set! do-not-install? bool))
-(unless do-not-install?
-  (move-addon))
 
 (define (view-3d)
   (write-msg-name "3D"))

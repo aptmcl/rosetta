@@ -40,12 +40,12 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define revit-conn #f)
+(define conn #f)
 
-(define (revit-connection)
-  (unless revit-conn
+(define (bim-connection)
+  (unless conn
     (connect-to-revit))
-  revit-conn)
+  conn)
 
 ;;;;;;;Conversions;;;;;;;;;;;;;;;;;;;;;;
 
@@ -85,43 +85,42 @@
                                  (if (> n 0)
                                      (rec (- n 1))
                                      (raise e)))))
-      (call-with-values(lambda () (tcp-connect server-addr 53800))
-                       (lambda (in out)
-                         (file-stream-buffer-mode in 'none)
-                         (file-stream-buffer-mode out 'none)
-                         (set! revit-conn (connection in out))
-                         ;;I'm not sure this is the correct place to do this.
-                         ;;I just know it must run before closing the socket
-                      #;   (plumber-add-flush! (current-plumber)
-                                             (lambda (e)
-                                               (plumber-flush-handle-remove! e)
-                                               (disconnect-from-revit)))))
+      (let-values([(in out) (tcp-connect server-addr 53800)])
+        (file-stream-buffer-mode in 'none)
+        (file-stream-buffer-mode out 'none)
+        (set! conn (connection in out))
+        ;;I'm not sure this is the correct place to do this.
+        ;;I just know it must run before closing the socket
+        #;   (plumber-add-flush! (current-plumber)
+                                 (lambda (e)
+                                   (plumber-flush-handle-remove! e)
+                                   (disconnect-from-revit))))
       (when (project-document?)
         (set! current-level (make-parameter (get-level 0 "Level 1")))
         (delete-level "Level 2"))))
   (void))
 
 (define (project-document?)
-  (write-sized serialize (namestrc* #:name "isProject") (connection-out (revit-connection)))
-  (boolstrc-answer (read-sized (cut deserialize (boolstrc*) <>) (connection-in (revit-connection)))))
+  (write-sized serialize (namestrc* #:name "isProject") (connection-out (bim-connection)))
+  (boolstrc-answer (read-sized (cut deserialize (boolstrc*) <>) (connection-in (bim-connection)))))
 
 ;;Rosetta functions
 
 (define-syntax-rule
   (send/no-rcv name body ...)
-  (let ((output (connection-out (revit-connection))))
+  (let ((output (connection-out (bim-connection))))
     (write-sized serialize (namestrc* #:name name) output)
     (write-sized serialize body output) ...))
 
 (define-syntax-rule
   (send/rcv-id name body ...)
-  (let ((input (connection-in (revit-connection))))
+  (let ((input (connection-in (bim-connection))))
     (send/no-rcv name body ...)
     (read-sized (cut deserialize (idstrc*) <>) input)))
 
 (define-syntax-rule
   (send/rcv-polyid name body ...)
-  (let ((input (connection-in (revit-connection))))
+  (let ((input (connection-in (bim-connection))))
     (send/no-rcv name body ...)
     (polyidstrc-ids (read-sized (cut deserialize (polyidstrc*) <>) input))))
 
@@ -369,7 +368,7 @@
 
 (define (disconnect-from-revit)
   (send/no-rcv "disconnect")
-  (shutdown-connection (revit-connection))
+  (shutdown-connection (bim-connection))
   (void))
 
 ;;;;;;;;New 2.0 Operator ;;;;;;;;;;;;;;;
@@ -427,7 +426,7 @@
   (send/no-rcv "levelElevation"
                (current-level))
   (doublestrc-height (read-sized (cut deserialize (doublestrc*) <>)
-                                 (connection-in (revit-connection)))))
+                                 (connection-in (bim-connection)))))
 
 (define (create-railings slabid)
   (send/no-rcv "createRailings"
@@ -436,7 +435,7 @@
 (define (get-wall-volume wallid)
   (send/no-rcv "getWallVolume" wallid)
   (doublevolumestrc-volume (read-sized (cut deserialize (doublevolumestrc*) <>)
-                                       (connection-in (revit-connection)))))
+                                       (connection-in (bim-connection)))))
 
 (define (create-stairs blevel tlevel bp tp)
   (send/rcv-id "createStairs"
@@ -452,12 +451,12 @@
 (define (levels-info)
   (send/no-rcv "getLevelsInfo")
   (polylevelstrc-levels (read-sized (cut deserialize (polylevelstrc*) <>)
-                                    (connection-in (revit-connection)))))
+                                    (connection-in (bim-connection)))))
 
 (define (walls-info)
   (send/no-rcv "getWallsInfo")
   (polywallinfostrc-walls (read-sized (cut deserialize (polywallinfostrc*) <>)
-                                      (connection-in (revit-connection)))))
+                                      (connection-in (bim-connection)))))
 
 (define (create-topo-surface points)
   (let ((pts (convert-list points)))

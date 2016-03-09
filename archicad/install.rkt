@@ -12,11 +12,13 @@
 
 ;TODO - Add more errors
 (define (move-addon)
-  (with-handlers ([exn:fail? (lambda (exn)
-                               (cond [(eq? addon-in-use (car (exn:fail:filesystem:errno-errno exn)))
-                                      (displayln "Warning: Addon cannot be moved because it is being used")]
-                                     [else (raise exn)]))])
-    (copy-file from-addon (build-path to-folder "RosettaArchiCAD.apx") #t)))
+  (let ((to-file (build-path to-folder "RosettaArchiCAD.apx")))
+    (unless (file-exists? to-file)
+      (with-handlers ([exn:fail? (lambda (exn)
+                                   (cond [(eq? addon-in-use (car (exn:fail:filesystem:errno-errno exn)))
+                                          (displayln "Warning: Addon cannot be moved because it is being used")]
+                                         [else (raise exn)]))])
+        (copy-file from-addon to-file #t)))))
 
 #|
 (define (move-addon)
