@@ -4,9 +4,9 @@
 (require "protobuf1/protobuf.rkt")
 (require "protobuf1/encoding.rkt")
 (require "Messages.rkt")
-(require "Communication.rkt")
-(require (except-in rosetta/revit
-                    box upper-level default-level-to-level-height current-level))
+(require "communication.rkt")
+(require "../base/utils.rkt"
+         "../base/coord.rkt")
 (require srfi/26)
 ;(require math/array)
 (require math/matrix)

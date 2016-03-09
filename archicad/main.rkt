@@ -1,24 +1,25 @@
 #lang racket
 ;(provide (except-out (all-defined-out)))
 
-(require "Install.rkt")
-(require "Communication.rkt")
-(require "Geometry.rkt")
-(require "BIMObjects.rkt")
+(require "install.rkt")
+(require "communication.rkt")
+(require "geometry.rkt")
+(require "objects.rkt")
 (require "Messages.rkt")
-(require "Inspector.rkt")
+(require "inspector.rkt")
 (require "protobuf1/protobuf.rkt")
 (require "protobuf1/syntax.rkt")
 (require "protobuf1/encoding.rkt")
-(require (except-in rosetta/revit
-                    box))
+(require "../base/utils.rkt"
+         "../base/coord.rkt"
+         "../base/shapes.rkt")
 (require srfi/26)
 
 (provide (all-defined-out)
-         (all-from-out "Communication.rkt"
-                       "Geometry.rkt"
-                       "BIMObjects.rkt"
-                       "Inspector.rkt"))
+         (all-from-out "communication.rkt"
+                       "geometry.rkt"
+                       "objects.rkt"
+                       "inspector.rkt"))
 
 (define do-not-install? #f)
 (define (do-not-install! bool)
