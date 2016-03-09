@@ -309,3 +309,17 @@ Example of usage:
 (define (delete-stories)
   (write-msg-name "DeleteStories"))
 (define (delete-levels) (delete-stories))
+
+
+;;Extras
+(define (view-3d)
+  (write-msg-name "3D"))
+
+;(send (open-file "D:\\GitHubRep\\Tese\\Development\\Examples\\Models\\AT for eCADDe.pln"))
+;(send (open-file "D:\\GitHubRep\\Tese\\Development\\Examples\\Models\\AT for eCADDe.ifc"))
+;(send (open-file "C:\\Users\\Client\\Desktop\\SmallTower.ifc"))
+(define (open-file path)
+  (let ((msg (openmessage* #:path path
+                           #:extension (last (string-split path ".")))))
+    (write-msg "OpenFile" msg)))
+
