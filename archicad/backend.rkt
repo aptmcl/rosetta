@@ -13,7 +13,8 @@
 (require (prefix-in % "communication.rkt"))
 (provide immediate-mode?
          current-backend-name
-         (rename-out [%disconnect disconnect])
+         (rename-out [%disconnect disconnect]
+                     [%send send])
 #|         mt
          ft
          box
@@ -74,8 +75,9 @@
          bounding-box
          delete-shape
          delete-shapes
+|#
          delete-all-shapes
-         curve-start-point
+#|         curve-start-point
          curve-end-point
          curve-domain
          curve-length
@@ -84,9 +86,10 @@
          ;curve-point-at
          curve-frame-at
          curve-frame-at-length
+|#
          enable-update
          disable-update
-         prompt-point
+#|         prompt-point
          prompt-integer
          prompt-real
          prompt-shape
@@ -140,11 +143,12 @@
   (for-each %safe-delete (shape-refs shape))
   (void))
 
-
+|#
 (define (delete-all-shapes) : Void
-  (%erase-all)
+  (%delete-levels)
   (void))
 
+#|
 (define (shape<-ref [r : Ref]) ;HACK Bug in typed/racket : Shape
   (define (coordinates [r : Ref])
     (let ((pts
@@ -773,14 +777,15 @@ The following example does not work as intended. Rotating the args to closed-spl
 (define (zoom-extents) : Void
   (%zoom-extents))
 
+|#
 (define (disable-update)
   ;Is there a way of disabling updates in AutoCAD
-  #f)
+  (%visual-feedback-off))
 
 (define (enable-update)
    ;Is there a way of disabling updates in AutoCAD
-  (%regen-active-viewport))
-
+  (%visual-feedback-on))
+#|
 (define (prompt-point [str : String "Select position"]) : Loc
   (%get-point (u0 world-cs) str))
 
@@ -837,6 +842,7 @@ The following example does not work as intended. Rotating the args to closed-spl
  default-level-to-level-height
  upper-level
  def-bim-family
+ (rename-out [%delete-levels delete-levels])
  )
 
 (define (level height)
