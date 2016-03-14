@@ -214,10 +214,11 @@
 
 (define (extrude line hight [r 1.0] [g 1.0] [b 1.0])
   (let ([up-dir (*c (v*v (p-p (first line) (second line)) (p-p (second line) (third line))) hight)])
-    (polygon line)
-    (polygon (map (lambda (a) (p+v a up-dir)) line))
+    (polygon-surface line)
+    (polygon-surface (map (lambda (a) (p+v a up-dir)) line))
     
     ))
+
 
 (define (mirror shapes pt vec)
   (append (for/list ([shape (flatten shapes)])
