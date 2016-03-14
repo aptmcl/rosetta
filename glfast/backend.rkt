@@ -194,7 +194,7 @@
 
 (define (polygon pts [r 1.0] [g 1.0] [b 1.0])
   #;(line pts)
-  (displayln pts)
+  ;(displayln pts)
   (if (> (length pts) 2)
       (cons (line (list (first pts) (second pts))) (polygon (rest pts) r g b))
       (line pts)
@@ -210,15 +210,19 @@
       )
   )
 
-
+(define (extrude-aux line up-line [r 1.0] [g 1.0] [b 1.0])
+  (begin (polygon-surface (list (first line) (first up-line) (second up-line) (second line)) r g b)
+         (when (> (length line) 2)(extrude-aux (rest line) (rest up-line) r g b))))
 
 (define (extrude line hight [r 1.0] [g 1.0] [b 1.0])
-  (let ([up-dir (*c (v*v (p-p (first line) (second line)) (p-p (second line) (third line))) hight)])
-    (polygon-surface line)
-    (polygon-surface (map (lambda (a) (p+v a up-dir)) line))
-    
-    ))
-
+  (if (< (length line) 3)
+      (displayln (format "Extrude: the line should have 3 or more points. Your line has ~a points" (length line)))
+      (let ([up-dir (*c (unitize (v*v (p-p (first line) (second line)) (p-p (second line) (third line)))) hight)])
+        (let ([up-line (map (lambda (a) (p+v a up-dir)) line)])
+          (polygon-surface line r g b)
+          (polygon-surface up-line r g b)
+          (extrude-aux line up-line r g b))
+        )))
 
 (define (mirror shapes pt vec)
   (append (for/list ([shape (flatten shapes)])

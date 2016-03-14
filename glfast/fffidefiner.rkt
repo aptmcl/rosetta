@@ -2,9 +2,10 @@
 (require ffi/unsafe
          ffi/unsafe/define)
 (require (for-syntax racket/match))
+(require racket/runtime-path)
 
-(define shading-lib-path (build-path "C:\\Users\\DEMO\\Documents\\Visual Studio 2015\\Projects\\shading\\x64\\Debug\\shading"))
-;(define shading-lib-path (build-path "shading"))
+;(define shading-lib-path (build-path "C:\\Users\\DEMO\\Documents\\Visual Studio 2015\\Projects\\shading\\x64\\Debug\\shading"))
+(define-runtime-path shading-lib-path "shading.dll")
 (displayln shading-lib-path)
 (define shading-lib (ffi-lib shading-lib-path #:fail (λ () (displayln "FAIL!!!"))))
 (define-ffi-definer define-f-function shading-lib)
