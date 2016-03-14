@@ -1,0 +1,51 @@
+(include "bimdefs.rkc")
+
+(provide (struct-out level))
+
+(struct level
+  ([height : Real])
+  #:type-name Level)
+
+(define current-level (make-parameter (level 0)))
+
+(define default-level-to-level-height (make-parameter 3))
+
+(define (upper-level [lvl : Level (current-level)]
+                     [height : Real (default-level-to-level-height)])
+  (level (+ (level-height lvl) height)))
+
+
+(def-shape (beam [p0 : Loc] [p1 : Loc] [family : Beam-Family (default-beam-family)])
+  (let ((s (right-cuboid (loc-in-world p0) (beam-family-width family) (beam-family-height family) (loc-in-world p1))))
+    (shape-layer s (bim-family-layer family))
+    s))
+
+(def-shape (column [center : Loc]
+                   [bottom-level : Level (current-level)]
+                   [top-level : Level (upper-level bottom-level)]
+                   [family : Column-Family (default-column-family)])
+  (let ((width (column-family-width family)))
+    (let ((s (box (+xyz (loc-in-world center) (/ width -2) (/ width -2) (level-height bottom-level))
+                  width
+                  width
+                  (- (level-height top-level) (level-height bottom-level)))))
+      (shape-layer s (bim-family-layer family))
+      s)))
+
+;(def-shape (door))
+(def-shape (slab [vertices : Locs] [level : Level (current-level)] [family : Slab-Family (default-slab-family)])
+  (let ((s (extrusion
+            (surface-polygon (map (lambda ([p : Loc])
+                                    (+z (loc-in-world p) (level-height level)))
+                                  vertices))
+            (slab-family-thickness family))))
+    (shape-layer s (bim-family-layer family))
+    s))
+        
+(def-shape (roof [vertices : Locs] [level : Level (current-level)] [family : Roof-Family (default-roof-family)])
+  (let ((s (extrusion
+            (surface-polygon (map (lambda ([p : Loc])
+                                    (+z (loc-in-world p) (level-height level)))
+                                  vertices)))))
+    (shape-layer s (bim-family-layer family))
+    s))

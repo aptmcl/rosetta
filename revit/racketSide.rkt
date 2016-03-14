@@ -2,6 +2,7 @@
 
 ;;(require (except-in (planet aml/rosetta) box cylinder sphere surface-grid union))
 (require "../base/coord.rkt")
+(require "../base/connection.rkt")
 (require "rosetta/protobuf1/protobuf.rkt")
 (require "rosetta/protobuf1/encoding.rkt")
 (require srfi/26)
@@ -39,8 +40,12 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-(define input #f)
-(define output #f)
+(define conn #f)
+
+(define (bim-connection)
+  (unless conn
+    (connect-to-revit))
+  conn)
 
 ;;;;;;;Conversions;;;;;;;;;;;;;;;;;;;;;;
 
@@ -51,6 +56,7 @@
   (measure))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(provide idstrc*) ;;HACK Martelada
 
 (define current-level (make-parameter null))
 
@@ -79,48 +85,42 @@
                                  (if (> n 0)
                                      (rec (- n 1))
                                      (raise e)))))
-      (call-with-values(lambda () (tcp-connect server-addr 53800))
-                       (lambda (a b)
-                         (set! input a)
-                         (set! output b)
-                         (file-stream-buffer-mode input 'none)
-                         (file-stream-buffer-mode output 'none)
-                         ;;I'm not sure this is the correct place to do this.
-                         ;;I just know it must run before closing the socket
-                      #;   (plumber-add-flush! (current-plumber)
-                                             (lambda (e)
-                                               (plumber-flush-handle-remove! e)
-                                               (disconnect-from-revit)))))
+      (let-values([(in out) (tcp-connect server-addr 53800)])
+        (file-stream-buffer-mode in 'none)
+        (file-stream-buffer-mode out 'none)
+        (set! conn (connection in out))
+        ;;I'm not sure this is the correct place to do this.
+        ;;I just know it must run before closing the socket
+        #;   (plumber-add-flush! (current-plumber)
+                                 (lambda (e)
+                                   (plumber-flush-handle-remove! e)
+                                   (disconnect-from-revit))))
       (when (project-document?)
         (set! current-level (make-parameter (get-level 0 "Level 1")))
         (delete-level "Level 2"))))
   (void))
 
 (define (project-document?)
-  (write-sized serialize (namestrc* #:name "isProject") output)
-  (boolstrc-answer (read-sized (cut deserialize (boolstrc*) <>) input)))
-
-(define (close-ports)
-  (close-input-port input)
-  (close-output-port output))
+  (write-sized serialize (namestrc* #:name "isProject") (connection-out (bim-connection)))
+  (boolstrc-answer (read-sized (cut deserialize (boolstrc*) <>) (connection-in (bim-connection)))))
 
 ;;Rosetta functions
 
 (define-syntax-rule
   (send/no-rcv name body ...)
-  (begin
+  (let ((output (connection-out (bim-connection))))
     (write-sized serialize (namestrc* #:name name) output)
     (write-sized serialize body output) ...))
 
 (define-syntax-rule
   (send/rcv-id name body ...)
-  (begin
+  (let ((input (connection-in (bim-connection))))
     (send/no-rcv name body ...)
     (read-sized (cut deserialize (idstrc*) <>) input)))
 
 (define-syntax-rule
   (send/rcv-polyid name body ...)
-  (begin
+  (let ((input (connection-in (bim-connection))))
     (send/no-rcv name body ...)
     (polyidstrc-ids (read-sized (cut deserialize (polyidstrc*) <>) input))))
 
@@ -211,10 +211,6 @@
                                 #:p2coordz (cz p))))
 
 ;;;;;;;;;;;;;;;;;;;;BIM Function;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-(define (test-new) 
-  (write-sized serialize (namestrc* #:name "test") output))
 
 (define (wall p0 p1 level)
   (send/rcv-id "wall"
@@ -348,7 +344,7 @@
                                   #:p1coordx (cx p1)
                                   #:p1coordy (cy p1)
                                   #:p1coordz (cz p1)
-                                  #:floorid (idstrc-id floor)) output))
+                                  #:floorid (idstrc-id floor))))
 
 (define (create-stairs-run blevel tlevel bp0 bp1 tp0 tp1)
   (send/no-rcv "stairsRun"
@@ -372,7 +368,7 @@
 
 (define (disconnect-from-revit)
   (send/no-rcv "disconnect")
-  (close-ports)
+  (shutdown-connection (bim-connection))
   (void))
 
 ;;;;;;;;New 2.0 Operator ;;;;;;;;;;;;;;;
@@ -413,7 +409,7 @@
                  (holeslabstrc* #:slabid slab-id
                                 #:pts pts))))
 
-(define (create-column center #:bottom-level[bottom-level (current-level)] #:top-level[top-level (upper-level #:level bottom-level)] #:width [width 0] #:family[family (default-column-family)])
+(define (create-column center #:bottom-level [bottom-level (current-level)] #:top-level [top-level (upper-level #:level bottom-level)] #:width [width 0] #:family [family (default-column-family)])
   (send/rcv-id "createColumn"
                (columnstrc* #:p0coordx (cx center)
                             #:p0coordy (cy center)
@@ -429,15 +425,17 @@
 (define (current-level-elevation)
   (send/no-rcv "levelElevation"
                (current-level))
-  (doublestrc-height (read-sized (cut deserialize (doublestrc*) <>) input)))
+  (doublestrc-height (read-sized (cut deserialize (doublestrc*) <>)
+                                 (connection-in (bim-connection)))))
 
 (define (create-railings slabid)
   (send/no-rcv "createRailings"
-               (railingsstrc* #:slabid slabid) output))
+               (railingsstrc* #:slabid slabid)))
 
 (define (get-wall-volume wallid)
   (send/no-rcv "getWallVolume" wallid)
-  (doublevolumestrc-volume (read-sized (cut deserialize (doublevolumestrc*) <>) input)))
+  (doublevolumestrc-volume (read-sized (cut deserialize (doublevolumestrc*) <>)
+                                       (connection-in (bim-connection)))))
 
 (define (create-stairs blevel tlevel bp tp)
   (send/rcv-id "createStairs"
@@ -452,11 +450,13 @@
 
 (define (levels-info)
   (send/no-rcv "getLevelsInfo")
-  (polylevelstrc-levels (read-sized (cut deserialize (polylevelstrc*) <>) input)))
+  (polylevelstrc-levels (read-sized (cut deserialize (polylevelstrc*) <>)
+                                    (connection-in (bim-connection)))))
 
 (define (walls-info)
   (send/no-rcv "getWallsInfo")
-  (polywallinfostrc-walls (read-sized (cut deserialize (polywallinfostrc*) <>) input)))
+  (polywallinfostrc-walls (read-sized (cut deserialize (polywallinfostrc*) <>)
+                                      (connection-in (bim-connection)))))
 
 (define (create-topo-surface points)
   (let ((pts (convert-list points)))
@@ -516,7 +516,7 @@
                             #:p1y (cy p1)
                             #:p1z (cz p1))))
 
-(define (create-beam p0 p1 #:family[family (default-beam-family)])
+(define (create-beam p0 p1 family)
   (send/rcv-id "createBeam"
                (beaminfostrc* #:p0coordx (cx p0)
                               #:p0coordy (cy p0)
@@ -554,47 +554,3 @@
     m))
 
 ;;;;;;;;;;Comment;;;;;;;;;;;;;;;;
-
-#;(define (surface-grid malha)
-  (let ((m (convert-matrix malha)))
-    (write-sized serialize (namestrc* #:name "surfaceGrid") output)
-    (write-sized serialize (matrixstrc* #:lines m) output)))
-
-#;(define (create-stairs-landing stairsId bottomleftp topleftp bottomrightp toprightp)
-  (write-sized serialize (namestrc* #:name "stairsLanding") output)
-  (write-sized serialize (landingstrc* #:bottomleftcornerx (cx bottomleftp)
-                                       #:bottomleftcornery (cy bottomleftp)
-                                       #:bottomleftcornerz (cz bottomleftp)
-                                       #:topleftcornerx (cx topleftp)
-                                       #:topleftcornery (cy topleftp)
-                                       #:topleftcornerz (cz topleftp)
-                                       #:bottomrightcornerx (cx bottomrightp)
-                                       #:bottomrightcornery (cy bottomrightp)
-                                       #:bottomrightcornerz (cz bottomrightp)
-                                       #:toprightcornerx (cx toprightp)
-                                       #:toprightcornery (cy toprightp)
-                                       #:toprightcornerz (cz toprightp)
-                                       #:stairsrunid stairsId)))
-
-#;(define (finish-wall-face-interior wall)
-  (write-sized serialize (namestrc* #:name "wallFinishFaceInterior") output)
-  (write-sized serialize wall output))
-
-#;(define (delete-all-elements)
-  (write-sized serialize (namestrc* #:name "deleteAllElements") output))
-
-#;(define (slab-wall p0 p1 p2 p3 level)
-  (write-sized serialize (namestrc* #:name "slabWall") output)
-  (write-sized serialize (slabwallstrc* #:bottomleftcornerx (cx p0)
-                                        #:bottomleftcornery (cy p0)
-                                        #:bottomleftcornerz (cz p0)
-                                        #:topleftcornerx (cx p1)
-                                        #:topleftcornery (cy p1)
-                                        #:topleftcornerz (cz p1)
-                                        #:bottomrightcornerx (cx p3)
-                                        #:bottomrightcornery (cy p3)
-                                        #:bottomrightcornerz (cz p3)
-                                        #:toprightcornerx (cx p2)
-                                        #:toprightcornery (cy p2)
-                                        #:toprightcornerz (cz p2)
-                                        #:level-id level)))

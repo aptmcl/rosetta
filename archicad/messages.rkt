@@ -41,21 +41,18 @@
   (required primitive:double p11 12)))
 (define-message-type
  wallmsg
- ((required primitive:double p0x 1)
-  (required primitive:double p0y 2)
-  (required primitive:double p1x 3)
-  (required primitive:double p1y 4)
-  (required primitive:int32 bottomindex 5)
-  (required primitive:double thickness 6)
-  (required primitive:double angle 7)
-  (required primitive:int32 upperindex 8)
-  (required primitive:string material 9)
-  (required primitive:string type 10)
-  (required primitive:string referenceline 11)
-  (required primitive:double alphaangle 12)
-  (required primitive:double betaangle 13)
-  (required primitive:string typeprofile 14)
-  (optional primitive:double height 15)))
+ ((required primitive:int32 bottomindex 1)
+  (required primitive:double thickness 2)
+  (required primitive:double angle 3)
+  (required primitive:int32 upperindex 4)
+  (required primitive:string material 5)
+  (required primitive:string type 6)
+  (required primitive:string referenceline 7)
+  (required primitive:double alphaangle 8)
+  (required primitive:double betaangle 9)
+  (required primitive:string typeprofile 10)
+  (optional primitive:double height 11)
+  (optional primitive:string profilename 12)))
 (define-message-type
  wallmessage
  ((required primitive:double p0x 1)
@@ -427,5 +424,15 @@
   (repeated struct:boolarray boolarrays 16)
   (repeated struct:stringarray stringarrays 17)
   (repeated primitive:bool isarray 18)))
+(define-message-type
+ profilemsg
+ ((required struct:pointsmessage pts 1)
+  (required struct:polyarcsmessage arcs 2)
+  (required primitive:string material 3)
+  (required primitive:string name 4)))
+(define-message-type layermsg ((required primitive:string name 1)))
+(define-message-type
+ layerelementmsg
+ ((required primitive:string guid 1) (required primitive:string layer 2)))
 
 (provide (all-defined-out))
