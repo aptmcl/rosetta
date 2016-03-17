@@ -946,8 +946,6 @@ The following example does not work as intended. Rotating the args to closed-spl
                                            #:parameter-values (list param-name ...))
                           param-name ...)))))]))
 
-
-
 (def-bim-family beam
   ([width : Real 10]
    [height : Real 10]))
