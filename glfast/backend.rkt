@@ -234,7 +234,7 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; BIM STUFF  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (provide (struct-out level) upper-level)
-(provide beam slab roof)
+(provide beam slab roof column)
 (define extrusion extrude)
 (struct level
   (height))
@@ -249,14 +249,19 @@
 
 
 (define (beam p0  p1)
-  (right-cuboid (loc-in-world p0) 10.0 10.0 (loc-in-world p1)))
+  (right-cuboid (loc-in-world p0) 0.350 0.350 (loc-in-world p1)))
 
-#;(define (column center
+(define (column center
                   [bottom-level (current-level)]
                   [top-level (upper-level bottom-level)]
                   )
     (let ((width 10.0))
-      (box (+xyz (loc-in-world center) (/ width -2) (/ width -2) (level-height bottom-level))
+      (prism (+xyz (loc-in-world center) (/ width -2) (/ width -2) (level-height bottom-level))
+             1.0
+             (- (level-height top-level) (level-height bottom-level))
+             (+xyz (loc-in-world center) (/ width -2) (/ width -2) (level-height top-level))
+             4.0)
+      #;(box (+xyz (loc-in-world center) (/ width -2) (/ width -2) (level-height bottom-level))
                     width
                     width
                     (- (level-height top-level) (level-height bottom-level)))))
