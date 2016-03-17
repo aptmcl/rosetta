@@ -4,3 +4,5 @@
 (provide (all-from-out "revit/backend.rkt"))
 (require racket/include)
 (include "base/macros.rkc")
+
+(start-backend)
