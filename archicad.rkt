@@ -17,3 +17,6 @@
 (define-syntax-rule
   (top-interaction . form)
   (#%top-interaction . (send form)))
+
+
+(start-backend)
