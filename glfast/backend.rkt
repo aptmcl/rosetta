@@ -228,6 +228,51 @@
   (append (for/list ([shape (flatten shapes)])
             (ffi:mirror shape (floats<-pts (list pt)) (floats<-pts (list vec))))(flatten shapes) ))
 
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; BIM STUFF  ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+(provide (struct-out level) upper-level)
+(provide beam slab roof)
+(define extrusion extrude)
+(struct level
+  (height))
+
+(define current-level (make-parameter (level 0)))
+
+(define default-level-to-level-height (make-parameter 3))
+
+(define (upper-level [lvl (current-level)]
+                     [height (default-level-to-level-height)])
+  (level (+ (level-height lvl) height)))
+
+
+(define (beam p0  p1)
+  (right-cuboid (loc-in-world p0) 10.0 10.0 (loc-in-world p1)))
+
+#;(define (column center
+                  [bottom-level (current-level)]
+                  [top-level (upper-level bottom-level)]
+                  )
+    (let ((width 10.0))
+      (box (+xyz (loc-in-world center) (/ width -2) (/ width -2) (level-height bottom-level))
+                    width
+                    width
+                    (- (level-height top-level) (level-height bottom-level)))))
+
+;(def-shape (door))
+(define (slab vertices [level (current-level)])
+  (extrusion (map (lambda (p)
+                    (+z (loc-in-world p) (level-height level)))
+                  vertices)
+             1.0))
+
+(define (roof vertices [level (current-level)])
+  (extrusion (map (lambda (p)
+                           (+z (loc-in-world p) (level-height level)))
+                         vertices) 1.0))
+
 ;;;;;;;;;;;;;;;;;;;;; Transformations         ;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (provide view rotate transform)
 (define (view camera-pos camera-look-at)
