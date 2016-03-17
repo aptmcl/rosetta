@@ -49,3 +49,19 @@
                                   vertices)))))
     (shape-layer s (bim-family-layer family))
     s))
+
+(def-shape (wall [p0 : Loc] [p1 : Loc]
+                 [bottom-level : Level (current-level)]
+                 [top-level : Level (upper-level bottom-level)]
+                 [family : Wall-Family (default-wall-family)])
+  (let ((height (- (level-height top-level) (level-height bottom-level))))
+    (let ((h/2 (/ height 2)))
+      (let ((s (right-cuboid (loc-in-world (+z p0 h/2))
+                             (wall-family-thickness family)
+                             height
+                             (loc-in-world (+z p1 h/2)))))
+        (shape-layer s (bim-family-layer family))
+        s))))
+
+(def-shape (door [wall : Any] [loc : Loc] [family : Any (default-door-family)])
+  "To be continued")

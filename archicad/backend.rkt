@@ -14,7 +14,8 @@
 (provide immediate-mode?
          current-backend-name
          (rename-out [%disconnect disconnect]
-                     [%send send])
+                     [%send send]
+                     [%ensure-connection start-backend])
 #|         mt
          ft
          box
@@ -832,15 +833,6 @@ The following example does not work as intended. Rotating the args to closed-spl
 
 (provide ;;BIM extensions
  level
- beam
- column
- ;;door
- roof
- slab
- ;;wall
- current-level
- default-level-to-level-height
- upper-level
  def-bim-family
  (rename-out [%delete-levels delete-levels])
  )
@@ -848,18 +840,12 @@ The following example does not work as intended. Rotating the args to closed-spl
 (define (level height)
   (%create-level #:height height))
 
-(define current-level %current-level)
-
-(define default-level-to-level-height %default-level-to-level-height)
+(require (only-in "communication.rkt" current-level default-level-to-level-height create-layer shape-layer))
 
 (define (upper-level [lvl : Level (current-level)]
                      [height : Real (default-level-to-level-height)])
   (%upper-level #:level lvl
                 #:height height))
-
-(define create-layer %create-layer)
-
-(define shape-layer %shape-layer)
 
 (require racket/include)
 (include "../base/bimdefs.rkc")
@@ -887,3 +873,32 @@ The following example does not work as intended. Rotating the args to closed-spl
 (def-shape (roof [vertices : Locs] [level : Any (current-level)] [family : Roof-Family (default-roof-family)])
   (%roof (map loc-in-world vertices) #:bottom-level level
          #:thickness (roof-family-thickness family)))
+
+(def-shape (wall [p0 : Loc] [p1 : Loc]
+                 [bottom-level : Level (current-level)]
+                 [top-level : Level (upper-level bottom-level)]
+                 [family : Any (default-wall-family)])
+  (%wall (list p0 p1)
+         #:bottom-level bottom-level
+         #:top-level top-level
+         #:thickness (or (wall-family-thickness family)
+                         (%default-wall-thickness))))
+
+(def-shape (walls [vertices : Locs]
+                 [bottom-level : Level (current-level)]
+                 [top-level : Level (upper-level bottom-level)]
+                 [family : Any (default-wall-family)])
+  (%wall vertices
+         #:bottom-level bottom-level
+         #:top-level top-level
+         #:thickness (or (wall-family-thickness family)
+                         (%default-wall-thickness))))
+
+(def-shape (door [wall : Any] [loc : Loc] [family : Any (default-door-family)])
+  (%door (shape-reference wall)
+         (cx loc)
+         #:bottom (cy loc)
+         #:width (or (door-family-width family)
+                     -10000)
+         #:height (or (door-family-height family)
+                      -10000)))

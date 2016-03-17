@@ -16,7 +16,7 @@
 
 (define (bim-connection)
   (unless conn
-    (ensure-connection))
+    (error "Did you forget to initialize the backend?"))
   conn)
 
 (define server-addr "localhost")
@@ -57,7 +57,7 @@
     (file-stream-buffer-mode in 'none)
     (file-stream-buffer-mode out 'none)
     (set! conn (connection in out))
-    (set-current-level! (make-parameter (check-level)))))
+    (current-level (check-level))))
 
 ;;Function to quit
 (define (disconnect)
@@ -241,9 +241,8 @@ The file is merely used for consulting
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define default-level-to-level-height (make-parameter 3))
+
 (define current-level (make-parameter #f))
-(define (set-current-level! level)
-  (set! current-level level))
 
 (define (check-level)
   (write-msg-name "CheckStory")
@@ -269,7 +268,7 @@ The file is merely used for consulting
 
 (define-syntax-rule
   (send/rcv-id name body ...)
-  (let ((input (connection-in (connection))))
+  (let ((input (connection-in (bim-connection))))
     (send/no-rcv name body ...)
     (elementid-guid (read-sized (cut deserialize (elementid*) <>) input))))
 

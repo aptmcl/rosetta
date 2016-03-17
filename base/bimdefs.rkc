@@ -1,13 +1,14 @@
-(require (for-syntax racket/base racket/list racket/syntax))
+(require (for-syntax racket/base racket/list racket/syntax)
+         (only-in racket/base [box rk:box]))
 
 
 (provide ;;BIM extensions
  beam
  column
- ;;door
+ door
  roof
  slab
- ;;wall
+ wall
  current-level
  default-level-to-level-height
  upper-level)
@@ -15,11 +16,18 @@
 (struct bim-family
   ([path : String]
    [map : (Listof (Cons Keyword (Option Any)))]
-   [layer : Layer])
+   [layer-name : String]
+   [layer-ref : (Box (Option Layer))])
   #:type-name BIM-Family)
 
-(define (create-layer-from-path [path : String]) : Layer
-  (create-layer (last (regexp-match #rx"([a-zA-Z]+).rfa" path))))
+(define (bim-family-layer [bim-family : BIM-Family])
+  (or (unbox (bim-family-layer-ref bim-family))
+      (let ((layer (create-layer (bim-family-layer-name bim-family))))
+        (set-box! (bim-family-layer-ref bim-family) layer)
+        layer)))
+
+(define (layer-name-from-path [path : String]) : Layer
+  (last (regexp-match #rx"([a-zA-Z]+).rfa" path)))
 
 (define-for-syntax (build-name fmt id)
   (format-id id #:source id fmt (syntax-e id)))
@@ -57,23 +65,23 @@
                       instance-name)
              (struct struct-name bim-family
                ([param-name : param-type] ...))
-             (define default-name (make-parameter (struct-name "" '() (create-layer layer-name) param-default ...)))
+             (define default-name (make-parameter (struct-name "" '() layer-name (rk:box #f) param-default ...)))
              (define (load-name [path : String] . class-params)
                (struct-name path
                             (list (cons 'param-key param-name) ...)
-                            (create-layer-from-path path)
+                            (layer-name-from-path path)
+                            (rk:box #f)
                             param-default ...))
              (define (instance-name [family : BIM-Family] . instance-params)
                (struct-name (bim-family-path family)
                             (bim-family-map family)
-                            (bim-family-layer family)
+                            (bim-family-layer-name family)
+                            (bim-family-layer-ref family)
                             param-name ...))))))]))
 
 (def-bim-family beam
   ([width : Real 10]
    [height : Real 10]))
-
-(def-bim-family wall ())
 
 (def-bim-family slab
   ([thickness : Real 0.3]))
@@ -81,8 +89,13 @@
 (def-bim-family roof
   ([thickness : Real 0.3]))
 
+(def-bim-family wall
+  ([thickness : Real 1]))
+
+(def-bim-family door
+  ([width : (Option Real) #f]
+   [height : (Option Real) #f]))
+
 (def-bim-family column
   ([width : Real 10]
    [depth : (Option Real) #f]))
-
-(def-bim-family door ())
