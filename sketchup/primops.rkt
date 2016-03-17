@@ -1,9 +1,10 @@
-#lang typed/racket/base/no-check
+#lang typed/racket/base
 (require (for-syntax racket/base))
 (require "../base/connection.rkt"
          (except-in "../base/utils.rkt" random))
 (require racket/runtime-path)
-(require racket/path)
+(require racket/system
+         racket/port)
 
 (provide start-sketchup
          stop-sketchup
@@ -18,45 +19,41 @@
 Sketchup specific operations
 |#
 
+(define /dev/null-out
+   (open-output-file "/dev/null" #:exists 'append))
+
 (: start-sketchup (-> Connection))
 (: stop-sketchup (Connection -> Void))
 
 (define sketchup-port (+ 19405 (random 10 (make-pseudo-random-generator))))
 
-#;
-(define /dev/null-out
-  (open-output-file "/dev/null" #:exists 'append))
-
 (define (start-sketchup)
   (putenv "ROSETTAPORT" (number->string sketchup-port))
-  (let ((args
-         (format "-RubyStartup \"~a\"" ; -template '~a'" 
-                 (path->string sketchup-init) #;
-                 (path->string sketchup-template))))
-    #;#;
-    (displayln sketchup-init)
-    (displayln args)
-    (shell-execute
-     "open"
-     "Sketchup.exe"
-     args
-     (current-directory)
-     'sw_shownormal)
-    #;
-    (subprocess	/dev/null-out	 
-                #f	 
-                /dev/null-out	 
-                "/Applications/SketchUp 2015/SketchUp.app/Contents/MacOS/SketchUp"	 
-                args)
-    (establish-connection "Sketchup" sketchup-port)))
+  (subprocess	/dev/null-out	 
+ 	 	#f	 
+ 	 	/dev/null-out	 
+ 	 	"/Applications/SketchUp 2015/SketchUp.app/Contents/MacOS/SketchUp"	 
+ 	 	(format "-RubyStartup ~s -template ~s" 
+           (path->string sketchup-init)
+           (path->string sketchup-template)))
+  #;(shell-execute 
+   "open"
+   "Sketchup.exe"
+   (format "-RubyStartup ~s -template ~s" 
+           (path->string sketchup-init)
+           (path->string sketchup-template))
+   (current-directory)
+   'sw_shownormal)
+  (establish-connection "Sketchup" sketchup-port))
 
 (define (stop-sketchup sk)
   (shutdown-connection sk))
 
 (define-cached (sketchup) : Connection
   (start-sketchup))
-
-
+;(define skup (establish-connection "Sketchup" 54222))
+;(define-cached (sketchup) : Connection skup)
+;(addBox 0 0 0 1 1 1)
 (define-type Location (List Real Real Real))
 (define-type Locations (Listof Location))
 (define-type Locationss (Listof (Listof Location)))
@@ -78,15 +75,14 @@ Sketchup specific operations
 (define (encode-location loc o)
   (encode-xyz (car loc) (cadr loc) (caddr loc) o))
 
-(define (safe-string->number [s : String]) : Number
-  (or (string->number s)
-      (error "Couldn't convert to number" s)))
+(define (string->real [s : String]) : Real
+  (let ((n (string->number s)))
+    (if n
+        (cast n Real)
+        (error "Couldn't convert to number" n))))
 
 (define (decode-real [i : Input-Port]) : Real
-  (cast (safe-string->number (read-line-string i)) Real))
-
-(define (decode-integer [i : Input-Port]) : Integer
-  (cast (safe-string->number (read-line-string i)) Integer))
+  (string->real (read-line-string i)))
 
 (define (decode-location-from-string [input : String]) : Location
   (let ((res (regexp-match #rx"\\[(.+), (.+), (.+)\\]" input)))
@@ -95,9 +91,9 @@ Sketchup specific operations
               (ystr (caddr res))
               (zstr (cadddr res)))
           (if (and xstr ystr zstr)
-              (list (cast (safe-string->number xstr) Real)
-                    (cast (safe-string->number ystr) Real)
-                    (cast (safe-string->number zstr) Real))
+              (list (string->real xstr)
+                    (string->real ystr)
+                    (string->real zstr))
               (error "Couldn't decode location" input)))
         (error "Couldn't decode location" input))))
 
@@ -173,7 +169,6 @@ Sketchup specific operations
   (read-line-string i)
   (void))
 
-(defencoder Integer write)
 (defencoder Real (lambda ([x : Real] [o : Output-Port]) (display (exact->inexact x) o)))
 (defencoder String write)
 (defencoder Strings encode-strings)
@@ -181,7 +176,6 @@ Sketchup specific operations
 (defencoder Locations encode-locations)
 (defencoder Locationss encode-locationss)
 
-(defdecoder Integer decode-integer)
 (defdecoder Real decode-real)
 (defdecoder String read-line-string)
 (defdecoder Strings decode-strings)
@@ -270,11 +264,4 @@ Sketchup specific operations
 (def (startGetPoint [msg String]) Void)
 (def (getPoint) Location)
 
-(def (addLayer [name String]))
-(def (setLayerRGB [name String] [r Integer] [g Integer] [b Integer]) Void)
-(def (currentLayer))
-(def (setCurrentLayer [name String]) Void)
-(def (shapeLayer [sh String]))
-(def (setShapeLayer [sh String] [layer String]) Void)
-(def (shapeRGBA [sh String]))
-(def (setShapeRGB [sh String] [r Integer] [g Integer] [b Integer]) Void)
+

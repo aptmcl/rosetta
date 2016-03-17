@@ -106,7 +106,8 @@
 
 (define (establish-connection client port)
   (let ((conn (accept-connection port)))
-    (let ((ack (read-line-from conn)))
+    conn
+    #;(let ((ack (read-line-from conn)))
       (if (and (string? ack)
                (string=? ack "connected"))
           conn
