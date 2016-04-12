@@ -842,7 +842,9 @@
 (def-rw-property (n-close PolygonMesh) Boolean)
 #|
 (def-rw-property (NDensity PolygonMesh) Integer)
-(def-rw-property (Normal Arc) Double)
+|#
+(def-rw-property (normal All) VarDouble3)
+#|
 (def-ro-property (NumberOfControlPoints Spline) Integer)
 (def-rw-property (NumberOfCopies Plot) Long)
 (def-ro-property (NumberOfFaces PolyFaceMesh) Long)
@@ -2322,6 +2324,7 @@
 (define-object-predicate text? "AcDbText" text)
 (define-object-predicate mtext? "AcDbMText" text)
 (define-object-predicate surface-grid? "AcDbPolygonMesh" surface)
+(define-object-predicate block-reference? "AcDbBlockReference" block-reference)
 
 (provide object-geometry)
 (define (object-geometry [obj : Com-Object])
