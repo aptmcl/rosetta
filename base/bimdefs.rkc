@@ -7,7 +7,9 @@
  column
  door
  roof
+ roof-rectangle
  slab
+ slab-rectangle
  wall
  current-level
  default-level-to-level-height
@@ -99,3 +101,13 @@
 (def-bim-family column
   ([width : Real 10]
    [depth : (Option Real) #f]))
+
+(define (slab-rectangle [p : Loc] [length : Real] [width : Real] [level : Level (current-level)] [family : Slab-Family (default-slab-family)])
+  (slab (list p (+x p length) (+xy p length width) (+y p width))
+        level
+        family))
+
+(define (roof-rectangle [p : Loc] [length : Real] [width : Real] [level : Level (current-level)] [family : Roof-Family (default-roof-family)])
+  (roof (list p (+x p length) (+xy p length width) (+y p width))
+        level
+        family))
