@@ -864,7 +864,6 @@ The following example does not work as intended. Rotating the args to closed-spl
 (define-for-syntax (build-keyword id)
   (string->keyword (symbol->string (syntax->datum id))))
 
-(provide def-bim-family)
 (define-syntax (def-bim-family stx)
   (syntax-case stx ()
     [(def name (param ...))
@@ -969,9 +968,6 @@ The following example does not work as intended. Rotating the args to closed-spl
 
 (def-shape (beam [p0 : Loc] [p1 : Loc] [family : Beam-Family (default-beam-family)])
   (%create-beam (loc-in-world p0) (loc-in-world p1) (bim-family-id family)))
-
-(require racket/trace)
-(trace beam)
 
 (def-shape (column [center : Loc]
                    [bottom-level : Level (current-level)]
