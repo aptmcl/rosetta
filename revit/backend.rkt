@@ -864,6 +864,7 @@ The following example does not work as intended. Rotating the args to closed-spl
 (define-for-syntax (build-keyword id)
   (string->keyword (symbol->string (syntax->datum id))))
 
+(provide def-bim-family)
 (define-syntax (def-bim-family stx)
   (syntax-case stx ()
     [(def name (param ...))
@@ -909,6 +910,7 @@ The following example does not work as intended. Rotating the args to closed-spl
                                                     (bim-family-map family)
                                                     (list param-name ...)))))
                               (%family-element (bim-family-id family)
+                                               #:flag-override #t
                                                #:parameter-names (map car kvs)
                                                #:parameter-values (map cdr kvs)))
                             param-name ...))))))]))
@@ -968,6 +970,9 @@ The following example does not work as intended. Rotating the args to closed-spl
 (def-shape (beam [p0 : Loc] [p1 : Loc] [family : Beam-Family (default-beam-family)])
   (%create-beam (loc-in-world p0) (loc-in-world p1) (bim-family-id family)))
 
+(require racket/trace)
+(trace beam)
+
 (def-shape (column [center : Loc]
                    [bottom-level : Level (current-level)]
                    [top-level : Level (upper-level bottom-level)]
@@ -1004,3 +1009,14 @@ The following example does not work as intended. Rotating the args to closed-spl
 
 (def-shape (door [wall : Any] [loc : Loc] [family : Any (default-door-family)])
   (%insert-door-relative (shape-reference wall) (cx loc) (cy loc) #:family (bim-family-id family)))
+
+(provide slab-rectangle roof-rectangle)
+(define (slab-rectangle [p : Loc] [length : Real] [width : Real] [level : Level (current-level)] [family : Slab-Family (default-slab-family)])
+  (slab (list p (+x p length) (+xy p length width) (+y p width))
+        level
+        family))
+
+(define (roof-rectangle [p : Loc] [length : Real] [width : Real] [level : Level (current-level)] [family : Roof-Family (default-roof-family)])
+  (roof (list p (+x p length) (+xy p length width) (+y p width))
+        level
+        family))
