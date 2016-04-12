@@ -86,20 +86,20 @@
 
 (define (shape<-ref [r : Ref]) ;HACK Bug in typed/racket : Shape
   (define (coordinates [r : Ref])
-    (let ((pts
-           (cond ((%line? r)
-                  (list (%start-point r) (%end-point r)))
-                 ((%lightweight-polyline? r) ;;This is not right, we need to convert coordinates
-                  (let ((h (%elevation r)))
-                    (map (lambda ([p : Loc]) (+z p h)) (%2d-coordinates r))))
-                 ((or (%2d-polyline? r) (%3d-polyline? r))
-                  (%coordinates r))
-                 (else
-                  (error 'coordinates "Can't compute vertices of ~A" (%object-name r))))))
-      (if (or (%closed r)
-              (< (distance (car pts) (last pts)) 1.0e-015)) ;AutoCAD tolerance
-          (drop-right pts 1)
-          pts)))
+    (if (%line? r)
+        (list (%start-point r) (%end-point r))
+        (let ((pts
+               (cond ((%lightweight-polyline? r) ;;This is not right, we need to convert coordinates
+                      (let ((h (%elevation r)))
+                        (map (lambda ([p : Loc]) (+z p h)) (%2d-coordinates r))))
+                     ((or (%2d-polyline? r) (%3d-polyline? r))
+                      (%coordinates r))
+                     (else
+                      (error 'coordinates "Can't compute vertices of ~A" (%object-name r))))))
+          (if (or (%closed r)
+                  (< (distance (car pts) (last pts)) 1.0e-015)) ;AutoCAD tolerance
+              (drop-right pts 1)
+              pts))))
   (let ((geometry (%object-geometry r)))
     (case geometry
       ((line)
@@ -122,6 +122,7 @@
                    (%radius r)))
       (else
        (new-unknown (thunk r))))))
+
 
 (define (all-shapes)
   (map shape<-ref (%all-objects)))
@@ -453,7 +454,7 @@ The following example does not work as intended. Rotating the args to closed-spl
 (define (loft-ruled [profiles : (Listof (Extrudable-Shape Ref))])
   (loft profiles (list) #t))
 
-(def-shape (irregular-pyramid [cbs : Locs (list (ux) (uy) (uxy))] [ct : Loc (uz)])
+(def-shape (irregular-pyramid [cbs : Locs (list (ux) (uxy) (uy))] [ct : Loc (uz)])
   (%irregular-pyramid cbs ct))
 
 (def-shape (regular-pyramid-frustum [edges : Integer 4] [cb : Loc (u0)] [rb : Real 1] [a : Real 0] [h/ct : (U Real Loc) 1] [rt : Real 1] [inscribed? : Boolean #f])
@@ -478,6 +479,12 @@ The following example does not work as intended. Rotating the args to closed-spl
 
 (def-shape (regular-prism [edges : Integer 4] [cb : Loc (u0)] [r : Real 1] [a : Real 0] [h/ct : (U Real Loc) 1] [inscribed? : Boolean #f])
   (shape-ref (regular-pyramid-frustum edges cb r a h/ct r inscribed?)))
+
+(def-shape (irregular-prism [cbs : Locs (list (ux) (uxy) (uy))] [dir : VecOrZ 1])
+  (let ((dir (if (number? dir) (vz dir) dir)))
+    (%irregular-pyramid-frustum
+     cbs
+     (map (lambda ([p : Loc]) (p+v p dir)) cbs))))
 
 (def-shape (right-cuboid [cb : Loc (u0)] [width : Real 1] [height : Real 1] [h/ct : LocOrZ 1])
   (let-values ([(cb dz) (position-and-height cb h/ct)])
@@ -894,6 +901,12 @@ The following example does not work as intended. Rotating the args to closed-spl
 
 (def-shape (polygonal-mass [pts : Locs] [height : Real])
   (let ((com (%add-3d-poly (append pts (list (car pts))))))
+    (single-ref-or-union
+     (map (lambda ([r : Ref])
+            (let ((height (if (< (cz (%normal r)) 0) (- height) height)))
+              (%add-extruded-solid r height 0.0)))
+          (%add-region (list com))))
+    #;#;
     (%closed com #t)
     (single-ref-or-union
      (%extrude-command-length (list com) height #t))))
