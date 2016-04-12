@@ -250,6 +250,12 @@
      (regular-polygon-vertices edges cb r a inscribed?)
      (regular-polygon-vertices edges ct r a inscribed?))))
 
+(def-shape (irregular-prism [cbs : Locs (list (ux) (uxy) (uy))] [dir : VecOrZ 1])
+  (let ((dir (if (number? dir) (vz dir) dir)))
+    (%irregular-pyramid-frustum
+     cbs
+     (map (lambda ([p : Loc]) (p+v p dir)) cbs))))
+
 (def-shape (irregular-pyramid [cbs : Locs (list (ux) (uy) (uxy))] [ct : Loc (uz)])
   (%irregular-pyramid cbs ct))
 
@@ -536,6 +542,92 @@
 (def-shape (quadrangle-face [p0 : Loc] [p1 : Loc] [p2 : Loc] [p3 : Loc])
   (%add-srf-pt (list p0 p1 p2 p3)))
 
+(define (surface-boundary [shape : Shape]) : Shape
+  (begin0
+    (map-ref ([r shape])
+      ;;HACK to be completed for the case of multiple
+      ;;borders. Probably, return a failed union of curves
+      (singleton-ref (%duplicate-surface-border r)))
+    (delete-shape shape)))
+
+
+(define (loft-curve-point [curve : Shape] [point : (Point-Shape Ref)])
+  (begin0
+    (map-ref ([c curve])
+      (map-ref ([p point])
+        (%extrude-curve-point c (%point-coordinates p))))
+    (delete-shape curve)
+    (delete-shape point)))
+
+(define (loft-surface-point [surface : Shape] [point : (Point-Shape Ref)])
+  (let ((boundary (surface-boundary surface)))
+    (let ((rs (shape-refs (loft-curve-point boundary point))))
+      (map %cap-planar-holes rs)
+      (single-ref-or-union rs))))
+
+(define (loft-profiles [profiles : Shapes] [rails : (Listof (Curve-Shape RefOp))]
+                       [solid? : Boolean] [ruled? : Boolean] [closed? : Boolean])
+  (if (> (length rails) 2)
+      (error 'guided-loft "Rhino only supports two rails but were passed ~A" (length rails))
+      (let ((r (%add-sweep2 (shapes-refs rails) (shapes-refs profiles))))
+        (when solid?
+          (%cap-planar-holes r))
+        (delete-shapes profiles)
+        (delete-shapes rails)
+        r)))
+
+(define (loft-curves [shapes : Shapes] [rails : (Listof (Curve-Shape RefOp))]
+                     [ruled? : Boolean #f] [closed? : Boolean #f])
+  (loft-profiles shapes rails #f ruled? closed?))
+
+(define (loft-surfaces [shapes : Shapes] [rails : (Listof (Curve-Shape RefOp))]
+                       [ruled? : Boolean #f] [closed? : Boolean #f])
+  (loft-profiles (map surface-boundary shapes) rails #t ruled? closed?))
+
+(define (loft [profiles : (Listof (Extrudable-Shape Ref))] [rails : (Listof (Curve-Shape Ref)) (list)]
+              [ruled? : Boolean #f] [closed? : Boolean #f]) : Shape
+  (cond ((null? (cdr profiles))
+         (error 'loft "just one cross section"))
+        ((andmap 0D-shape? profiles)
+         (assert (null? rails))
+         (begin0
+           ((if ruled?
+                (if closed? polygon line)
+                (if closed? closed-spline spline))
+            (map point-position profiles))
+           (delete-shapes profiles)))
+        (else
+         (new-loft
+          (thunk
+           (cond 
+             ((andmap 1D-shape? profiles)
+              (loft-curves profiles rails ruled? closed?))
+             ((andmap 2D-shape? profiles)
+              (loft-surfaces profiles rails ruled? closed?))
+             ((null? (cddr profiles))
+              (assert (null? rails))
+              (let-values ([([p : (Point-Shape Ref)]
+                             [s : Shape])
+                            (cond ((point? (car profiles))
+                                   (values (car profiles) (cadr profiles)))
+                                  ((point? (cadr profiles))
+                                   (values (cadr profiles) (car profiles)))
+                                  (else
+                                   (error 'loft-shapes "cross sections are not either points or curves or surfaces ~A" profiles)))])
+                (cond ((1D-shape? s)
+                       (loft-curve-point s p))
+                      ((2D-shape? s)
+                       (loft-surface-point s p))
+                      (else
+                       (error 'loft-shapes "can't loft the shapes ~A" profiles)))))
+             (else
+              (error 'loft-shapes "cross sections are neither points nor curves nor surfaces  ~A" profiles))))
+          profiles rails ruled? closed?))))
+
+(define (loft-ruled [profiles : (Listof (Extrudable-Shape Ref))])
+  (loft profiles (list) #t))
+
+
 (def-shape (move [shape : Shape] [v : Vec (vx)])
   (let ((refs (shape-refs shape)))
     (%move-objects refs v)
@@ -742,11 +834,6 @@ Command: _viewcapturetofile
     expr
     (save-film-frame)))
 
-(def-shape (polygonal-mass [pts : Locs] [height : Real])
-  (%irregular-pyramid-frustum
-   pts
-   (map (lambda ([pt : Loc]) (+z pt height)) pts)))
-
 (define shape-color
   (case-lambda
     [([shape : Shape])
@@ -779,4 +866,9 @@ Command: _viewcapturetofile
      (void)]))
 
 ;;BIM
+(def-shape (polygonal-mass [pts : Locs] [height : Real])
+  (%irregular-pyramid-frustum
+   pts
+   (map (lambda ([pt : Loc]) (+z pt height)) pts)))
+
 (include "../base/bim.rkc")
