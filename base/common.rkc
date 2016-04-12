@@ -285,27 +285,28 @@ In order to implement this, we need to create shapes that represent failed opera
             rs))))
 
 (def-shape* (union [shapes : Shape *])
-  (maybe-delete-shapes
-   shapes
-   (let ((shapes (filter-not empty-shape? (remove-duplicates shapes))))
-     (cond ((null? shapes)
-            (empty-shape-ref))
-           ((null? (cdr shapes))
-            (shape-reference (car shapes)))
-           ((ormap universal-shape? shapes)
-            (universal-shape-ref))
-           (else
-            (let*-values
-                ([(rs) (map (inst shape-reference RefOp) shapes)]
-                 [(failed-unions rs) (partition failed-union? rs)]
-                 [(failed-subtractions rs) (partition failed-subtraction? rs)]
-                 [(united)
-                  #;(union-refs ;;We don't actually unite them
-                     (cast (append rs (apply append (map failed-union-refs failed-unions)))
-                           Refs))
-                  (append rs (apply append (map failed-union-refs failed-unions)))])
-              (single-ref-or-union
-               (append united failed-subtractions))))))))
+  (let ((shapes (flatten shapes)))
+    (maybe-delete-shapes
+     shapes
+     (let ((shapes (filter-not empty-shape? (remove-duplicates shapes))))
+       (cond ((null? shapes)
+              (empty-shape-ref))
+             ((null? (cdr shapes))
+              (shape-reference (car shapes)))
+             ((ormap universal-shape? shapes)
+              (universal-shape-ref))
+             (else
+              (let*-values
+                  ([(rs) (map (inst shape-reference RefOp) shapes)]
+                   [(failed-unions rs) (partition failed-union? rs)]
+                   [(failed-subtractions rs) (partition failed-subtraction? rs)]
+                   [(united)
+                    #;(union-refs ;;We don't actually unite them
+                       (cast (append rs (apply append (map failed-union-refs failed-unions)))
+                             Refs))
+                    (append rs (apply append (map failed-union-refs failed-unions)))])
+                (single-ref-or-union
+                 (append united failed-subtractions)))))))))
 
 (define (maybe-delete-shapes [ss : Shapes] [rs : RefOp]) : RefOp
   (for ([s : Shape (in-list ss)])
@@ -315,38 +316,40 @@ In order to implement this, we need to create shapes that represent failed opera
   rs)
 
 (def-shape* (intersection [shapes : Shape *])
-  (maybe-delete-shapes
-   shapes
-   (let ((ss (filter-not universal-shape? (remove-duplicates shapes))))
-     (cond ((null? ss)
-            (universal-shape-ref))
-           ((null? (cdr ss))
-            (shape-reference (car ss)))
-           ((ormap empty-shape? ss)
-            (delete-shapes ss)
-            (empty-shape-ref))
-           (else
-            (intersect-refs (map (inst shape-reference RefOp) ss)))))))
+  (let ((shapes (flatten shapes)))
+    (maybe-delete-shapes
+     shapes
+     (let ((ss (filter-not universal-shape? (remove-duplicates shapes))))
+       (cond ((null? ss)
+              (universal-shape-ref))
+             ((null? (cdr ss))
+              (shape-reference (car ss)))
+             ((ormap empty-shape? ss)
+              (delete-shapes ss)
+              (empty-shape-ref))
+             (else
+              (intersect-refs (map (inst shape-reference RefOp) ss))))))))
 
 (def-shape* (subtraction [shapes : Shape *])
-  (maybe-delete-shapes
-   shapes
-   (if (null? shapes)
-       (error "No shapes to subtract")
-       (let ((s (car shapes))
-             (ss (filter-not empty-shape? (cdr shapes))))
-         (cond ((null? ss)
-                (shape-reference s))
-               ((or (empty-shape? s)
-                    (ormap (lambda ([o : Shape])
-                             (or (universal-shape? o)
-                                 (eq? s o))) ;;Perhaps we should use a equal-shape? test
-                           ss))
-                (empty-shape-ref))
-               (else
-                (let ([r (shape-reference s)]
-                      [rs (map (inst shape-reference RefOp) ss)])
-                  (subtract-refs r rs))))))))
+  (let ((shapes (cons (union (car shapes)) (flatten (cdr shapes)))))
+    (maybe-delete-shapes
+     shapes
+     (if (null? shapes)
+         (error "No shapes to subtract")
+         (let ((s (car shapes))
+               (ss (filter-not empty-shape? (cdr shapes))))
+           (cond ((null? ss)
+                  (shape-reference s))
+                 ((or (empty-shape? s)
+                      (ormap (lambda ([o : Shape])
+                               (or (universal-shape? o)
+                                   (eq? s o))) ;;Perhaps we should use a equal-shape? test
+                             ss))
+                  (empty-shape-ref))
+                 (else
+                  (let ([r (shape-reference s)]
+                        [rs (map (inst shape-reference RefOp) ss)])
+                    (subtract-refs r rs)))))))))
 
 (define #:forall (T) (show [msg : String] [a : T] . [as : Any *]) : T
   #;#;#;#;
