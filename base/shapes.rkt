@@ -19,7 +19,11 @@
          rectangle-deltas
          rectangle-morph
          axial-morph
-         regular-polygon-vertices)
+         regular-polygon-vertices
+         0D-shape?
+         1D-shape?
+         2D-shape?
+         3D-shape?)
 
 
 (define immediate-mode? : (Parameter Boolean)
@@ -409,7 +413,7 @@
 (def-base-shape 3D-shape (regular-pyramid [edges : Integer 3] [cb : Loc (u0)] [rb : Real 1] [a : Real 0] [h/ct : LocOrZ 1] [inscribed? : Boolean #f]))
 (def-base-shape 3D-shape (irregular-pyramid [cbs : Locs (list (ux) (uy) (uxy))] [ct : Loc (uz)]))
 (def-base-shape 3D-shape (regular-prism [edges : Integer 3] [cb : Loc (u0)] [r : Real 1] [a : Real 0] [h/ct : LocOrZ 1] [inscribed? : Boolean #f]))
-(def-base-shape 3D-shape (irregular-prism [cbs : Locs (list (ux) (uy) (uxy))] [h/ct : LocOrZ 1] [solid? : Boolean #t]))
+(def-base-shape 3D-shape (irregular-prism [cbs : Locs (list (ux) (uy) (uxy))] [dir : VecOrZ 1]))
 (def-base-shape 3D-shape (right-cuboid [cb : Loc (u0)] [width : Real 1] [height : Real 1] [h/ct : LocOrZ 1]))
 (def-base-shape 3D-shape (box [c : Loc (u0)] [dx/c1 : LocOrZ 1] [dy : Real (if (number? dx/c1) dx/c1 1)] [dz : Real dy]))
 (def-base-shape 3D-shape (cone [cb : Loc (u0)] [r : Real 1] [h/ct : LocOrZ 1]))
