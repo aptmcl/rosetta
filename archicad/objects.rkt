@@ -123,7 +123,7 @@ Example of usage:
               #:height [height -10000]
               #:flip-x [flip-x #f]
               #:flip-y [flip-y #f])
-  (write-msg "Door" (doormessage* #:guid guid
+  (send/rcv-id "Door" (doormessage* #:guid guid
                                     #:objloc objloc
                                     #:zpos bottom
                                     #:height height
@@ -131,8 +131,7 @@ Example of usage:
                                     #:hole #f
                                     #:name type-of-door
                                     #:flipx flip-x
-                                    #:flipy flip-y))
-  (read-guid))
+                                    #:flipy flip-y)))
 
 ;;TODO Review this function
 (define (hole-in-wall guid
@@ -140,7 +139,7 @@ Example of usage:
                       [width -10000] [bottom 0] [height -10000]
                       #:flip-x [flip-x #f]
                       #:flip-y [flip-y #f])
-  (write-msg "Door" (doormessage* #:guid guid
+  (send/rcv-id "Door" (doormessage* #:guid guid
                                     #:objloc objloc
                                     #:zpos bottom
                                     #:height height
@@ -148,8 +147,7 @@ Example of usage:
                                     #:hole #t
                                     #:name ""
                                     #:flipx flip-x
-                                    #:flipy flip-y))
-  (read-guid))
+                                    #:flipy flip-y)))
 
 ;;TODO Review this function
 (define (hole-in-wall-test guid list-points [list-arcs (list)])
@@ -180,24 +178,23 @@ Example of usage:
                 #:zpos [zpos 0]
                 #:additional-parameters [additional-parameters (list)])
   (let ((splitted-list (split-params-list additional-parameters)))
-        (write-msg "Window" (windowmessage* #:guid guid
-                                            #:objloc objloc
-                                            #:zpos zpos
-                                            #:name type-of-window
-                                            #:width width
-                                            #:height height
-                                            #:params (additionalparams* #:names (list-ref splitted-list 0)
-                                                                        #:integers (list-ref splitted-list 1)
-                                                                        #:doubles (list-ref splitted-list 2)
-                                                                        #:strings (list-ref splitted-list 3)
-                                                                        #:booleans (list-ref splitted-list 4)
-                                                                        #:intarrays (list-ref splitted-list 5)
-                                                                        #:doublearrays (list-ref splitted-list 6)
-                                                                        #:stringarrays (list-ref splitted-list 7)
-                                                                        #:boolarrays (list-ref splitted-list 8)
-                                                                        #:paramtype (list-ref splitted-list 9)
-                                                                        #:isarray (list-ref splitted-list 10))))
-        (read-guid)))
+    (send/rcv-id "Window" (windowmessage* #:guid guid
+                                          #:objloc objloc
+                                          #:zpos zpos
+                                          #:name type-of-window
+                                          #:width width
+                                          #:height height
+                                          #:params (additionalparams* #:names (list-ref splitted-list 0)
+                                                                      #:integers (list-ref splitted-list 1)
+                                                                      #:doubles (list-ref splitted-list 2)
+                                                                      #:strings (list-ref splitted-list 3)
+                                                                      #:booleans (list-ref splitted-list 4)
+                                                                      #:intarrays (list-ref splitted-list 5)
+                                                                      #:doublearrays (list-ref splitted-list 6)
+                                                                      #:stringarrays (list-ref splitted-list 7)
+                                                                      #:boolarrays (list-ref splitted-list 8)
+                                                                      #:paramtype (list-ref splitted-list 9)
+                                                                      #:isarray (list-ref splitted-list 10))))))
   
 #|
 Function to create a Curtain Wall
