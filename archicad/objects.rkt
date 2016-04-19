@@ -120,17 +120,25 @@ Example of usage:
               #:type-of-door [type-of-door "Door 18"]
               #:width [width -10000]
               #:bottom [bottom 0]
-              #:height [height -10000])
+              #:height [height -10000]
+              #:flip-x [flip-x #f]
+              #:flip-y [flip-y #f])
   (send/rcv-id "Door" (doormessage* #:guid guid
                                     #:objloc objloc
                                     #:zpos bottom
                                     #:height height
                                     #:width width
                                     #:hole #f
-                                    #:name type-of-door)))
+                                    #:name type-of-door
+                                    #:flipx flip-x
+                                    #:flipy flip-y)))
 
 ;;TODO Review this function
-(define (hole-in-wall guid objloc [width -10000] [bottom 0] [height -10000])
+(define (hole-in-wall guid
+                      objloc
+                      [width -10000] [bottom 0] [height -10000]
+                      #:flip-x [flip-x #f]
+                      #:flip-y [flip-y #f])
   (send/rcv-id "Door" (doormessage* #:guid guid
                                     #:objloc objloc
                                     #:zpos bottom
@@ -138,7 +146,8 @@ Example of usage:
                                     #:width width
                                     #:hole #t
                                     #:name ""
-                                    )))
+                                    #:flipx flip-x
+                                    #:flipy flip-y)))
 
 ;;TODO Review this function
 (define (hole-in-wall-test guid list-points [list-arcs (list)])
@@ -163,13 +172,30 @@ Example of usage:
 |#
 (define (window guid
                 objloc
+                #:width [width 0.9]
+                #:height [height 1.5]
                 #:type-of-window [type-of-window "Window 18"]
-                #:zpos [zpos 0])
-  (send/rcv-id "Window" (windowmessage* #:guid guid
-                                        #:objloc objloc
-                                        #:zpos zpos
-                                        #:name type-of-window)))
-
+                #:zpos [zpos 0]
+                #:additional-parameters [additional-parameters (list)])
+  (let ((splitted-list (split-params-list additional-parameters)))
+    (send/rcv-id "Window" (windowmessage* #:guid guid
+                                          #:objloc objloc
+                                          #:zpos zpos
+                                          #:name type-of-window
+                                          #:width width
+                                          #:height height
+                                          #:params (additionalparams* #:names (list-ref splitted-list 0)
+                                                                      #:integers (list-ref splitted-list 1)
+                                                                      #:doubles (list-ref splitted-list 2)
+                                                                      #:strings (list-ref splitted-list 3)
+                                                                      #:booleans (list-ref splitted-list 4)
+                                                                      #:intarrays (list-ref splitted-list 5)
+                                                                      #:doublearrays (list-ref splitted-list 6)
+                                                                      #:stringarrays (list-ref splitted-list 7)
+                                                                      #:boolarrays (list-ref splitted-list 8)
+                                                                      #:paramtype (list-ref splitted-list 9)
+                                                                      #:isarray (list-ref splitted-list 10))))))
+  
 #|
 Function to create a Curtain Wall
  
@@ -344,7 +370,7 @@ Example of usage:
 Function to create a column
  orig-pos: origin of column
  circle-based?: circle column or not
- angle: angle of the column
+ angle: rotation of the column on its on axis
  depth: size of y-axis
  width: size of x-axis
 Example of usage: 
@@ -362,7 +388,8 @@ Example of usage:
                 #:width [width 0.15]
                 #:slant-angle [slant-angle (/ pi 2)]
                 #:slant-direction [slant-direction 0]
-                #:height [height null])
+                #:height [height null]
+                #:profile-name [profile-name ""])
   (let ((msg (if (null? height)
                  (columnmsg*  #:posx (cx orig-pos)
                               #:posy (cy orig-pos)
@@ -374,7 +401,8 @@ Example of usage:
                               #:slantangle slant-angle
                               #:slantdirection slant-direction
                               #:bottomindex (storyinfo-index bottom-level)
-                              #:upperindex (storyinfo-index top-level))
+                              #:upperindex (storyinfo-index top-level)
+                              #:profilename profile-name)
                  (columnmsg*  #:posx (cx orig-pos)
                               #:posy (cy orig-pos)
                               #:bottom (cz orig-pos)
@@ -386,7 +414,47 @@ Example of usage:
                               #:slantangle slant-angle
                               #:slantdirection slant-direction
                               #:bottomindex (storyinfo-index bottom-level)
-                              #:upperindex (storyinfo-index top-level)))))
+                              #:upperindex (storyinfo-index top-level)
+                              #:profilename profile-name))))
+    (write-msg "NewColumn" msg)
+    ;(read-guid)
+    (read-material-guid)))
+(define (column-two-points p1 p2
+                #:bottom-level [bottom-level (current-level)]
+                #:top-level [top-level (upper-level #:level bottom-level)]
+                ;;ArchiCAD ONLY --------------------------------------------------------------
+                #:circle-based? [circle-based? #f]
+                #:angle [angle 0]
+                #:depth [depth 0.15]
+                #:width [width 0.15]
+                #:height [height null]
+                #:profile-name [profile-name ""])
+  (let ((msg (if (null? height)
+                 (columnmsg*  #:posx (cx p1)
+                              #:posy (cy p1)
+                              #:bottom (cz p1)
+                              #:circlebased circle-based?
+                              #:angle angle
+                              #:depth depth
+                              #:width width
+                              #:slantangle (abs (- pi/2 (sph-psi (p-p p1 p2))))
+                              #:slantdirection (+ (sph-phi (p-p p1 p2)) pi/2)
+                              #:bottomindex (storyinfo-index bottom-level)
+                              #:upperindex (storyinfo-index top-level)
+                              #:profilename profile-name)
+                 (columnmsg*  #:posx (cx p1)
+                              #:posy (cy p1)
+                              #:bottom (cz p1)
+                              #:height height
+                              #:circlebased circle-based?
+                              #:angle angle
+                              #:depth depth
+                              #:width width
+                              #:slantangle (abs (- pi/2 (sph-psi (p-p p1 p2))))
+                              #:slantdirection (+ (sph-phi (p-p p1 p2)) pi/2)
+                              #:bottomindex (storyinfo-index bottom-level)
+                              #:upperindex (storyinfo-index top-level)
+                              #:profilename profile-name))))
     (write-msg "NewColumn" msg)
     ;(read-guid)
     (read-material-guid)))
@@ -495,6 +563,7 @@ Function to create a object
  orig-pos: position of the object
 Example of usage: 
 (send (object 1324 (xy 0.0 0.0)))
+(send (object "Dormer Pitched 18" (xy 0.0 0.0) #:additional-parameters (list (list "gs_roofang_deg" pi/2))))
 |#
 (define (object index/name
                 orig-pos
@@ -516,17 +585,17 @@ Example of usage:
                               #:yratio y-ratio
                               #:bottom height
                               #:angle angle
-                              #:names (list-ref splitted-list 0)
-                              #:integers (list-ref splitted-list 1)
-                              #:doubles (list-ref splitted-list 2)
-                              #:strings (list-ref splitted-list 3)
-                              #:booleans (list-ref splitted-list 4)
-                              #:intarrays (list-ref splitted-list 5)
-                              #:doublearrays (list-ref splitted-list 6)
-                              #:stringarrays (list-ref splitted-list 7)
-                              #:boolarrays (list-ref splitted-list 8)
-                              #:paramtype (list-ref splitted-list 9)
-                              #:isarray (list-ref splitted-list 10)
+                              #:params (additionalparams* #:names (list-ref splitted-list 0)
+                                                          #:integers (list-ref splitted-list 1)
+                                                          #:doubles (list-ref splitted-list 2)
+                                                          #:strings (list-ref splitted-list 3)
+                                                          #:booleans (list-ref splitted-list 4)
+                                                          #:intarrays (list-ref splitted-list 5)
+                                                          #:doublearrays (list-ref splitted-list 6)
+                                                          #:stringarrays (list-ref splitted-list 7)
+                                                          #:boolarrays (list-ref splitted-list 8)
+                                                          #:paramtype (list-ref splitted-list 9)
+                                                          #:isarray (list-ref splitted-list 10))
                               #:name index/name)
                   (objectmsg* #:index index/name
                               #:posx (cx orig-pos)
@@ -537,17 +606,17 @@ Example of usage:
                               #:yratio y-ratio
                               #:bottom height
                               #:angle angle
-                              #:names (list-ref splitted-list 0)
-                              #:integers (list-ref splitted-list 1)
-                              #:doubles (list-ref splitted-list 2)
-                              #:strings (list-ref splitted-list 3)
-                              #:booleans (list-ref splitted-list 4)
-                              #:intarrays (list-ref splitted-list 5)
-                              #:doublearrays (list-ref splitted-list 6)
-                              #:stringarrays (list-ref splitted-list 7)
-                              #:boolarrays (list-ref splitted-list 8)
-                              #:paramtype (list-ref splitted-list 9)
-                              #:isarray (list-ref splitted-list 10)))))
+                              #:params (additionalparams* #:names (list-ref splitted-list 0)
+                                                          #:integers (list-ref splitted-list 1)
+                                                          #:doubles (list-ref splitted-list 2)
+                                                          #:strings (list-ref splitted-list 3)
+                                                          #:booleans (list-ref splitted-list 4)
+                                                          #:intarrays (list-ref splitted-list 5)
+                                                          #:doublearrays (list-ref splitted-list 6)
+                                                          #:stringarrays (list-ref splitted-list 7)
+                                                          #:boolarrays (list-ref splitted-list 8)
+                                                          #:paramtype (list-ref splitted-list 9)
+                                                          #:isarray (list-ref splitted-list 10))))))
     (write-msg "Object" msg)
     (read-guid)
     ))
@@ -556,6 +625,8 @@ Example of usage:
 Function to create stairs
  index: index that indentifies what stairs will be used (needs better documentation)
  orig-pos: position of the stairs
+
+(send (stairs "Stair L-Shape 18" (u0) #:additional-parameters (list (list "stairSlabThk" 2))))
 |#
 (define (stairs name 
                 orig-pos 
@@ -576,19 +647,17 @@ Function to create stairs
                           #:angle angle
                           #:bottomindex (storyinfo-index bottom-level)
                           #:usexyfixsize use-xy-fix-size
-                          #:names (list-ref splitted-list 0)
-                          #:integers (list-ref splitted-list 1)
-                          #:doubles (list-ref splitted-list 2)
-                          #:strings (list-ref splitted-list 3)
-                          #:booleans (list-ref splitted-list 4)
-                          #:intarrays (list-ref splitted-list 5)
-                          #:doublearrays (list-ref splitted-list 6)
-                          #:stringarrays (list-ref splitted-list 7)
-                          #:boolarrays (list-ref splitted-list 8)
-                          #:paramtype (list-ref splitted-list 9)
-                          #:isarray (list-ref splitted-list 10)
-                          
-                          )))
+                          #:params (additionalparams* #:names (list-ref splitted-list 0)
+                                                      #:integers (list-ref splitted-list 1)
+                                                      #:doubles (list-ref splitted-list 2)
+                                                      #:strings (list-ref splitted-list 3)
+                                                      #:booleans (list-ref splitted-list 4)
+                                                      #:intarrays (list-ref splitted-list 5)
+                                                      #:doublearrays (list-ref splitted-list 6)
+                                                      #:stringarrays (list-ref splitted-list 7)
+                                                      #:boolarrays (list-ref splitted-list 8)
+                                                      #:paramtype (list-ref splitted-list 9)
+                                                      #:isarray (list-ref splitted-list 10)))))
     ;(list names int-values double-values string-values bool-values lst-int-values lst-double-values lst-string-values lst-bool-values param-types is-array?)
     (write-msg "Stairs" msg)
     ;(read-guid)
@@ -673,11 +742,12 @@ Example of usage:
 #|
 Function to create a poly roof
 |#
-(define (internal-poly-roof listpoints height listarcs thickness levels-angle levels-height material type)
+(define (internal-poly-roof listpoints bottom-level height listarcs thickness levels-angle levels-height material type)
   (let* ((msg (roofmsg* #:height height
                         #:material material
                         #:thickness thickness
-                        #:type type))
+                        #:type type
+                        #:bottomlevel (storyinfo-index bottom-level)))
          (roof-levels-msg (rooflevelsmsg* #:angle levels-angle
                                           #:height levels-height))
          (sub-poly-list (get-sub-polys listpoints))
@@ -695,13 +765,27 @@ Function to create a poly roof
 
 (define poly-roof-material-default (make-parameter "GENERIC - STRUCTURAL"))
 (define roof-material-default (make-parameter "GENERIC - STRUCTURAL"))
-(define (poly-roof listpoints height [listarcs (list)] [thickness 0.3] [levels-angle (list)] [levels-height (list)] [material (roof-material-default)])
-  (internal-poly-roof listpoints height listarcs thickness levels-angle levels-height material "BasicStructure"))
+(define (poly-roof listpoints
+                   #:bottom-level [bottom-level (current-level)]
+                   #:height [height 0]
+                   #:listarcs [listarcs (list)]
+                   #:thickness [thickness 0.3]
+                   #:levels-angle [levels-angle (list)]
+                   #:levels-height [levels-height (list)]
+                   #:material [material (roof-material-default)])
+  (internal-poly-roof listpoints bottom-level height listarcs thickness levels-angle levels-height material "BasicStructure"))
 
 (define poly-roof-composite-material-default (make-parameter "Generic Roof/Shell"))
 (define roof-composite-material-default (make-parameter "Generic Roof/Shell"))
-(define (poly-roof-composite listpoints height [listarcs (list)] [thickness 0.3] [levels-angle (list)] [levels-height (list)] [material (roof-composite-material-default)])
-  (internal-poly-roof listpoints height listarcs thickness levels-angle levels-height material "CompositeStructure"))
+(define (poly-roof-composite listpoints
+                             #:bottom-level [bottom-level (current-level)]
+                             #:height [height 0]
+                             #:listarcs [listarcs (list)]
+                             #:thickness [thickness 0.3]
+                             #:levels-angle [levels-angle (list)]
+                             #:levels-height [levels-height (list)]
+                             #:material [material (roof-composite-material-default)])
+  (internal-poly-roof listpoints bottom-level height listarcs thickness levels-angle levels-height material "CompositeStructure"))
 
 ;(send (poly-roof (list (list (xy 10 10)(xy 10 -10)(xy -10 -10)(xy -10 10)(xy 10 10))(list (xy 5 0)(xy -5 0)(xy 5 0))) 0 (list 0 0 0 0 0 pi pi)))
 
@@ -843,6 +927,22 @@ Example:
                                       #:arcs (prepare-arcs-to-send arcs)
                                       #:material material
                                       #:name name)))
+
+#|
+(send (profile "test 1" (list (xy 0 0)(xy 5 0)(xy 5 5)(xy 0 5)))
+        (add-hole-profile "test 1" (list (xy 2 2)(xy 3 2)(xy 3 3)(xy 2 3)))
+        (wall (list (x 0)(x 5)) #:profile-name "test 1"))
+|#
+(define (add-hole-profile name
+                          points
+                          #:arcs [arcs (list)]
+                          #:material [material "GENERIC - STRUCTURAL"])
+  (send/no-rcv "AddToProfile" (profilemsg* #:pts (prepare-points-to-send (append points (list (car points))))
+                                           #:arcs (prepare-arcs-to-send arcs)
+                                           #:material material
+                                           #:name name)))
+
+
 
 #|
 Function to delete list of elements
