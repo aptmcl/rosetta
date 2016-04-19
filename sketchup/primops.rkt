@@ -278,3 +278,8 @@ Sketchup specific operations
 (def (setShapeLayer [sh String] [layer String]) Void)
 (def (shapeRGBA [sh String]))
 (def (setShapeRGB [sh String] [r Integer] [g Integer] [b Integer]) Void)
+
+(def (addMaterial [name String]))
+(def (getMaterial [name String]))
+(def (shapeMaterial [sh String]))
+(def (setShapeMaterial [sh String] [mat Integer]) Void)

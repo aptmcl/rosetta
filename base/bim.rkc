@@ -16,9 +16,12 @@
 
 
 (def-shape (beam [p0 : Loc] [p1 : Loc] [family : Beam-Family (default-beam-family)])
-  (let ((s (right-cuboid (loc-in-world p0) (beam-family-width family) (beam-family-height family) (loc-in-world p1))))
-    (shape-layer s (bim-family-layer family))
-    s))
+  (let ((h (beam-family-height family)))
+    (let ((s (right-cuboid (+z (loc-in-world p0) (/ h -2))
+                           (beam-family-width family) h
+                           (+z (loc-in-world p1) (/ h -2)))))
+      (shape-layer s (bim-family-layer family))
+      s)))
 
 (def-shape (column [center : Loc]
                    [bottom-level : Level (current-level)]
@@ -32,20 +35,36 @@
       (shape-layer s (bim-family-layer family))
       s)))
 
-;(def-shape (door))
 (def-shape (slab [vertices : Locs] [level : Level (current-level)] [family : Slab-Family (default-slab-family)])
-  (let ((s (extrusion
-            (surface-polygon (map (lambda ([p : Loc])
-                                    (+z (loc-in-world p) (level-height level)))
-                                  vertices))
+  (let ((s (irregular-prism
+            (map (lambda ([p : Loc])
+                   (+z (loc-in-world p) (level-height level)))
+                 vertices)
             (slab-family-thickness family))))
     (shape-layer s (bim-family-layer family))
     s))
         
 (def-shape (roof [vertices : Locs] [level : Level (current-level)] [family : Roof-Family (default-roof-family)])
-  (let ((s (extrusion
-            (surface-polygon (map (lambda ([p : Loc])
-                                    (+z (loc-in-world p) (level-height level)))
-                                  vertices)))))
+  (let ((s (irregular-prism
+            (map (lambda ([p : Loc])
+                   (+z (loc-in-world p) (level-height level)))
+                 vertices)
+            (roof-family-thickness family))))
     (shape-layer s (bim-family-layer family))
     s))
+
+(def-shape (wall [p0 : Loc] [p1 : Loc]
+                 [bottom-level : Level (current-level)]
+                 [top-level : Level (upper-level bottom-level)]
+                 [family : Wall-Family (default-wall-family)])
+  (let ((height (- (level-height top-level) (level-height bottom-level))))
+    (let ((h/2 (/ height 2)))
+      (let ((s (right-cuboid (loc-in-world (+z p0 h/2))
+                             (wall-family-thickness family)
+                             height
+                             (loc-in-world (+z p1 h/2)))))
+        (shape-layer s (bim-family-layer family))
+        s))))
+
+(def-shape (door [wall : Any] [loc : Loc] [family : Any (default-door-family)])
+  "To be continued")

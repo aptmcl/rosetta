@@ -44,7 +44,7 @@
 
 (define (bim-connection)
   (unless conn
-    (connect-to-revit))
+    (error "Did you forget to initialize the connection?"))
   conn)
 
 ;;;;;;;Conversions;;;;;;;;;;;;;;;;;;;;;;
@@ -58,7 +58,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 (provide idstrc*) ;;HACK Martelada
 
-(define current-level (make-parameter null))
+(define current-level (make-parameter #f))
 
 (define default-level-to-level-height (make-parameter (mt 3)))
 

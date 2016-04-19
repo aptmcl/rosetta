@@ -1696,6 +1696,7 @@ end
 
 def setShapeLayer(id, name)
   resolveShape(id).layer = Sketchup.active_model.layers[name]
+  ""
 end
 
 def shapeRGBA(id)
@@ -1704,8 +1705,28 @@ end
 
 def setShapeRGB(id, r, g, b)
   resolveShape(id).material = Sketchup::Color.new(r, g, b)
+  ""
 end
 
+# materials
+
+def addMaterial(name)
+  Sketchup.active_model.materials.add(name)
+end
+
+def getMaterial(name)
+  Sketchup.active_model.materials[name].name
+end
+
+def shapeMaterial(id)
+  mat = resolveShape(id).material
+  mat and mat.name
+end
+
+def setShapeMaterial(id, name)
+  resolveShape(id).material = Sketchup.active_model.materials[name]
+  ""
+end
 
 ###############################################################################
 # view operations

@@ -11,6 +11,7 @@
 (require (prefix-in % "racketSide.rkt"))
 (provide immediate-mode?
          current-backend-name
+         (rename-out [%connect-to-revit start-backend])
 #|         mt
          ft
          box
@@ -831,10 +832,10 @@ The following example does not work as intended. Rotating the args to closed-spl
  level
  beam
  column
- ;;door
+ door
  roof
  slab
- ;;wall
+ wall
  current-level
  default-level-to-level-height
  upper-level
@@ -844,9 +845,7 @@ The following example does not work as intended. Rotating the args to closed-spl
 (define (level height)
   (%create-level #:height height))
 
-(define current-level %current-level)
-
-(define default-level-to-level-height %default-level-to-level-height)
+(require (only-in "racketSide.rkt" current-level default-level-to-level-height))
 
 (define (upper-level [lvl : Level (current-level)]
                      [height : Real (default-level-to-level-height)])
@@ -910,6 +909,7 @@ The following example does not work as intended. Rotating the args to closed-spl
                                                     (bim-family-map family)
                                                     (list param-name ...)))))
                               (%family-element (bim-family-id family)
+                                               #:flag-override #t
                                                #:parameter-names (map car kvs)
                                                #:parameter-values (map cdr kvs)))
                             param-name ...))))))]))
@@ -947,22 +947,24 @@ The following example does not work as intended. Rotating the args to closed-spl
                                            #:parameter-values (list param-name ...))
                           param-name ...)))))]))
 
-
-
 (def-bim-family beam
   ([width : Real 10]
    [height : Real 10]))
 
-(def-bim-family wall ())
 (def-bim-family slab
   ([thickness : Real 1]))
+
 (def-bim-family roof ())
 
 (def-bim-family column
   ([width : Real 10]))
 
-(def-bim-family door ())
+(def-bim-family door
+  ([width : (Option Real) #f]
+   [height : (Option Real) #f]))
 
+(def-bim-family wall
+  ([thickness : Real 1]))
 
 (def-shape (beam [p0 : Loc] [p1 : Loc] [family : Beam-Family (default-beam-family)])
   (%create-beam (loc-in-world p0) (loc-in-world p1) (bim-family-id family)))
@@ -982,3 +984,35 @@ The following example does not work as intended. Rotating the args to closed-spl
 
 (def-shape (roof [vertices : Locs] [level : Any (current-level)] [family : Any (default-roof-family)])
   (%create-roof (map loc-in-world (append vertices (list (car vertices)))) #:bottom-level level #:family (bim-family-id family)))
+
+(def-shape (wall [p0 : Loc] [p1 : Loc]
+                 [bottom-level : Level (current-level)]
+                 [top-level : Level (upper-level bottom-level)]
+                 [family : Any (default-wall-family)])
+  (car (%create-wall (list p1 p0)
+                     #:bottom-level bottom-level
+                     #:top-level top-level
+                     #:family (bim-family-id family))))
+
+(def-shape (walls [vertices : Locs]
+                  [bottom-level : Level (current-level)]
+                  [top-level : Level (upper-level bottom-level)]
+                  [family : Any (default-wall-family)])
+  (%create-wall vertices
+                #:bottom-level bottom-level
+                #:top-level top-level
+                #:family (bim-family-id family)))
+
+(def-shape (door [wall : Any] [loc : Loc] [family : Any (default-door-family)])
+  (%insert-door-relative (shape-reference wall) (cx loc) (cy loc) #:family (bim-family-id family)))
+
+(provide slab-rectangle roof-rectangle)
+(define (slab-rectangle [p : Loc] [length : Real] [width : Real] [level : Level (current-level)] [family : Slab-Family (default-slab-family)])
+  (slab (list p (+x p length) (+xy p length width) (+y p width))
+        level
+        family))
+
+(define (roof-rectangle [p : Loc] [length : Real] [width : Real] [level : Level (current-level)] [family : Roof-Family (default-roof-family)])
+  (roof (list p (+x p length) (+xy p length width) (+y p width))
+        level
+        family))

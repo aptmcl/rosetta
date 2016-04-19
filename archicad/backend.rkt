@@ -13,7 +13,9 @@
 (require (prefix-in % "communication.rkt"))
 (provide immediate-mode?
          current-backend-name
-         (rename-out [%disconnect disconnect])
+         (rename-out [%disconnect disconnect]
+                     [%send send]
+                     [%ensure-connection start-backend])
 #|         mt
          ft
          box
@@ -74,8 +76,9 @@
          bounding-box
          delete-shape
          delete-shapes
+|#
          delete-all-shapes
-         curve-start-point
+#|         curve-start-point
          curve-end-point
          curve-domain
          curve-length
@@ -84,9 +87,10 @@
          ;curve-point-at
          curve-frame-at
          curve-frame-at-length
+|#
          enable-update
          disable-update
-         prompt-point
+#|         prompt-point
          prompt-integer
          prompt-real
          prompt-shape
@@ -140,11 +144,12 @@
   (for-each %safe-delete (shape-refs shape))
   (void))
 
-
+|#
 (define (delete-all-shapes) : Void
-  (%erase-all)
+  (%delete-levels)
   (void))
 
+#|
 (define (shape<-ref [r : Ref]) ;HACK Bug in typed/racket : Shape
   (define (coordinates [r : Ref])
     (let ((pts
@@ -773,14 +778,15 @@ The following example does not work as intended. Rotating the args to closed-spl
 (define (zoom-extents) : Void
   (%zoom-extents))
 
+|#
 (define (disable-update)
   ;Is there a way of disabling updates in AutoCAD
-  #f)
+  (%visual-feedback-off))
 
 (define (enable-update)
    ;Is there a way of disabling updates in AutoCAD
-  (%regen-active-viewport))
-
+  (%visual-feedback-on))
+#|
 (define (prompt-point [str : String "Select position"]) : Loc
   (%get-point (u0 world-cs) str))
 
@@ -827,33 +833,19 @@ The following example does not work as intended. Rotating the args to closed-spl
 
 (provide ;;BIM extensions
  level
- beam
- column
- ;;door
- roof
- slab
- ;;wall
- current-level
- default-level-to-level-height
- upper-level
  def-bim-family
+ (rename-out [%delete-levels delete-levels])
  )
 
 (define (level height)
   (%create-level #:height height))
 
-(define current-level %current-level)
-
-(define default-level-to-level-height %default-level-to-level-height)
+(require (only-in "communication.rkt" current-level default-level-to-level-height create-layer shape-layer))
 
 (define (upper-level [lvl : Level (current-level)]
                      [height : Real (default-level-to-level-height)])
   (%upper-level #:level lvl
                 #:height height))
-
-(define create-layer %create-layer)
-
-(define shape-layer %shape-layer)
 
 (require racket/include)
 (include "../base/bimdefs.rkc")
@@ -881,3 +873,32 @@ The following example does not work as intended. Rotating the args to closed-spl
 (def-shape (roof [vertices : Locs] [level : Any (current-level)] [family : Roof-Family (default-roof-family)])
   (%roof (map loc-in-world vertices) #:bottom-level level
          #:thickness (roof-family-thickness family)))
+
+(def-shape (wall [p0 : Loc] [p1 : Loc]
+                 [bottom-level : Level (current-level)]
+                 [top-level : Level (upper-level bottom-level)]
+                 [family : Any (default-wall-family)])
+  (%wall (list p0 p1)
+         #:bottom-level bottom-level
+         #:top-level top-level
+         #:thickness (or (wall-family-thickness family)
+                         (%default-wall-thickness))))
+
+(def-shape (walls [vertices : Locs]
+                 [bottom-level : Level (current-level)]
+                 [top-level : Level (upper-level bottom-level)]
+                 [family : Any (default-wall-family)])
+  (%wall vertices
+         #:bottom-level bottom-level
+         #:top-level top-level
+         #:thickness (or (wall-family-thickness family)
+                         (%default-wall-thickness))))
+
+(def-shape (door [wall : Any] [loc : Loc] [family : Any (default-door-family)])
+  (%door (shape-reference wall)
+         (cx loc)
+         #:bottom (cy loc)
+         #:width (or (door-family-width family)
+                     -10000)
+         #:height (or (door-family-height family)
+                      -10000)))
