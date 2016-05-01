@@ -1,4 +1,4 @@
-#lang typed/racket/base/no-check
+#lang typed/racket/base
 (require racket/math math/matrix)
 (require "utils.rkt")
 
@@ -926,6 +926,22 @@
           (vector-set! v (+ i 2) z)
           (set! i (+ i 3)))))
     v))
+
+(provide locs->vector-3-single-flonums)
+(define (locs->vector-3-single-flonums [cs : (Listof Loc)]) : (Vectorof Single-Flonum)
+  (let ((v ((inst make-vector Single-Flonum) (* (length cs) 3) 0.0f0))
+        (i 0))
+    (for ((c (in-list cs)))
+      (let ((c (loc-in-world c)))
+        (let ((x (real->single-flonum (cx c)))
+              (y (real->single-flonum (cy c)))
+              (z (real->single-flonum (cz c))))
+          (vector-set! v (+ i 0) x)
+          (vector-set! v (+ i 1) y)
+          (vector-set! v (+ i 2) z)
+          (set! i (+ i 3)))))
+    v))
+
 
 (provide vector-3-double-flonums->locs)
 (define (vector-3-double-flonums->locs [v : (Vectorof Float)]) : (Listof Loc)

@@ -19,7 +19,11 @@
          rectangle-deltas
          rectangle-morph
          axial-morph
-         regular-polygon-vertices)
+         regular-polygon-vertices
+         0D-shape?
+         1D-shape?
+         2D-shape?
+         3D-shape?)
 
 
 (define immediate-mode? : (Parameter Boolean)
@@ -394,8 +398,8 @@
 
 (def-base-shape (text [str : String ""] [c : Loc (u0)] [h : Real 1]))
 (def-base-shape (text-centered [str : String ""] [c : Loc (u0)] [h : Real 1]))
-(def-base-shape 3D-shape (sphere [c : Loc (u0)] [r : Real 1]))
-(def-base-shape 3D-shape (torus [c : Loc (u0)] [re : Real 1] [ri : Real 1/2]))
+(def-base-shape 3D-shape (sphere [center : Loc (u0)] [radius : Real 1]))
+(def-base-shape 3D-shape (torus [center : Loc (u0)] [re : Real 1] [ri : Real 1/2]))
 (def-base-shape 3D-shape
   (cuboid [b0 : Loc (u0)]
           [b1 : Loc (+x b0 1)]
@@ -409,7 +413,7 @@
 (def-base-shape 3D-shape (regular-pyramid [edges : Integer 3] [cb : Loc (u0)] [rb : Real 1] [a : Real 0] [h/ct : LocOrZ 1] [inscribed? : Boolean #f]))
 (def-base-shape 3D-shape (irregular-pyramid [cbs : Locs (list (ux) (uy) (uxy))] [ct : Loc (uz)]))
 (def-base-shape 3D-shape (regular-prism [edges : Integer 3] [cb : Loc (u0)] [r : Real 1] [a : Real 0] [h/ct : LocOrZ 1] [inscribed? : Boolean #f]))
-(def-base-shape 3D-shape (irregular-prism [cbs : Locs (list (ux) (uy) (uxy))] [h/ct : LocOrZ 1] [solid? : Boolean #t]))
+(def-base-shape 3D-shape (irregular-prism [cbs : Locs (list (ux) (uy) (uxy))] [dir : VecOrZ 1]))
 (def-base-shape 3D-shape (right-cuboid [cb : Loc (u0)] [width : Real 1] [height : Real 1] [h/ct : LocOrZ 1]))
 (def-base-shape 3D-shape (box [c : Loc (u0)] [dx/c1 : LocOrZ 1] [dy : Real (if (number? dx/c1) dx/c1 1)] [dz : Real dy]))
 (def-base-shape 3D-shape (cone [cb : Loc (u0)] [r : Real 1] [h/ct : LocOrZ 1]))
@@ -503,4 +507,10 @@
 
 ;;BIM
 
-(def-base-shape 3D-shape (beam [p0 : Loc] [p1 : Loc] [width : Real] [height : Real]))
+(def-base-shape 3D-shape (beam [p0 : Loc] [p1 : Loc] [family : Any]))
+(def-base-shape 3D-shape (column [center : Loc] [bottom-level : Any] [top-level : Any] [family : Any]))
+(def-base-shape 3D-shape (slab [vertices : Locs] [level : Any] [family : Any]))
+(def-base-shape 3D-shape (roof [vertices : Locs] [level : Any] [family : Any]))
+(def-base-shape 3D-shape (wall [p0 : Loc] [p1 : Loc] [bottom-level : Any] [top-level : Any] [family : Any]))
+(def-base-shape 3D-shape (walls [vertices : Locs] [bottom-level : Any] [top-level : Any] [family : Any]))
+(def-base-shape 3D-shape (door [wall : Any] [loc : Loc] [family : Any]))

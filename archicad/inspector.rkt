@@ -4,10 +4,13 @@
 
 (require "protobuf1/protobuf.rkt")
 (require "protobuf1/encoding.rkt")
-(require "Messages.rkt")
-(require "Communication.rkt")
-(require "BIMObjects.rkt")
-(require rosetta/revit)
+(require "messages.rkt")
+(require "communication.rkt")
+(require "objects.rkt")
+(require "../base/utils.rkt"
+         "../base/coord.rkt"
+         "../base/shapes.rkt"
+         "../base/connection.rkt")
 (require srfi/26)
 
 
@@ -20,27 +23,27 @@
 
 (define (get-levels)
   (write-msg-name "GetLevels")
-  (read-sized (cut deserialize (levelrepeated*) <>) input))
+  (read-sized (cut deserialize (levelrepeated*) <>) (connection-in (bim-connection))))
 
 (define (get-walls)
   (write-msg-name "GetWalls")
-  (read-sized (cut deserialize (wallrepeated*) <>)input))
+  (read-sized (cut deserialize (wallrepeated*) <>) (connection-in (bim-connection))))
 
 (define (get-slabs)
   (write-msg-name "GetSlabs")
-  (read-sized (cut deserialize (slabrepeated*) <>)input))
+  (read-sized (cut deserialize (slabrepeated*) <>) (connection-in (bim-connection))))
 
 (define (get-columns)
   (write-msg-name "GetColumns")
-  (read-sized (cut deserialize (columnrepeated*) <>)input))
+  (read-sized (cut deserialize (columnrepeated*) <>) (connection-in (bim-connection))))
 
 (define (get-objects)
   (write-msg-name "GetObjects")
-  (read-sized (cut deserialize (objectrepeated*) <>)input))
+  (read-sized (cut deserialize (objectrepeated*) <>) (connection-in (bim-connection))))
 
 (define (get-roofs)
   (write-msg-name "GetRoofs")
-  (read-sized (cut deserialize (roofrepeated*) <>)input))
+  (read-sized (cut deserialize (roofrepeated*) <>) (connection-in (bim-connection))))
 
 (define (recreate-levels [level-list (get-levels)])
   (for ([n (length (levelrepeated-levels level-list))])
@@ -52,7 +55,7 @@
   (for ([n (length (wallrepeated-guid wall-list))])
        ;(displayln (list-ref (wallrepeated-material wall-list) n))
        ;(displayln (list-ref (wallrepeated-type wall-list) n))
-       (create-wall (list (xy (list-ref (wallrepeated-p0x wall-list) n)
+       (wall (list (xy (list-ref (wallrepeated-p0x wall-list) n)
                               (list-ref (wallrepeated-p0y wall-list) n))
                           (xy (list-ref (wallrepeated-p1x wall-list) n)
                               (list-ref (wallrepeated-p1y wall-list) n)))
@@ -73,7 +76,7 @@
        (let ((points (list-ref (slabrepeated-points slab-list) n)))
          ;(displayln (list-ref (slabrepeated-type slab-list) n))
          ;(displayln (list-ref (slabrepeated-material slab-list) n))
-         (create-slab (extract-list-of-points (pointsmessage-px points)(pointsmessage-py points)(pointsmessage-pz points))
+         (slab (extract-list-of-points (pointsmessage-px points)(pointsmessage-py points)(pointsmessage-pz points))
                       #:bottom-level (list-ref (slabrepeated-bottomlevel slab-list) n)
                       #:thickness (list-ref (slabrepeated-thickness slab-list) n)
                       #:type-of-material (list-ref (slabrepeated-type slab-list) n)
@@ -83,7 +86,7 @@
 (define (recreate-columns [column-list (get-columns)])
   (delete-elements (columnrepeated-guid column-list))
   (for ([n (length (columnrepeated-guid column-list))])
-       (create-column (xy (list-ref (columnrepeated-px column-list) n)(list-ref (columnrepeated-py column-list) n))
+       (column (xy (list-ref (columnrepeated-px column-list) n)(list-ref (columnrepeated-py column-list) n))
                     #:bottom-level (list-ref (columnrepeated-bottomlevel column-list) n)
                     #:top-level (list-ref (columnrepeated-toplevel column-list) n)
                     #:circle-based? (list-ref (columnrepeated-circular column-list) n)
@@ -97,7 +100,7 @@
   (delete-elements (objectrepeated-guid object-list))
   (for ([n (length (objectrepeated-guid object-list))])
        (if (list-ref (objectrepeated-stairs object-list) n)
-       (create-stairs #:name (list-ref (objectrepeated-name object-list) n)
+       (stairs #:name (list-ref (objectrepeated-name object-list) n)
                       #:orig-pos (xy (list-ref (objectrepeated-px object-list) n)(list-ref (objectrepeated-py object-list) n))
                       #:angle (list-ref (objectrepeated-angle object-list) n)
                       #:x-ratio (list-ref (objectrepeated-xratio object-list) n)
@@ -105,7 +108,7 @@
                       #:bottom-offset (list-ref (objectrepeated-bottomoffset object-list) n)
                       #:bottom-level (list-ref (objectrepeated-bottomlevel object-list) n)
                       #:use-xy-fix-size (list-ref (objectrepeated-usexyfixsize object-list) n))
-       ;(create-object index orig-pos)
+       ;(object index orig-pos)
        (list))))
 
 (define (recreate-roofs [roof-list (get-roofs)])
@@ -114,7 +117,7 @@
        (let ((points (list-ref (roofrepeated-points roof-list) n)))
          ;(displayln (list-ref (roofrepeated-type roof-list) n))
          ;(displayln (list-ref (roofrepeated-material roof-list) n))
-         (create-roof (extract-list-of-points (pointsmessage-px points)(pointsmessage-py points)(pointsmessage-pz points))
+         (roof (extract-list-of-points (pointsmessage-px points)(pointsmessage-py points)(pointsmessage-pz points))
                       #:bottom-level (list-ref (roofrepeated-bottomlevel roof-list) n)
                       #:thickness (list-ref (roofrepeated-thickness roof-list) n)
                       #:type-of-material (list-ref (roofrepeated-type roof-list) n)
@@ -130,7 +133,7 @@ ArchiCAD not being selected.
 |#
 (define (select-element)
   (write-msg-name "SelectElement")
-  (elementid-guid (read-sized (cut deserialize (elementid*) <>)input)))
+  (read-guid))
 
 (define (highlight-element elem-id)
   (let* ((eleList (if (list? elem-id)

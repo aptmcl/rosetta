@@ -257,6 +257,10 @@
       (%addFrustum (map loc->list-real pbs)
                    (map loc->list-real pts)))))
 
+(def-shape (irregular-prism [cbs : Locs (list (ux) (uxy) (uy))] [dir : VecOrZ 1])
+  (let ((dir (if (number? dir) (vz dir) dir)))
+    (%addFrustum (map loc->list-real cbs)
+                 (map (lambda ([p : Loc]) (loc->list-real (p+v p dir))) cbs))))
 
 (def-shape (irregular-pyramid [cbs : Locs (list (ux) (uy) (uxy))] [ct : Loc (uz)])
   (%addPyramid (map loc->list-real cbs)
@@ -380,8 +384,8 @@
   (assert (= scale 1))
   (%addSweep (shape-reference path) (shape-reference profile)))
 
-(def-shape* (union [shapes : Shape *])
-  (let ((shapes (filter-not empty-shape? (remove-duplicates shapes))))
+(def-shape* (union [shapes : ShapeTree *])
+  (let ((shapes (filter-not empty-shape? (remove-duplicates (flatten shapes)))))
     (cond ((null? shapes)
            (empty-shape-ref))
           ((null? (cdr shapes))
@@ -394,8 +398,8 @@
                (set! %s0 (%addUnion %s0 (shape-reference s1))))
              %s0)))))
 
-(def-shape* (intersection [shapes : Shape *])
-  (let ((shapes (filter-not universal-shape? (remove-duplicates shapes))))
+(def-shape* (intersection [shapes : ShapeTree *])
+  (let ((shapes (filter-not universal-shape? (remove-duplicates (flatten shapes)))))
     (cond ((null? shapes)
            (universal-shape-ref))
           ((null? (cdr shapes))
@@ -409,24 +413,25 @@
                (set! %s0 (%addIntersection %s0 (shape-reference s1))))
              %s0)))))
 
-(def-shape* (subtraction [shapes : Shape *])
+(def-shape* (subtraction [shapes : ShapeTree *])
   (if (null? shapes)
       (error "No shapes to subtract")
-      (let ((s (car shapes))
-            (ss (filter-not empty-shape? (cdr shapes))))
-        (cond ((null? ss)
-               (shape-reference s))
-              ((or (empty-shape? s)
-                   (ormap (lambda ([o : Shape])
-                            (or (universal-shape? o)
-                                (eq? s o))) ;;Perhaps we should use a equal-shape? test
-                          ss))
-               (empty-shape-ref))
-              (else
-               (let ([%s0 (shape-reference (car shapes))])
-                 (for ([s1 : Shape (in-list (cdr shapes))])
-                   (set! %s0 (%addSubtraction %s0 (shape-reference s1))))
-                 %s0))))))
+      (let ((shapes (cons (union (first shapes) (flatten (cdr shapes))))))
+        (let ((s (car shapes))
+              (ss (filter-not empty-shape? (cdr shapes))))
+          (cond ((null? ss)
+                 (shape-reference s))
+                ((or (empty-shape? s)
+                     (ormap (lambda ([o : Shape])
+                              (or (universal-shape? o)
+                                  (eq? s o))) ;;Perhaps we should use a equal-shape? test
+                            ss))
+                 (empty-shape-ref))
+                (else
+                 (let ([%s0 (shape-reference (car shapes))])
+                   (for ([s1 : Shape (in-list (cdr shapes))])
+                     (set! %s0 (%addSubtraction %s0 (shape-reference s1))))
+                   %s0)))))))
 
 (provide union-mirror)
 (define (union-mirror [shape : Shape] [p : Loc (u0)] [n : Vec (vz)])
@@ -503,18 +508,16 @@
     [([shape : Shape] [new-layer : Layer])
      (%setShapeLayer (shape-ref shape) new-layer)
      (void)]))
-#;
-(define (create-material [name : String]) : Material
-  (%add-material name)
-  name)
 
-#;
+(define (create-material [name : String]) : Material
+  (%addMaterial name))
+
 (define shape-material
   (case-lambda
     [([shape : Shape])
-     (%material (shape-ref shape))]
+     (%shapeMaterial (shape-ref shape))]
     [([shape : Shape] [new-material : Material])
-     (%material (shape-ref shape) new-material)
+     (%setShapeMaterial (shape-ref shape) new-material)
      (void)]))
 
 ;;
@@ -564,10 +567,16 @@
         (xyz (car p) (cadr p) (caddr p)))))
 
 (define (disable-update)
-  ;Is there a way of disabling updates
+  ;Is there a way of disabling updates?
   #f)
 
 (define (enable-update)
-   ;Is there a way of disabling updates
+   ;Is there a way of enabling updates?
   #t)
 
+;;BIM
+(def-shape (polygonal-mass [pts : Locs] [height : Real])
+  (%addFrustum (map loc->list-real pts)
+               (map (lambda ([pt : Loc]) (loc->list-real (+z pt height))) pts)))
+
+(include "../base/bim.rkc")
