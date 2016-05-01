@@ -94,13 +94,10 @@
   (required primitive:double p1coordx 4)
   (required primitive:double p1coordy 5)
   (required primitive:double p1coordz 6)
-  (required primitive:double p2coordx 7)
-  (required primitive:double p2coordy 8)
-  (required primitive:double p2coordz 9)
-  (required primitive:double p3coordx 10)
-  (required primitive:double p3coordy 11)
-  (required primitive:double p3coordz 12)
-  (required struct:idstrc level 13)))
+  (repeated primitive:double ulinecoord 7)
+  (repeated primitive:double vlinecoord 8)
+  (required struct:idstrc baselevel 9)
+  (required struct:idstrc toplevel 10)))
 (define-message-type
  wallinfostrc
  ((required primitive:double p0coordx 1)
