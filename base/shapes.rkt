@@ -8,6 +8,7 @@
          Vec
          def-base-shape
          def-shape
+         def-shape/no-provide
          def-shape*
          def*
          immediate-mode?
@@ -269,7 +270,8 @@
        (syntax/loc stx
          (def type (name param ...))))]))
 
-(define-syntax (def-shape stx)
+
+(define-syntax (def-shape/no-provide stx)
   (syntax-case stx (:)
     [(_ ((name constructor) param ...) body ...)
      (with-syntax ([(param-name ...)
@@ -279,15 +281,21 @@
                              [[name : type] #'name]))
                          (syntax->list #'(param ...)))])
        (syntax/loc stx
-         (begin
-           (provide name)
-           (define (name param ...)
-             (constructor (lambda () body ...)
-                          param-name ...)))))]
+         (define (name param ...)
+           (constructor (lambda () body ...)
+                        param-name ...))))]
     [(def (name param ...) body ...)
      (with-syntax ([constructor (build-name #'name "new-~A")])
        (syntax/loc stx
          (def ((name constructor) param ...) body ...)))]))
+
+(define-syntax (def-shape stx)
+  (syntax-case stx (:)
+    [(_ (name param ...) body ...)
+     (syntax/loc stx
+       (begin
+         (provide name)
+         (def-shape/no-provide (name param ...) body ...)))]))
 
 (define-syntax (def* stx)
   (syntax-case stx (: *)
