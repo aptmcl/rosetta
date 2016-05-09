@@ -913,39 +913,6 @@ The following example does not work as intended. Rotating the args to closed-spl
                                                #:parameter-names (map car kvs)
                                                #:parameter-values (map cdr kvs)))
                             param-name ...))))))]))
-#;
-(define-syntax (def-bim-family stx)
-  (syntax-case stx ()
-    [(def name (param ...))
-     (with-syntax ([struct-name (build-name #'name "~A-family")]
-                   [instance-name (build-name #'name "~A-family-element")]
-                   [load-name (build-name #'name "load-~A-family")]
-                   [default-name (build-name #'name "default-~A-family")]
-                   [layer-name (string-titlecase (symbol->string (syntax-e #'name)))]
-                   [([param-name param-type default] ...)
-                    (map (lambda (p)
-                           (syntax-case p (:)
-                             [[name : type default] #'[name type default]]
-                             #;[[name : type] #'[name type]]))
-                         (syntax->list #'(param ...)))])
-       (syntax/loc stx
-         (begin
-           (provide (struct-out struct-name)
-                    default-name
-                    load-name
-                    instance-name)
-           (struct struct-name bim-family
-             ([param-name : param-type] ...))
-           (define default-name (make-parameter (struct-name "" (list) (%idstrc* #:id 0) default ...)))
-           (define (load-name [path : String] [map : (Listof String) (list)])
-             (struct-name path map (%load-family path) default ...))
-           (define (instance-name [family : BIM-Family] param ...)
-             (struct-name (bim-family-path family)
-                          (bim-family-parameters family)
-                          (%family-element (bim-family-id family)
-                                           #:parameter-names (bim-family-parameters family)
-                                           #:parameter-values (list param-name ...))
-                          param-name ...)))))]))
 
 (def-bim-family beam
   ([width : Real 10]
@@ -1006,6 +973,7 @@ The following example does not work as intended. Rotating the args to closed-spl
 (def-shape (door [wall : Any] [loc : Loc] [family : Any (default-door-family)])
   (%insert-door-relative (shape-reference wall) (cx loc) (cy loc) #:family (bim-family-id family)))
 
+;This should be moved to a different place (probably, a unit)
 (provide slab-rectangle roof-rectangle)
 (define (slab-rectangle [p : Loc] [length : Real] [width : Real] [level : Level (current-level)] [family : Slab-Family (default-slab-family)])
   (slab (list p (+x p length) (+xy p length width) (+y p width))
