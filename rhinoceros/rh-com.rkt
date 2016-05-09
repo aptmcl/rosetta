@@ -319,6 +319,7 @@
 (def-com Add-plane-surface (plane real real) Id)
 |#
 (def-com add-point ([Center Point]) Id)
+(def-com add-points ([points ArrDouble]) Ids)
 (def-com add-polyline ([locs ArrDouble]) Id)
 (def-com add-rev-srf ([shape Id] [axis ArrDouble] #:opt [start Number] [end Number]) Id)
 (def-com add-sphere ([center Point] [radius Double]) Id)
@@ -525,10 +526,7 @@ DivideCurveEquidistant
 (def-com is-point ([shape Id]) BoolOrVoid)
 (def-com is-surface ([shape Id]) BoolOrVoid)
 (def-com is-view-maximized ([name String]) BoolOrVoid)
-#|
-; edit: create an enum for flags
-(def last-created-objects (#:opt Boolean integer) ids)
-|#
+(def-com last-created-objects (#:opt [select? Boolean] [flags Integer]) Ids)
 (def-com layer-color ([layer String] #:opt [color RGB]) RGB)
 (def-com join-curves ([shapes Ids] #:opt [delete? Boolean] [tolerance Real]) Ids)
 (def-com join-surfaces ([shapes Ids] #:opt [delete? Boolean]) Id)
@@ -661,8 +659,8 @@ DivideCurveEquidistant
 ;; (define (surface-surface-intersection surface-a surface-b (tolerance com-omit) (create? com-omit))
 ;;   (rhino-check-invoke "SurfaceSurfaceIntersection" surface-a surface-b tolerance create?))
 
-(def-com surface-volume ([id Id]) (Vector Double Double))
-(def-com surface-volume-centroid ([id Id]) Points)
+(def-com surface-volume ([shape Id]) (Vector Double Double))
+(def-com surface-volume-centroid ([shape Id]) Points)
 
 (def-com add-sweep1 ([rail Id] [shapes Ids]#| #:opt [start Point] [end Point] [closed? Boolean] [style Integer] [up Point] [simplify Integer] [arg Number] |#) Ids)
 (def-com add-sweep2 ([rails Ids] [shapes Ids] #| #:opt [start Point] [end Point] [closed? Boolean] [simple? Boolean] [maintain-height? Boolean] [simplify Integer] [arg Number] |#) Ids)
@@ -670,13 +668,13 @@ DivideCurveEquidistant
 (def-com transform-object ([shape Id] [matrix Rh-Matrix] #:opt [copy? Boolean]) Id)
 (def-com transform-objects ([shapes Ids] [matrix Rh-Matrix] #:opt [copy? Boolean]) Ids)
 ;(def (transform-object-special "TransformObject") (id rh-matrix #:opt Boolean) id)
-#|
-(def unit-absolute-tolerance (#:opt tolerance Boolean) number)
-(def unselect-all-objects () integer)
-(def unselect-object (id) Boolean)
-(def unselect-objects (arr-ids) integer)
-(def unselected-objects (#:opt (include-lights? Boolean) (include-grips? Boolean)) maybe-ids)
 
+(def-com unit-absolute-tolerance (#:opt [tolerance Double] [model-units? Boolean]) Double)
+(def-com unselect-all-objects () Integer)
+(def-com unselect-object ([shape Id]) Boolean)
+(def-com unselect-objects ([shapes Ids]) Integer)
+(def-com unselected-objects (#:opt [select? Boolean] [include-lights? Boolean] [include-grips? Boolean]) IdsOrVoid)
+#|
 #;(define (unselected-objects . args)
   (with-handlers ((com-exn? (λ (e) (list))))
     (vector->list
@@ -733,20 +731,12 @@ DivideCurveEquidistant
 |#
 ;;HACK: We need to provide com-omit to the view parameter
 (def-com zoom-extents (#:opt (view String) (all? Boolean)) Void)
-#|
-(def zoom-selected (#:opt string Boolean) void)
+
+;(def-com zoom-selected (#:opt string Boolean) void)
 
 ; commands
 
-(provide thicken)
-(define (thicken object distance)
-  (unselect-all-objects)
-  (select-object object)
-  (command (format "OffsetSrf Solid=Yes ~A _Enter" distance))
-  (begin0
-      (singleton-id (last-created-objects))
-    (unselect-all-objects)))
-
+#|
 
 (provide create-solid-command)
 (define (create-solid-command ids)
