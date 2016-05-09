@@ -322,3 +322,7 @@
 
 (define (frame-filename [filename : String] [i : Integer])
   (~a filename "-frame-" (~r i #:min-width 3  #:pad-string "0")))
+
+(provide radians<-degrees)
+(define (radians<-degrees [d : Real])
+  (* d (/ pi 180)))
