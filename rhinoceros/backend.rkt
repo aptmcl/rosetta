@@ -916,3 +916,12 @@ Command: _viewcapturetofile
      (do-ref ([r shape])
        (%object-layer r new-layer))
      (void)]))
+
+(require "../base/bim-operations.rkt")
+(provide (all-from-out "../base/bim-operations.rkt"))
+(define-values/invoke-unit/infer bim-levels@)
+(define-values/invoke-unit/infer bim-ops@)
+(define-values/invoke-unit/infer bim-extra-ops@)
+(provide-signature-elements bim-levels^)
+(provide-signature-elements bim-ops^)
+(provide-signature-elements bim-extra-ops^)
