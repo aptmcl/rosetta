@@ -258,7 +258,7 @@
                    (map loc->list-real pts)))))
 
 (def-shape (irregular-prism [cbs : Locs (list (ux) (uxy) (uy))] [dir : VecOrZ 1])
-  (let ((dir (if (number? dir) (vz dir) dir)))
+  (let ((dir (if (number? dir) (vz dir (car cbs)) dir)))
     (%addFrustum (map loc->list-real cbs)
                  (map (lambda ([p : Loc]) (loc->list-real (p+v p dir))) cbs))))
 
@@ -574,9 +574,7 @@
    ;Is there a way of enabling updates?
   #t)
 
-;;BIM
-(def-shape (polygonal-mass [pts : Locs] [height : Real])
-  (%addFrustum (map loc->list-real pts)
-               (map (lambda ([pt : Loc]) (loc->list-real (+z pt height))) pts)))
-
-(include "../base/bim.rkc")
+(require "../base/bim-operations.rkt")
+(define-values/invoke-unit/infer bim-ops@)
+(provide (all-from-out "../base/bim-operations.rkt"))
+(provide-signature-elements bim-ops^)
