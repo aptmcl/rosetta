@@ -244,21 +244,20 @@
                                #:levelb levelb
                                #:levelt levelt)))
 
-(define (curtain-wall p0 p1 p2 p3 level)
-  (send/rcv-id "curtainWall"
-               (curtainwallstrc* #:p0coordx (cx p0)
-                                 #:p0coordy (cy p0)
-                                 #:p0coordz (cz p0)
-                                 #:p1coordx (cx p1)
-                                 #:p1coordy (cy p1)
-                                 #:p1coordz (cz p1)
-                                 #:p2coordx (cx p2)
-                                 #:p2coordy (cy p2)
-                                 #:p2coordz (cz p2)
-                                 #:p3coordx (cx p3)
-                                 #:p3coordy (cy p3)
-                                 #:p3coordz (cz p3)
-                                 #:level level)))
+(define (curtain-wall p0 p1 ucoords vcoords base-level top-level)
+  (let ((ucoordsdouble (convert-list ucoords))
+        (vcoordsdouble (convert-list vcoords)))
+    (send/rcv-id "curtainWall"
+                 (curtainwallstrc* #:p0coordx (cx p0)
+                                   #:p0coordy (cy p0)
+                                   #:p0coordz (cz p0)
+                                   #:p1coordx (cx p1)
+                                   #:p1coordy (cy p1)
+                                   #:p1coordz (cz p1)
+                                   #:ulinecoord ucoordsdouble
+                                   #:vlinecoord vcoordsdouble
+                                   #:baselevel base-level
+                                   #:toplevel top-level))))
 
 (define (mass-wall p0 p1 p2 p3 height level)
   (send/rcv-id "massWall"
