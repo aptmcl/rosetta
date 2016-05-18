@@ -205,7 +205,9 @@
 ;so we use this instead
 (: random-range (-> Real Real Real))
 (define (random-range x0 x1)
-  (+ x0 (random (- x1 x0))))
+  (if (= x0 x1)
+      x0
+      (+ x0 (random (- x1 x0)))))
 
 (provide random-integer-range)
 (define (random-integer-range [x0 : Integer] [x1 : Integer]) : Integer
