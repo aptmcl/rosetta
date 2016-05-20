@@ -24,10 +24,11 @@
 
 (define (move-addon-files)
   (define (safe-move from todir)
-    (let ((to (string-append todir "\\" from)))
-      #;(rename-file-or-directory from to #t)
-      (copy-file from to #t)
-      (delete-file from)))
+    (let-values ([(path suffix ignore) (split-path from)])
+      (let ((to (build-path todir suffix)))
+        #;(rename-file-or-directory from to #t)
+        (copy-file from to #t)
+        (delete-file from))))
   (unless moved-addon-files?
     (display "Checking plugin...")
     (when (and (directory-exists? "C:\\ProgramData\\Autodesk\\Revit\\Addins\\2015")
