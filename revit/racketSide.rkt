@@ -23,6 +23,11 @@
 (define moved-addon-files? #f)
 
 (define (move-addon-files)
+  (define (safe-move from todir)
+    (let ((to (string-append todir "\\" from)))
+      #;(rename-file-or-directory from to #t)
+      (copy-file from to #t)
+      (delete-file from)))
   (unless moved-addon-files?
     (display "Checking plugin...")
     (when (and (directory-exists? "C:\\ProgramData\\Autodesk\\Revit\\Addins\\2015")
@@ -31,12 +36,13 @@
                (file-exists? proto)
                (file-exists? dll))
       (display "Installing plugin...")
-      (rename-file-or-directory addin "C:\\ProgramData\\Autodesk\\Revit\\Addins\\2015\\RosettaToRevit.addin" #t)
-      (rename-file-or-directory google "C:\\Autodesk\\Google.ProtocolBuffers.dll" #t)
-      (rename-file-or-directory proto "C:\\Autodesk\\protobuf-net.dll" #t)
-      (rename-file-or-directory dll "C:\\Autodesk\\RosettaToRevit.dll" #t))
+      (safe-move addin "C:\\ProgramData\\Autodesk\\Revit\\Addins\\2015")
+      (safe-move google "C:\\Autodesk\\Google")
+      (safe-move proto "C:\\Autodesk")
+      (safe-move dll "C:\\Autodesk"))
     (displayln "done!")
     (set! moved-addon-files? #t)))
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
