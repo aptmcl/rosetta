@@ -31,11 +31,14 @@
          disable-update
          map-curve-division
          map-curve-length-division
+         map-surface-division
          prompt-point
          prompt-integer
          prompt-real
          prompt-shape
          render-view
+         surface-domain
+         surface-frame-at
          view
          view-top
          select-shape
@@ -216,9 +219,7 @@
     (%add-polyline (append pts (list (car pts))))))
 
 (def-shape (surface-regular-polygon [edges : Integer 3] [center : Loc (u0)] [radius : Real 1] [angle : Real 0] [inscribed? : Boolean #f])
-  (let ((pts (regular-polygon-vertices edges center radius angle inscribed?)))
-    (error "TO BE DONE")))
-
+  (shape-ref (surface-polygon (regular-polygon-vertices edges center radius angle inscribed?))))
 
 (def-shape (regular-pyramid-frustum [edges : Integer 4] [cb : Loc (u0)] [rb : Real 1] [a : Real 0] [h/ct : (U Real Loc) 1] [rt : Real 1] [inscribed? : Boolean #f])
   (let-values ([(cb ct)
@@ -251,7 +252,7 @@
      (regular-polygon-vertices edges ct r a inscribed?))))
 
 (def-shape (irregular-prism [cbs : Locs (list (ux) (uxy) (uy))] [dir : VecOrZ 1])
-  (let ((dir (if (number? dir) (vz dir) dir)))
+  (let ((dir (if (number? dir) (vz dir (car cbs)) dir)))
     (%irregular-pyramid-frustum
      cbs
      (map (lambda ([p : Loc]) (p+v p dir)) cbs))))
@@ -504,6 +505,14 @@
               (else
                (error "Continue this"))))))))
 
+(def-shape (thicken [surf : (Extrudable-Shape RefOp)] [h : Real 1])
+  (%unselect-all-objects)
+  (%select-objects (shape-refs surf))
+  (%command (format "OffsetSrf Solid=Yes ~A _Enter" h))
+  (begin0
+    (single-ref-or-union (%last-created-objects))
+    (mark-deleted! surf)))
+
 (def-shape (slice [shape : Shape] [p : Loc (u0)] [n : Vec (vz 1 p)])
   (let ([p (loc-from-o-vz p n)])
     (begin0
@@ -636,7 +645,7 @@
 
 (def-shape (rotate [shape : Shape] [a : Real pi/2] [p0 : Loc (u0)] [p1 : Loc (+z p0 1)])
   (let ((refs (shape-refs shape)))
-    (%rotate-objects refs p0 (radians->degrees (coterminal a)) p1 #f)
+    (%rotate-objects refs p0 (radians->degrees (coterminal a)) (p-p p1 p0) #f)
     (mark-deleted! shape)
     (single-ref-or-union refs)))
 
@@ -713,6 +722,47 @@
         (for/list : (Listof A) ((i : Integer (in-range 0 limit)) ;;HACK needed to prevent a bug in Typed Racket
                                 (t : Real (in-vector params)))
           (f (%curve-perp-frame r t)))))))
+
+;;Surface selectors
+
+(define (surface-domain [surface : Shape]) : (Values Real Real Real Real)
+  (let ((u (%surface-domain (shape-ref surface) 0))
+        (v (%surface-domain (shape-ref surface) 1)))
+    (values (vector-ref u 0) (vector-ref u 1)
+            (vector-ref v 0) (vector-ref v 1))))
+
+(define (surface-frame-at [surface : Shape] [u : Real] [v : Real]) : Loc
+  (%surface-frame (shape-ref surface) u v))
+
+
+(define map-surface-division
+  (case-lambda #:forall (R)
+    [([f : (Real -> R)] [surface : Shape] [nu : Integer] [nv : Integer])
+     (actual-map-surface-division f surface nu #t nv #t)]
+    [([f : (Real -> R)] [surface : Shape] [nu : Integer] [lastu? : Boolean] [nv : Integer])
+     (actual-map-surface-division f surface nu lastu? nv #t)]
+    [([f : (Real -> R)] [surface : Shape] [nu : Integer] [lastu? : Boolean] [nv : Integer] [lastv? : Boolean])
+     (actual-map-surface-division f surface nu lastu? nv lastv?)]))
+
+(: map-surface-division (All (A) (->* ((-> Loc A) Shape Integer) (Boolean Integer Boolean) (Listof (Option A)))))
+(define (actual-map-surface-division [f : (-> Loc A)]
+                                     [surface : Shape]
+                                     [nu : Integer] [lastu? : Boolean #t]
+                                     [nv : Integer nu] [lastv? : Boolean lastu?]) : (Listof A)
+  (let* ((r (shape-ref surface))
+         (u (%surface-domain r 0))
+         (v (%surface-domain r 1))
+         (start-u (vector-ref u 0))
+         (end-u (vector-ref u 1))
+         (start-v (vector-ref v 0))
+         (end-v (vector-ref v 1)))
+    (map-division (lambda ([u : Real] [v : Real])
+                    (let ((pt (%surface-frame r (vector u v))))
+                      (if (%is-point-on-surface r pt)
+                          (f pt)
+                          #f)))
+                  start-u end-u nu lastu?
+                  start-v end-v nv lastv?)))
 
 (define (delete-all-shapes) : Void
   (%delete-objects (%all-objects #f #f #f))
@@ -865,10 +915,11 @@ Command: _viewcapturetofile
        (%object-layer r new-layer))
      (void)]))
 
-;;BIM
-(def-shape (polygonal-mass [pts : Locs] [height : Real])
-  (%irregular-pyramid-frustum
-   pts
-   (map (lambda ([pt : Loc]) (+z pt height)) pts)))
-
-(include "../base/bim.rkc")
+(require "../base/bim-operations.rkt")
+(provide (all-from-out "../base/bim-operations.rkt"))
+(define-values/invoke-unit/infer bim-levels@)
+(define-values/invoke-unit/infer bim-ops@)
+(define-values/invoke-unit/infer bim-extra-ops@)
+(provide-signature-elements bim-levels^)
+(provide-signature-elements bim-ops^)
+(provide-signature-elements bim-extra-ops^)

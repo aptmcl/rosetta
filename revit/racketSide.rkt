@@ -23,20 +23,23 @@
 (define moved-addon-files? #f)
 
 (define (move-addon-files)
+  (define (safe-move from todir)
+    (when (file-exists? from)
+      (let-values ([(path suffix ignore) (split-path from)])
+        (let ((to (build-path todir suffix)))
+          (copy-file from to #t)
+          (delete-file from)))))
   (unless moved-addon-files?
     (display "Checking plugin...")
-    (when (and (directory-exists? "C:\\ProgramData\\Autodesk\\Revit\\Addins\\2015")
-               (file-exists? addin)
-               (file-exists? google)
-               (file-exists? proto)
-               (file-exists? dll))
-      (display "Installing plugin...")
-      (rename-file-or-directory addin "C:\\ProgramData\\Autodesk\\Revit\\Addins\\2015\\RosettaToRevit.addin" #t)
-      (rename-file-or-directory google "C:\\Autodesk\\Google.ProtocolBuffers.dll" #t)
-      (rename-file-or-directory proto "C:\\Autodesk\\protobuf-net.dll" #t)
-      (rename-file-or-directory dll "C:\\Autodesk\\RosettaToRevit.dll" #t))
-    (displayln "done!")
-    (set! moved-addon-files? #t)))
+    (if (directory-exists? "C:\\ProgramData\\Autodesk\\Revit\\Addins\\2015")
+        (begin
+          (safe-move addin "C:\\ProgramData\\Autodesk\\Revit\\Addins\\2015")
+          (safe-move google "C:\\Autodesk")
+          (safe-move proto "C:\\Autodesk")
+          (safe-move dll "C:\\Autodesk")
+          (set! moved-addon-files? #t)
+          (displayln "done!"))
+        (displayln "I could not find Revit 2015. Are you sure it is installed?"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
@@ -244,21 +247,20 @@
                                #:levelb levelb
                                #:levelt levelt)))
 
-(define (curtain-wall p0 p1 p2 p3 level)
-  (send/rcv-id "curtainWall"
-               (curtainwallstrc* #:p0coordx (cx p0)
-                                 #:p0coordy (cy p0)
-                                 #:p0coordz (cz p0)
-                                 #:p1coordx (cx p1)
-                                 #:p1coordy (cy p1)
-                                 #:p1coordz (cz p1)
-                                 #:p2coordx (cx p2)
-                                 #:p2coordy (cy p2)
-                                 #:p2coordz (cz p2)
-                                 #:p3coordx (cx p3)
-                                 #:p3coordy (cy p3)
-                                 #:p3coordz (cz p3)
-                                 #:level level)))
+(define (curtain-wall p0 p1 ucoords vcoords base-level top-level)
+  (let ((ucoordsdouble (convert-list ucoords))
+        (vcoordsdouble (convert-list vcoords)))
+    (send/rcv-id "curtainWall"
+                 (curtainwallstrc* #:p0coordx (cx p0)
+                                   #:p0coordy (cy p0)
+                                   #:p0coordz (cz p0)
+                                   #:p1coordx (cx p1)
+                                   #:p1coordy (cy p1)
+                                   #:p1coordz (cz p1)
+                                   #:ulinecoord ucoordsdouble
+                                   #:vlinecoord vcoordsdouble
+                                   #:baselevel base-level
+                                   #:toplevel top-level))))
 
 (define (mass-wall p0 p1 p2 p3 height level)
   (send/rcv-id "massWall"

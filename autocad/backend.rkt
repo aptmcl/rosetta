@@ -466,7 +466,7 @@ The following example does not work as intended. Rotating the args to closed-spl
     (%irregular-pyramid-frustum
      (regular-polygon-vertices edges cb rb a inscribed?)
      (regular-polygon-vertices edges ct rt a inscribed?))))
-
+ 
 (def-shape (regular-pyramid [edges : Integer 4] [cb : Loc (u0)] [rb : Real 1] [a : Real 0] [h/ct : (U Real Loc) 1] [inscribed? : Boolean #f])
   (let-values ([(cb ct)
                 (if (number? h/ct)
@@ -481,7 +481,7 @@ The following example does not work as intended. Rotating the args to closed-spl
   (shape-ref (regular-pyramid-frustum edges cb r a h/ct r inscribed?)))
 
 (def-shape (irregular-prism [cbs : Locs (list (ux) (uxy) (uy))] [dir : VecOrZ 1])
-  (let ((dir (if (number? dir) (vz dir) dir)))
+  (let ((dir (if (number? dir) (vz dir (car cbs)) dir)))
     (%irregular-pyramid-frustum
      cbs
      (map (lambda ([p : Loc]) (p+v p dir)) cbs))))
@@ -897,7 +897,23 @@ The following example does not work as intended. Rotating the args to closed-spl
   (%select-shapes-command (shapes-refs ss))
   (void))
 
-;;Mass modeling
+(require racket/unit)
+(require "../base/bim-operations.rkt")
+(provide (all-from-out "../base/bim-operations.rkt"))
+(define-values/invoke-unit/infer bim-levels@)
+(provide-signature-elements bim-levels^)
+
+#;(define-unit autocad-bim-ops@
+  (import bim-shape-ops^ bim-levels^)
+  (export bim-ops^)
+  (define-values/invoke-unit bim-ops@ (import bim-shape-ops^ bim-levels^) (export (except bim-ops^ polygonal-mass)))
+  (def-shape/no-provide (polygonal-mass [pts : Locs] [height : Real])
+    (let ((com (%add-3d-poly (append pts (list (car pts))))))
+      (single-ref-or-union
+       (map (lambda ([r : Ref])
+              (let ((height (if (< (cz (%normal r)) 0) (- height) height)))
+                (%add-extruded-solid r height 0.0)))
+            (%add-region (list com)))))))
 
 (def-shape (polygonal-mass [pts : Locs] [height : Real])
   (let ((com (%add-3d-poly (append pts (list (car pts))))))
@@ -905,11 +921,13 @@ The following example does not work as intended. Rotating the args to closed-spl
      (map (lambda ([r : Ref])
             (let ((height (if (< (cz (%normal r)) 0) (- height) height)))
               (%add-extruded-solid r height 0.0)))
-          (%add-region (list com))))
-    #;#;
-    (%closed com #t)
-    (single-ref-or-union
-     (%extrude-command-length (list com) height #t))))
+          (%add-region (list com))))))
 
-;;BIM
-(include "../base/bim.rkc")
+#;(define-values/invoke-unit/infer autocad-bim-ops@)
+(define-values/invoke-unit/infer (export (rename bim-ops^ [dummy polygonal-mass])) bim-ops@) ;;This is odd, but 'except' cannot be used in an export clause.
+;(define-values/invoke-unit bim-ops@ (import bim-shape-ops^) (export (except bim-ops^ polygonal-mass))) ;;This is odd, but 'except' cannot be used in an export clause.
+
+(define-values/invoke-unit/infer bim-extra-ops@)
+(provide-signature-elements bim-levels^)
+(provide-signature-elements bim-ops^)
+(provide-signature-elements bim-extra-ops^)

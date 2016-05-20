@@ -833,9 +833,12 @@ The following example does not work as intended. Rotating the args to closed-spl
 
 (provide ;;BIM extensions
  level
- def-bim-family
- (rename-out [%delete-levels delete-levels])
- )
+ current-level
+ upper-level
+ default-level-to-level-height
+ create-layer
+ shape-layer
+ (rename-out [%delete-levels delete-levels]))
 
 (define (level height)
   (%create-level #:height height))
@@ -847,8 +850,8 @@ The following example does not work as intended. Rotating the args to closed-spl
   (%upper-level #:level lvl
                 #:height height))
 
-(require racket/include)
-(include "../base/bimdefs.rkc")
+(require "../base/bim-families.rkt")
+(provide (all-from-out "../base/bim-families.rkt"))
 
 (def-shape (beam [p0 : Loc] [p1 : Loc] [family : Beam-Family (default-beam-family)])
   (%beam (loc-in-world p0) (loc-in-world p1)
@@ -902,3 +905,16 @@ The following example does not work as intended. Rotating the args to closed-spl
                      -10000)
          #:height (or (door-family-height family)
                       -10000)))
+
+
+;;This should be moved to a different place (probably, an independent unit)
+(provide slab-rectangle roof-rectangle)
+(define (slab-rectangle [p : Loc] [length : Real] [width : Real] [level : Level (current-level)] [family : Slab-Family (default-slab-family)])
+  (slab (list p (+x p length) (+xy p length width) (+y p width))
+        level
+        family))
+
+(define (roof-rectangle [p : Loc] [length : Real] [width : Real] [level : Level (current-level)] [family : Roof-Family (default-roof-family)])
+  (roof (list p (+x p length) (+xy p length width) (+y p width))
+        level
+        family))
