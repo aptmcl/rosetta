@@ -56,7 +56,7 @@
  wallmsg
  ((required primitive:int32 bottomindex 1)
   (required primitive:double thickness 2)
-  (required primitive:double angle 3)
+  (optional struct:polyarcsmessage arcs 3)
   (required primitive:int32 upperindex 4)
   (required primitive:string material 5)
   (required primitive:string type 6)
@@ -64,8 +64,15 @@
   (required primitive:double alphaangle 8)
   (required primitive:double betaangle 9)
   (required primitive:string typeprofile 10)
-  (optional primitive:double height 11)
-  (optional primitive:string profilename 12)))
+  (optional struct:pointsmessage pts 11)
+  (optional primitive:string profilename 12)
+  (optional primitive:double height 13)
+  (optional primitive:bool flipped 14)
+  (optional primitive:double bottomoffset 15)
+  (optional primitive:string layer 16)))
+(define-message-type
+ getwallmsg
+ ((repeated struct:wallmsg walls 1) (repeated primitive:string guid 2)))
 (define-message-type
  wallmessage
  ((required primitive:double p0x 1)
@@ -91,7 +98,8 @@
   (required primitive:bool hole 6)
   (required primitive:string name 7)
   (required primitive:bool flipx 8)
-  (required primitive:bool flipy 9)))
+  (required primitive:bool flipy 9)
+  (required struct:additionalparams params 10)))
 (define-message-type
  windowmessage
  ((required primitive:string guid 1)
@@ -173,10 +181,20 @@
  ((required primitive:double height 1) (required primitive:string guid 2)))
 (define-message-type
  curtainwallmsg
- ((required primitive:int32 numpoints 1)
-  (required primitive:int32 numarcs 2)
+ ((required struct:pointsmessage pts 1)
+  (required struct:polyarcsmessage arcs 2)
   (required primitive:int32 bottomindex 3)
-  (required primitive:int32 upperindex 4)))
+  (required primitive:int32 upperindex 4)
+  (repeated primitive:double primaries 5)
+  (repeated primitive:double secondaries 6)
+  (repeated primitive:bool mainpanels 7)
+  (required primitive:string panelmaterial 8)
+  (required primitive:string secpanelmaterial 9)
+  (required primitive:string verticalframematerial 10)
+  (required primitive:string horizontalframematerial 11)
+  (required primitive:string framematerial 12)
+  (required primitive:double panelsangle 13)
+  (required primitive:double offset 14)))
 (define-message-type
  translatemsg
  ((required primitive:double tx 1)
@@ -190,7 +208,9 @@
   (required primitive:double thickness 3)
   (required primitive:string type 4)
   (required primitive:int32 bottomlevel 5)
-  (repeated primitive:int32 subpolygons 6)))
+  (repeated primitive:int32 subpolygons 6)
+  (required struct:pointsmessage pts 7)
+  (required struct:polyarcsmessage parcs 8)))
 (define-message-type
  meshmessage
  ((required primitive:double level 1)
@@ -223,7 +243,8 @@
   (optional primitive:int32 upperindex 10)
   (required primitive:double slantangle 11)
   (required primitive:double slantdirection 12)
-  (required primitive:string profilename 13)))
+  (required primitive:string profilename 13)
+  (required primitive:double bottomoffset 14)))
 (define-message-type
  storymsg
  ((required primitive:double height 1) (required primitive:string name 2)))
@@ -409,7 +430,8 @@
   (required primitive:double bottom 8)
   (required primitive:double angle 9)
   (required struct:additionalparams params 10)
-  (optional primitive:string name 11)))
+  (optional primitive:string name 11)
+  (required primitive:int32 level 12)))
 (define-message-type
  libpartmsg
  ((required primitive:string name 1)
@@ -443,5 +465,38 @@
 (define-message-type
  splinemsg
  ((required struct:pointsmessage points 1) (required primitive:bool closed 2)))
+(define-message-type linemsg ((optional struct:pointsmessage pts 1)))
+(define-message-type
+ polylinemsg
+ ((optional struct:pointsmessage pts 1)
+  (optional struct:polyarcsmessage arcs 2)))
+(define-message-type
+ getlinesmsg
+ ((repeated struct:linemsg lines 1) (repeated primitive:string guids 2)))
+(define-message-type
+ getpolylinesmsg
+ ((repeated struct:polylinemsg polylines 1)
+  (repeated primitive:string guids 2)))
+(define-message-type
+ revshellmsg
+ ((optional struct:pointsmessage pts 1)
+  (optional struct:polyarcsmessage arcs 2)
+  (required primitive:int32 level 3)
+  (required primitive:bool flipped 4)
+  (required primitive:double slantangle 5)
+  (required primitive:double revangle 6)
+  (required primitive:double distortionangle 7)
+  (required primitive:double begangle 8)))
+(define-message-type
+ extshellmsg
+ ((optional struct:pointsmessage pts 1)
+  (optional struct:polyarcsmessage arcs 2)
+  (required primitive:int32 level 3)
+  (required primitive:bool flipped 4)
+  (required primitive:double cextx 5)
+  (required primitive:double cexty 6)
+  (required primitive:double extx 7)
+  (required primitive:double exty 8)
+  (required primitive:double extz 9)))
 
 (provide (all-defined-out))

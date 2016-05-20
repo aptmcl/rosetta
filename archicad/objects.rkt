@@ -53,7 +53,7 @@ Make the wall always double slanted whatever the angles?
               #:top-level [top-level (upper-level #:level bottom-level)]
               ;;ArchiCAD ONLY --------------------------------------------------------------
               #:thickness [thickness (default-wall-thickness)]
-              #:angle [angle 0]
+              #:arcs [arcs (list)]
               
               #:type-of-material [type-of-material (default-wall-type-of-material)]
               #:material [material 
@@ -63,25 +63,33 @@ Make the wall always double slanted whatever the angles?
               #:beta-angle [beta-angle (/ pi 2)]
               #:type-of-profile [type-of-profile (default-wall-profile)]
               #:height [height null]
-              #:profile-name [profile-name ""])
+              #:profile-name [profile-name ""]
+              #:flipped? [flipped? #f]
+              #:bottom-offset [bottom-offset 0]
+              #:layer [layer "ArchiCAD Layer"])
   (let* (
          ;Don't like this if, was unable to do (unless (null? height) #:height height)
          (msg (if (null? height)
-                  (wallmsg* #:bottomindex (storyinfo-index bottom-level)
+                  (wallmsg* #:pts (prepare-points-to-send guide)
+                            #:bottomindex (storyinfo-index bottom-level)
                             #:upperindex (storyinfo-index top-level)
                             #:thickness thickness
-                            #:angle angle
+                            #:arcs (prepare-arcs-to-send arcs)
                             #:material material
                             #:type type-of-material
                             #:referenceline alignment
                             #:alphaangle alpha-angle
                             #:betaangle beta-angle
                             #:typeprofile type-of-profile
-                            #:profilename profile-name)
-                  (wallmsg* #:bottomindex (storyinfo-index bottom-level)
+                            #:profilename profile-name
+                            #:flipped (not flipped?)
+                            #:bottomoffset bottom-offset
+                            #:layer layer)
+                  (wallmsg* #:pts (prepare-points-to-send guide)
+                            #:bottomindex (storyinfo-index bottom-level)
                             #:upperindex (storyinfo-index top-level)
                             #:thickness thickness
-                            #:angle angle
+                            #:arcs (prepare-arcs-to-send arcs)
                             #:material material
                             #:type type-of-material
                             #:referenceline alignment
@@ -89,9 +97,12 @@ Make the wall always double slanted whatever the angles?
                             #:betaangle beta-angle
                             #:typeprofile type-of-profile
                             #:height height
-                            #:profilename profile-name))))
+                            #:profilename profile-name
+                            #:flipped (not flipped?)
+                            #:bottomoffset bottom-offset
+                            #:layer layer))))
     (write-msg "NewWall" msg)
-    (send-points guide)
+    ;(send-points guide)
     (let ((result (read-guids*)))
       (if (and (elementidlist-crashmaterial result) 
                (crash-on-no-material?))
@@ -117,37 +128,63 @@ Example of usage:
 |#
 (define (door guid
               objloc
-              #:type-of-door [type-of-door "Door 18"]
+              #:type [type-of-door "Door 18"]
               #:width [width -10000]
               #:bottom [bottom 0]
               #:height [height -10000]
               #:flip-x [flip-x #f]
-              #:flip-y [flip-y #f])
-  (send/rcv-id "Door" (doormessage* #:guid guid
-                                    #:objloc objloc
-                                    #:zpos bottom
-                                    #:height height
-                                    #:width width
-                                    #:hole #f
-                                    #:name type-of-door
-                                    #:flipx flip-x
-                                    #:flipy flip-y)))
+              #:flip-y [flip-y #f]
+              #:additional-parameters [additional-parameters (list)])
+  (let ((splitted-list (split-params-list additional-parameters)))
+        (send/rcv-id "Door" (doormessage* #:guid guid
+                                          #:objloc objloc
+                                          #:zpos bottom
+                                          #:height height
+                                          #:width width
+                                          #:hole #f
+                                          #:name type-of-door
+                                          #:flipx flip-x
+                                          #:flipy flip-y
+                                          #:params (additionalparams* #:names (list-ref splitted-list 0)
+                                                                      #:integers (list-ref splitted-list 1)
+                                                                      #:doubles (list-ref splitted-list 2)
+                                                                      #:strings (list-ref splitted-list 3)
+                                                                      #:booleans (list-ref splitted-list 4)
+                                                                      #:intarrays (list-ref splitted-list 5)
+                                                                      #:doublearrays (list-ref splitted-list 6)
+                                                                      #:stringarrays (list-ref splitted-list 7)
+                                                                      #:boolarrays (list-ref splitted-list 8)
+                                                                      #:paramtype (list-ref splitted-list 9)
+                                                                      #:isarray (list-ref splitted-list 10))))))
 
 ;;TODO Review this function
 (define (hole-in-wall guid
                       objloc
                       [width -10000] [bottom 0] [height -10000]
                       #:flip-x [flip-x #f]
-                      #:flip-y [flip-y #f])
-  (send/rcv-id "Door" (doormessage* #:guid guid
-                                    #:objloc objloc
-                                    #:zpos bottom
-                                    #:height height
-                                    #:width width
-                                    #:hole #t
-                                    #:name ""
-                                    #:flipx flip-x
-                                    #:flipy flip-y)))
+                      #:flip-y [flip-y #f]
+                      #:additional-parameters [additional-parameters (list)])
+  (let ((splitted-list (split-params-list additional-parameters)))
+        (send/rcv-id "Door" (doormessage* #:guid guid
+                                          #:objloc objloc
+                                          #:zpos bottom
+                                          #:height height
+                                          #:width width
+                                          #:hole #t
+                                          #:name ""
+                                          #:flipx flip-x
+                                          #:flipy flip-y
+                                          #:params (additionalparams* #:names (list-ref splitted-list 0)
+                                                                      #:integers (list-ref splitted-list 1)
+                                                                      #:doubles (list-ref splitted-list 2)
+                                                                      #:strings (list-ref splitted-list 3)
+                                                                      #:booleans (list-ref splitted-list 4)
+                                                                      #:intarrays (list-ref splitted-list 5)
+                                                                      #:doublearrays (list-ref splitted-list 6)
+                                                                      #:stringarrays (list-ref splitted-list 7)
+                                                                      #:boolarrays (list-ref splitted-list 8)
+                                                                      #:paramtype (list-ref splitted-list 9)
+                                                                      #:isarray (list-ref splitted-list 10))))))
 
 ;;TODO Review this function
 (define (hole-in-wall-test guid list-points [list-arcs (list)])
@@ -200,25 +237,75 @@ Example of usage:
 Function to create a Curtain Wall
  
  TODO information
+ main-or-distinct-panel: determines if a panel is a main panel or distinct panel.
+                         They have different materials, controlled by #:panel-material #:secondary-panel-material
  
  returns: curtain-wall id
 
 Example of usage: 
 (send (delete-stories)(curtain-wall (list (xy 0 0)(xy 10 0))))
+
+(send (curtain-wall (list (x 0)(x 10)) (list 2 3 5)(list 0.5 1 1.5) #:main-panel? (list #t #t #t #f #f #f #t #t #t))) 
+
+(send (slab (list (x 0)(x 10)(xy 10 10)(xy 0 10)) #:parcs (list pi pi pi pi))
+      (curtain-wall (list (x 0)(x 10)(xy 10 10)(xy 0 10)(xy 0 0)) (list 2 3 5)(list 0.5 1 1.5) #:panels-angle pi/3 #:main-panel? (list #t #t #t #f #f #f #t #t #t) #:arcs (list pi pi pi pi)))
+
+(send (slab (list (x 0)(x 10)(xy 10 10)(xy 0 10)) #:parcs (list pi pi pi pi))
+      (curtain-wall (list (x 0)(x 10)(xy 10 10)(xy 0 10)(xy 0 0)) (list 1)(list 1) #:main-panel? (list #f) #:arcs (list pi pi pi pi)))
+
 |#
 (define (curtain-wall guide
-                      #:listarcs [listarcs (list)]
+                      primary-segments
+                      secondary-segments
+                      #:panel-material [panel-material "Metal - Stainless Steel"]
+                      #:secondary-panel-material [secondary-panel-material "Glass - Blue"]
+                      #:panels-angle [panels-angle 0]
+                      #:vertical-segments-material [vertical-segments-material "Metal - Stainless Steel"]
+                      #:horizontal-segments-material [horizontal-segments-material "Metal - Stainless Steel"]
+                      #:boundary-material [boundary-material "Metal - Stainless Steel"]
+                      #:main-panel? [main-panel?
+                                     (for/list ([i (* (length primary-segments)
+                                                      (length secondary-segments))])
+                                               #t)]
+                      #:arcs [arcs (list)]
                       #:bottom-level [bottom-level (current-level)]
-                      #:top-level [top-level (upper-level #:level bottom-level)])
-  (let ((c-wall-msg (curtainwallmsg* #:numpoints (length guide)
-                                     #:numarcs (length listarcs)
+                      #:top-level [top-level (upper-level #:level bottom-level)]
+                      #:offset [offset 0])
+  (let ((c-wall-msg (curtainwallmsg* #:pts (prepare-points-to-send guide)
+                                     #:arcs (prepare-arcs-to-send arcs)
                                      #:bottomindex (storyinfo-index bottom-level)
-                                     #:upperindex (storyinfo-index top-level))))
-    (write-msg "CurtainWall" c-wall-msg)
-    (send-points guide)
-    (send-arcs listarcs)
-    (read-guid)))
+                                     #:upperindex (storyinfo-index top-level)
+                                     #:primaries primary-segments
+                                     #:secondaries secondary-segments
+                                     #:mainpanels main-panel?
+                                     #:panelmaterial secondary-panel-material
+                                     #:secpanelmaterial panel-material 
+                                     #:verticalframematerial vertical-segments-material
+                                     #:horizontalframematerial horizontal-segments-material
+                                     #:framematerial boundary-material
+                                     #:panelsangle panels-angle
+                                     #:offset offset)))
+    (send/rcv-id "CurtainWall" c-wall-msg)))
+#|Functions do not work. Nothing happens. 
+(define (internal-transform-curtain-wall cwall op x y z angle scale)
+  (let ((msg (transformmsg* #:op op
+                            #:guid cwall
+                            #:x x
+                            #:y y
+                            #:z z
+                            #:angle angle
+                            #:scale scale)))
+    (send/no-rcv "CWTransform" msg)))
 
+(define (translate-curtain-wall cwall pt)
+  (internal-transform-curtain-wall cwall "t" (cx pt)(cy pt)(cz pt) 0 0))
+
+(define (rotate-curtain-wall cwall angle)
+  (internal-transform-curtain-wall cwall "r" 0 0 0 angle 0))
+
+(define (scale-curtain-wall cwall scale)
+  (internal-transform-curtain-wall cwall "s" 0 0 0 0 scale))
+|#
 #|
 Function to create a Slab
  TODO information
@@ -266,6 +353,7 @@ Example of usage:
               #:type-of-material [type-of-material (default-slab-type-of-material)]
               #:material [material (cond [(eq? type-of-material "Basic") "GENERIC - INTERNAL CLADDING"]
                                          [(eq? type-of-material "Composite") "Generic Slab/Roof"])]
+              #:parcs [parcs (list)]
               ;#:sub-polygons [sub-polygons (list (length guide))]
               )
   (let* ((slab-info (prepare-points guide))
@@ -274,10 +362,12 @@ Example of usage:
                                  #:thickness thickness
                                  #:type type-of-material
                                  #:bottomlevel (storyinfo-index bottom-level)
-                                 #:subpolygons (cadr slab-info))))
+                                 #:subpolygons (cadr slab-info)
+                                 #:pts (prepare-points-to-send (car slab-info))
+                                 #:parcs (prepare-arcs-to-send parcs))))
     (write-msg "NewSlab" slab-msg)  
     ;(send-points guide)
-    (send-points (car slab-info))
+    ;(send-points (car slab-info))
     ;(read-guid)
     (read-material-guid)))
 
@@ -389,7 +479,8 @@ Example of usage:
                 #:slant-angle [slant-angle (/ pi 2)]
                 #:slant-direction [slant-direction 0]
                 #:height [height null]
-                #:profile-name [profile-name ""])
+                #:profile-name [profile-name ""]
+                #:bottom-offset [bottom-offset 0])
   (let ((msg (if (null? height)
                  (columnmsg*  #:posx (cx orig-pos)
                               #:posy (cy orig-pos)
@@ -402,7 +493,8 @@ Example of usage:
                               #:slantdirection slant-direction
                               #:bottomindex (storyinfo-index bottom-level)
                               #:upperindex (storyinfo-index top-level)
-                              #:profilename profile-name)
+                              #:profilename profile-name
+                              #:bottomoffset bottom-offset)
                  (columnmsg*  #:posx (cx orig-pos)
                               #:posy (cy orig-pos)
                               #:bottom (cz orig-pos)
@@ -415,7 +507,8 @@ Example of usage:
                               #:slantdirection slant-direction
                               #:bottomindex (storyinfo-index bottom-level)
                               #:upperindex (storyinfo-index top-level)
-                              #:profilename profile-name))))
+                              #:profilename profile-name
+                              #:bottomoffset bottom-offset))))
     (write-msg "NewColumn" msg)
     ;(read-guid)
     (read-material-guid)))
@@ -428,7 +521,8 @@ Example of usage:
                 #:depth [depth 0.15]
                 #:width [width 0.15]
                 #:height [height null]
-                #:profile-name [profile-name ""])
+                #:profile-name [profile-name ""]
+                #:bottom-offset [bottom-offset 0])
   (let ((msg (if (null? height)
                  (columnmsg*  #:posx (cx p1)
                               #:posy (cy p1)
@@ -437,11 +531,12 @@ Example of usage:
                               #:angle angle
                               #:depth depth
                               #:width width
-                              #:slantangle (abs (- pi/2 (sph-psi (p-p p1 p2))))
-                              #:slantdirection (+ (sph-phi (p-p p1 p2)) pi/2)
+                              #:slantangle (- pi/2 (sph-psi (p-p p2 p1)))
+                              #:slantdirection  (- (sph-phi (p-p p2 p1)) pi/2)
                               #:bottomindex (storyinfo-index bottom-level)
                               #:upperindex (storyinfo-index top-level)
-                              #:profilename profile-name)
+                              #:profilename profile-name
+                              #:bottomoffset bottom-offset)
                  (columnmsg*  #:posx (cx p1)
                               #:posy (cy p1)
                               #:bottom (cz p1)
@@ -450,11 +545,12 @@ Example of usage:
                               #:angle angle
                               #:depth depth
                               #:width width
-                              #:slantangle (abs (- pi/2 (sph-psi (p-p p1 p2))))
-                              #:slantdirection (+ (sph-phi (p-p p1 p2)) pi/2)
+                              #:slantangle (- pi/2 (sph-psi (p-p p2 p1)))
+                              #:slantdirection  (- (sph-phi (p-p p2 p1)) pi/2) 
                               #:bottomindex (storyinfo-index bottom-level)
                               #:upperindex (storyinfo-index top-level)
-                              #:profilename profile-name))))
+                              #:profilename profile-name
+                              #:bottomoffset bottom-offset))))
     (write-msg "NewColumn" msg)
     ;(read-guid)
     (read-material-guid)))
@@ -567,6 +663,7 @@ Example of usage:
 |#
 (define (object index/name
                 orig-pos
+                #:level [level (current-level)]
                 #:use-xy-fix-size? [use-xy-fix-size? #f]
                 #:x-ratio [x-ratio 1]
                 #:y-ratio [y-ratio 1]
@@ -585,6 +682,7 @@ Example of usage:
                               #:yratio y-ratio
                               #:bottom height
                               #:angle angle
+                              #:level (storyinfo-index level)
                               #:params (additionalparams* #:names (list-ref splitted-list 0)
                                                           #:integers (list-ref splitted-list 1)
                                                           #:doubles (list-ref splitted-list 2)
@@ -606,6 +704,7 @@ Example of usage:
                               #:yratio y-ratio
                               #:bottom height
                               #:angle angle
+                              #:level (storyinfo-index level)
                               #:params (additionalparams* #:names (list-ref splitted-list 0)
                                                           #:integers (list-ref splitted-list 1)
                                                           #:doubles (list-ref splitted-list 2)
