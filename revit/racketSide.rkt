@@ -24,23 +24,22 @@
 
 (define (move-addon-files)
   (define (safe-move from todir)
-    (and (file-exists? from)
-         (let-values ([(path suffix ignore) (split-path from)])
-           (let ((to (build-path todir suffix)))
-             (copy-file from to #t)
-             (delete-file from)
-             #t))))
+    (when (file-exists? from)
+      (let-values ([(path suffix ignore) (split-path from)])
+        (let ((to (build-path todir suffix)))
+          (copy-file from to #t)
+          (delete-file from)))))
   (unless moved-addon-files?
     (display "Checking plugin...")
     (if (directory-exists? "C:\\ProgramData\\Autodesk\\Revit\\Addins\\2015")
-        (if (or (safe-move addin "C:\\ProgramData\\Autodesk\\Revit\\Addins\\2015")
-                (safe-move google "C:\\Autodesk")
-                (safe-move proto "C:\\Autodesk")
-                (safe-move dll "C:\\Autodesk"))
-            (displayln "Installing plugin...done!")
-            (displayln "done!"))
-        (displayln "I could not find Revit 2015. Are you sure it is installed?"))
-    (set! moved-addon-files? #t)))
+        (begin
+          (safe-move addin "C:\\ProgramData\\Autodesk\\Revit\\Addins\\2015")
+          (safe-move google "C:\\Autodesk")
+          (safe-move proto "C:\\Autodesk")
+          (safe-move dll "C:\\Autodesk")
+          (set! moved-addon-files? #t)
+          (displayln "done!"))
+        (displayln "I could not find Revit 2015. Are you sure it is installed?"))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
