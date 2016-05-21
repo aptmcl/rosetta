@@ -1,5 +1,8 @@
 #lang racket
-(provide (except-out (all-defined-out)))
+(provide (except-out (all-defined-out)
+                     rotate-p-x
+                     rotate-p-y
+                     rotate-p-z))
 
 (require "protobuf1/protobuf.rkt")
 (require "protobuf1/encoding.rkt")
@@ -12,6 +15,27 @@
 ;(require math/array)
 (require math/matrix)
 ;(require htdp/matrix)
+
+(define (rotate-p-x p a)
+  (xyz (cx p)
+       (- (* (cy p) (cos a))
+          (* (cz p) (sin a)))
+       (+ (* (cy p) (sin a))
+          (* (cz p) (cos a)))))
+
+(define (rotate-p-y p a)
+  (xyz (+ (* (cx p) (cos a))
+          (* (cz p) (sin a)))
+       (cy p)
+       (+ (* (cx p) (- (sin a)))
+          (* (cz p) (cos a)))))
+
+(define (rotate-p-z p a)
+  (xyz (- (* (cx p) (cos a))
+          (* (cy p) (sin a)))
+       (+ (* (cx p) (sin a))
+          (* (cy p) (cos a)))
+       (cz p)))
 
 #|
 Function used to create a circle
@@ -50,6 +74,14 @@ the arc will be the opposite of the previous result.
                                   #:angle angle
                                   #:begang begang
                                   #:endang endang)))
+(define (line p0 p1)
+  (write-msg "Line" (linemsg* #:pts (prepare-points-to-send (list p0 p1))))
+  (read-guid))
+
+(define (poly-line pts [arcs (list)])
+  (write-msg "PolyLine" (polylinemsg* #:pts (prepare-points-to-send pts)
+                                  #:arcs (prepare-arcs-to-send arcs)))
+  (read-guid))
 
 (define (spline pts [closed? #f])
   (write-msg "Spline" (splinemsg* #:points (prepare-points-to-send pts)
@@ -121,6 +153,47 @@ Example of usage: (shell lstpoints lstarcs)
   (send-points listpoints)
   (send-arcs-complex listarcs)
   (read-guid))
+
+#|(send (rev-shell (list (x 0)(x 5)(xy 5 5)(xy 0 5)(x 0))
+                   #:revolution-angle (- pi)))
+|#
+;TODO Give access to rev-axis-base
+(define (rev-shell pts
+                   [arcs (list)]
+                   #:level [level (current-level)]
+                   #:flipped? [flipped? #f]
+                   #:slant-angle [slant-angle 0]
+                   #:revolution-angle [revolution-angle 2pi]
+                   #:distortion-angle [distortion-angle pi/2]
+                   #:begin-angle [begin-angle 0])
+  (send/rcv-id "RevShell" (revshellmsg* #:pts (prepare-points-to-send pts)
+                                        #:arcs (prepare-arcs-to-send arcs)
+                                        #:level (storyinfo-index level)
+                                        #:flipped (not flipped?)
+                                        #:slantangle slant-angle
+                                        #:revangle revolution-angle
+                                        #:distortionangle distortion-angle
+                                        #:begangle begin-angle)))
+#|
+(send (ext-shell (list (x 0)(x 5)(xy 5 5)(xy 0 5)(xy 0 0))
+                   (xyz 3 3 3)
+                   #:extrusion-center (xy 10 10)))
+|#
+(define (ext-shell pts
+                   extrusion-vector
+                   [arcs (list)]
+                   #:level [level (current-level)]
+                   #:flipped? [flipped? #f]
+                   #:extrusion-center [extrusion-center (u0)])
+  (send/rcv-id "ExtShell" (extshellmsg* #:pts (prepare-points-to-send pts)
+                                        #:arcs (prepare-arcs-to-send arcs)
+                                        #:level (storyinfo-index level)
+                                        #:flipped (not flipped?)
+                                        #:cextx (cx extrusion-center)
+                                        #:cexty (cy extrusion-center)
+                                        #:extx (cx extrusion-vector)
+                                        #:exty (cy extrusion-vector)
+                                        #:extz (cz extrusion-vector))))
 
 #|
 Function to rotate a Shell
@@ -276,12 +349,48 @@ Example of usage: (hole-on-shell hpoints harcs hheight shellId)
                   (+pol center radius (+ rotation angle)))
                 0 (* 2 pi) sides #f))
 
+(define (apply-height points height)
+  (map (lambda (p)
+             (+z p vector))
+       points))
+
 (define (apply-vector points vector)
   (map (lambda (p)
-         (if (number? vector)
-             (+z p vector)
-             (+xyz p (cx vector) (cy vector) (cz vector))))
+             (+xyz p (cx vector) (cy vector) (cz vector)))
        points))
+;(send (sweep (polygon-points (u0) 4 1) (list (z 0)(xz 1 1)(xz 2 2)(xz 1 3)(xz 0 2))))
+(define (apply-r-vector points vector)
+  (map (lambda (p)
+         #;(p+v p vector)
+         
+         (println vector)
+         (println (sph-psi vector))
+         (p+v (rotate-p-y (rotate-p-z p (sph-phi vector))
+                          (sph-psi vector))
+              vector))
+         #|
+         (define pp p #;(p+v p vector))
+         (define p-aux (xyz (- (* (cx pp) (cos (sph-phi vector)))
+                               (* (cy pp) (sin (sph-phi vector))))
+                            (+ (* (cx pp) (sin (sph-phi vector)))
+                               (* (cy pp) (cos (sph-phi vector))))
+                            (cz pp)))
+         ;(p+v p-aux vector)
+         (println (+xyz (xyz (cx p-aux)
+                    (- (* (cy p-aux) (cos (- pi/2 (sph-psi vector))))
+                       (* (cz p-aux) (sin (- pi/2 (sph-psi vector)))))
+                    (+ (* (cy p-aux) (sin (- pi/2 (sph-psi vector))))
+                       (* (cz p-aux) (cos (- pi/2 (sph-psi vector))))))
+                       (cx vector)(cy vector)(cz vector)))
+         (+xyz p-aux #;(xyz (cx p-aux)
+                    (- (* (cy p-aux) (cos (- pi/2 (sph-psi vector))))
+                       (* (cz p-aux) (sin (- pi/2 (sph-psi vector)))))
+                    (+ (* (cy p-aux) (sin (- pi/2 (sph-psi vector))))
+                       (* (cz p-aux) (cos (- pi/2 (sph-psi vector))))))
+                       (cx vector)(cy vector)(cz vector)))
+          |#
+       points))
+
 
 ;(polygon-apply-vector (list (xy -1 -1)(xy 1 -1)(xy 1 1)(xy -1 1)) (z 1))
 ;Returns the solid points of a vector applied to all given points

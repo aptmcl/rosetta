@@ -16,7 +16,7 @@
 
 (define (bim-connection)
   (unless conn
-    (error "Did you forget to initialize the backend?"))
+    (ensure-connection))
   conn)
 
 (define server-addr "localhost")
@@ -57,7 +57,7 @@
     (file-stream-buffer-mode in 'none)
     (file-stream-buffer-mode out 'none)
     (set! conn (connection in out))
-    (current-level (check-level))))
+    (set-current-level! (make-parameter (check-level)))))
 
 ;;Function to quit
 (define (disconnect)
@@ -241,8 +241,12 @@ The file is merely used for consulting
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define default-level-to-level-height (make-parameter 3))
-
-(define current-level (make-parameter #f))
+(define current-level (make-parameter (storyinfo* #:exists #t
+                                                  #:index 0
+                                                  #:level 0
+                                                  #:name "")))
+(define (set-current-level! level)
+  (set! current-level level))
 
 (define (check-level)
   (write-msg-name "CheckStory")
