@@ -16,6 +16,8 @@
          (rename-out [%disconnect disconnect]
                      [%send send]
                      [%ensure-connection start-backend])
+         ;;This needs to be fixed to only provide what is relevant
+         (all-from-out "objects.rkt")
 #|         mt
          ft
          box
