@@ -11,6 +11,7 @@
 (require (prefix-in % "geometry.rkt"))
 (require (prefix-in % "objects.rkt"))
 (require (prefix-in % "communication.rkt"))
+(require "objects.rkt")
 (provide immediate-mode?
          current-backend-name
          (rename-out [%disconnect disconnect]
