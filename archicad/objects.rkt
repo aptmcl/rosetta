@@ -44,6 +44,7 @@ Example of usage:
 (send (wall (list (xy 0 0)(xy 10 0))))
 (send (wall (list (xy 0 0)(xy 10 0)) #:type-of-profile "Slanted" #:alpha-angle (* 80 DEGRAD)))
 (send (wall (list (xy 0 0)(xy 10 0)) #:type-of-profile "DoubleSlanted" #:alpha-angle (* 100 DEGRAD) #:beta-angle (* 80 DEGRAD)))
+(send (wall (list (x 0)(x 5)) #:ref-material "Metal - Brass" #:opp-material "Metal - Brass" #:sid-material "Metal - Brass"))
 Question:
 Make the wall always double slanted whatever the angles?
 |#
@@ -66,15 +67,30 @@ Make the wall always double slanted whatever the angles?
               #:profile-name [profile-name ""]
               #:flipped? [flipped? #f]
               #:bottom-offset [bottom-offset 0]
-              #:layer [layer "ArchiCAD Layer"])
+              #:layer [layer "ArchiCAD Layer"]
+              #:windows [windows (list)]
+              #:window-order [window-order (list)]
+              #:reference-offset [reference-offset 0]
+              #:ref-material [ref-material ""]
+              #:opp-material [opp-material ""]
+              #:sid-material [sid-material ""])
   (let* (
+         
          ;Don't like this if, was unable to do (unless (null? height) #:height height)
          (msg (if (null? height)
-                  (wallmsg* #:pts (prepare-points-to-send guide)
-                            #:bottomindex (storyinfo-index bottom-level)
-                            #:upperindex (storyinfo-index top-level)
+                  (wallmsg* #:pts (if (pointsmessage? guide)
+                                      guide
+                                      (prepare-points-to-send guide))
+                            #:bottomindex (if (storyinfo? bottom-level)
+                                              (storyinfo-index bottom-level)
+                                              bottom-level)
+                            #:upperindex (if (storyinfo? top-level)
+                                             (storyinfo-index top-level)
+                                             top-level)
                             #:thickness thickness
-                            #:arcs (prepare-arcs-to-send arcs)
+                            #:arcs (if (polyarcsmessage? arcs)
+                                       arcs
+                                       (prepare-arcs-to-send arcs))
                             #:material material
                             #:type type-of-material
                             #:referenceline alignment
@@ -84,12 +100,26 @@ Make the wall always double slanted whatever the angles?
                             #:profilename profile-name
                             #:flipped (not flipped?)
                             #:bottomoffset bottom-offset
-                            #:layer layer)
-                  (wallmsg* #:pts (prepare-points-to-send guide)
-                            #:bottomindex (storyinfo-index bottom-level)
-                            #:upperindex (storyinfo-index top-level)
+                            #:layer layer
+                            #:windows windows
+                            #:windoworder window-order
+                            #:refoffset reference-offset
+                            #:refmat ref-material
+                            #:oppmat opp-material
+                            #:sidmat sid-material)
+                  (wallmsg* #:pts (if (pointsmessage? guide)
+                                      guide
+                                      (prepare-points-to-send guide))
+                            #:bottomindex (if (storyinfo? bottom-level)
+                                              (storyinfo-index bottom-level)
+                                              bottom-level)
+                            #:upperindex (if (storyinfo? top-level)
+                                             (storyinfo-index top-level)
+                                             top-level)
                             #:thickness thickness
-                            #:arcs (prepare-arcs-to-send arcs)
+                            #:arcs (if (polyarcsmessage? arcs)
+                                       arcs
+                                       (prepare-arcs-to-send arcs))
                             #:material material
                             #:type type-of-material
                             #:referenceline alignment
@@ -100,7 +130,13 @@ Make the wall always double slanted whatever the angles?
                             #:profilename profile-name
                             #:flipped (not flipped?)
                             #:bottomoffset bottom-offset
-                            #:layer layer))))
+                            #:layer layer
+                            #:windows windows
+                            #:windoworder window-order
+                            #:refoffset reference-offset
+                            #:refmat ref-material
+                            #:oppmat opp-material
+                            #:sidmat sid-material))))
     (write-msg "NewWall" msg)
     ;(send-points guide)
     (let ((result (read-guids*)))
@@ -112,6 +148,12 @@ Make the wall always double slanted whatever the angles?
           (if (null? (cdr (elementidlist-guid result)))
               (car (elementidlist-guid result))
               (elementidlist-guid result))))))
+
+(define (sub-polygons-from-list holes [counter 0])
+  (if (null? holes)
+      (list)
+      (cons (+ counter (length (car holes)))
+            (sub-polygons-from-list (cdr holes) (+ counter (length (car holes)))))))
 
 #|
 Function used to create a door into an existing wall
@@ -127,18 +169,18 @@ Example of usage:
 (send (door wallId 1.0 0.0))
 |#
 (define (door guid
-              objloc
+              p
               #:type [type-of-door "Door 18"]
               #:width [width -10000]
-              #:bottom [bottom 0]
               #:height [height -10000]
               #:flip-x [flip-x #f]
               #:flip-y [flip-y #f]
               #:additional-parameters [additional-parameters (list)])
   (let ((splitted-list (split-params-list additional-parameters)))
         (send/rcv-id "Door" (doormessage* #:guid guid
-                                          #:objloc objloc
-                                          #:zpos bottom
+                                          #:objloc (cx p)
+                                          #:depthoffset (cy p)
+                                          #:zpos (cz p)
                                           #:height height
                                           #:width width
                                           #:hole #f
@@ -208,19 +250,23 @@ Example of usage:
 (send (window wallId 1.0 1.0))
 |#
 (define (window guid
-                objloc
-                #:width [width 0.9]
-                #:height [height 1.5]
+                p
+                #:width [width -10000]
+                #:height [height -10000]
+                #:flip-x [flip-x #f]
+                #:flip-y [flip-y #f]
                 #:type-of-window [type-of-window "Window 18"]
-                #:zpos [zpos 0]
                 #:additional-parameters [additional-parameters (list)])
   (let ((splitted-list (split-params-list additional-parameters)))
     (send/rcv-id "Window" (windowmessage* #:guid guid
-                                          #:objloc objloc
-                                          #:zpos zpos
+                                          #:objloc (cx p)
+                                          #:depthoffset (cy p)
+                                          #:zpos (cz p)
                                           #:name type-of-window
                                           #:width width
                                           #:height height
+                                          #:flipx flip-x
+                                          #:flipy flip-y
                                           #:params (additionalparams* #:names (list-ref splitted-list 0)
                                                                       #:integers (list-ref splitted-list 1)
                                                                       #:doubles (list-ref splitted-list 2)
@@ -327,14 +373,7 @@ Example of usage:
     [(list? (car points)) (cons counter (sub-polys-position (cdr points) (+ counter (length (car points)))))]
     [else (sub-polys-position (cdr points) (+ counter 1))]))
 
-;;TODO rework conditions, too confusing...
-(define (close-guide points first-el [no-lists? #t])
-  (cond
-    [(and (null? points) no-lists?)(list first-el)]
-    [(null? points) (list)]
-    [(and (list? (car points)) no-lists?) (cons first-el (cons (append (car points) (list (caar points))) (close-guide (cdr points) first-el #f)))]
-    [(list? (car points))(cons (append (car points) (list (caar points))) (close-guide (cdr points) first-el #f))]
-    [else (cons (car points) (close-guide (cdr points) first-el no-lists?))]))
+
 
 (define (prepare-points points)
   (let ((points (close-guide points (car points))))
@@ -572,13 +611,14 @@ Example of usage:
     (write-msg "ColumnsSlab" msg)
     ;(read-guid)
     (read-material-guid)))
-
+(define default-beam-profile (make-parameter ""))
 (define (beam p0
               p1
               #:beam-height [beam-height 0.15]
               #:beam-width [beam-width 0.15]
               #:bottom-level [bottom-level (current-level)]
-              #:material [material "GENERIC - STRUCTURAL"])
+              #:material [material "GENERIC - STRUCTURAL"]
+              #:profile [profile (default-beam-profile)])
   (let* ((new-p0 (loc-in-world p0))
          (new-p1 (loc-in-world p1))
          (msg (beammsg* #:x0 (cx new-p0)
@@ -590,7 +630,8 @@ Example of usage:
                         #:levelheight (cz new-p0)
                         #:bottomlevel (storyinfo-index bottom-level)
                         #:angle (- pi/2 (sph-psi (p-p p1 p0)))
-                        #:material material)))
+                        #:material material
+                        #:profilename profile)))
     (write-msg "Beam" msg)
     ;(read-guid)
     (read-material-guid)))
@@ -992,7 +1033,7 @@ Receives the ID of two elements to trim
 Example of usage: (trim-element idWall idSlab)
 |#
 (define (trim-elements ID1 ID2)
-  (send/rcv-id "Trim" (trimmsg* #:guid1 ID1
+  (send/no-rcv "Trim" (trimmsg* #:guid1 ID1
                                 #:guid2 ID2)))
 
 #|
@@ -1057,3 +1098,13 @@ TODO: delete a door that was deleted before because the wall was deleted
   (let ((msg (elementidlist* #:guid eleList
                              #:crashmaterial #f)))
     (write-msg "Delete" msg)))
+
+(define (render file-name)
+  (send/no-rcv "Render" (rendermsg* #:file file-name)))
+
+(define (group elements)
+  (send/rcv-id "Group" (elementidlist* #:guid elements
+                                       #:crashmaterial #f)))
+
+(define (delete-all-elements)
+  (write-msg-name "DeleteAll"))
