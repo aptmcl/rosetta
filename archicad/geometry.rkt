@@ -1,8 +1,5 @@
 #lang racket
-(provide (except-out (all-defined-out)
-                     rotate-p-x
-                     rotate-p-y
-                     rotate-p-z))
+(provide (except-out (all-defined-out)))
 
 (require "protobuf1/protobuf.rkt")
 (require "protobuf1/encoding.rkt")
@@ -80,7 +77,7 @@ the arc will be the opposite of the previous result.
 
 (define (poly-line pts [arcs (list)])
   (write-msg "PolyLine" (polylinemsg* #:pts (prepare-points-to-send pts)
-                                  #:arcs (prepare-arcs-to-send arcs)))
+                                      #:arcs (prepare-arcs-to-send arcs)))
   (read-guid))
 
 (define (spline pts [closed? #f])
@@ -157,6 +154,8 @@ Example of usage: (shell lstpoints lstarcs)
 #|(send (rev-shell (list (x 0)(x 5)(xy 5 5)(xy 0 5)(x 0))
                    #:revolution-angle (- pi)))
 |#
+(define default-shell-type-of-material (make-parameter "Basic"))
+(define default-shell-thickness (make-parameter 0.3))
 ;TODO Give access to rev-axis-base
 (define (rev-shell pts
                    [arcs (list)]
@@ -165,7 +164,14 @@ Example of usage: (shell lstpoints lstarcs)
                    #:slant-angle [slant-angle 0]
                    #:revolution-angle [revolution-angle 2pi]
                    #:distortion-angle [distortion-angle pi/2]
-                   #:begin-angle [begin-angle 0])
+                   #:begin-angle [begin-angle 0]
+                   #:axis [axis (list 0 0 0 0
+                                      0 0 0 0
+                                      0 0 0 0)]
+                   #:type-of-material [type-of-material (default-shell-type-of-material)]
+                   #:material [material (cond [(eq? type-of-material "Basic") "GENERIC - STRUCTURAL"]
+                                              [(eq? type-of-material "Composite") "Generic Wall/Shell"])]
+                   #:thickness [thickness (default-shell-thickness)])
   (send/rcv-id "RevShell" (revshellmsg* #:pts (prepare-points-to-send pts)
                                         #:arcs (prepare-arcs-to-send arcs)
                                         #:level (storyinfo-index level)
@@ -173,9 +179,13 @@ Example of usage: (shell lstpoints lstarcs)
                                         #:slantangle slant-angle
                                         #:revangle revolution-angle
                                         #:distortionangle distortion-angle
-                                        #:begangle begin-angle)))
+                                        #:begangle begin-angle
+                                        #:axis axis
+                                        #:material material
+                                        #:type type-of-material
+                                        #:thickness thickness)))
 #|
-(send (ext-shell (list (x 0)(x 5)(xy 5 5)(xy 0 5)(xy 0 0))
+(send (ext-shell (list (x 0)(x 5)(xy 5 5)(xy 0 5))
                    (xyz 3 3 3)
                    #:extrusion-center (xy 10 10)))
 |#
@@ -184,8 +194,13 @@ Example of usage: (shell lstpoints lstarcs)
                    [arcs (list)]
                    #:level [level (current-level)]
                    #:flipped? [flipped? #f]
-                   #:extrusion-center [extrusion-center (u0)])
-  (send/rcv-id "ExtShell" (extshellmsg* #:pts (prepare-points-to-send pts)
+                   #:extrusion-center [extrusion-center (u0)]
+                   #:visible-edges (visible-edges (list))
+                   #:type-of-material [type-of-material (default-shell-type-of-material)]
+                   #:material [material (cond [(eq? type-of-material "Basic") "GENERIC - STRUCTURAL"]
+                                              [(eq? type-of-material "Composite") "Generic Wall/Shell"])]
+                   #:thickness [thickness (default-shell-thickness)])
+  (send/rcv-id "ExtShell" (extshellmsg* #:pts (prepare-points-to-send (close-guide pts (car pts)))
                                         #:arcs (prepare-arcs-to-send arcs)
                                         #:level (storyinfo-index level)
                                         #:flipped (not flipped?)
@@ -193,7 +208,11 @@ Example of usage: (shell lstpoints lstarcs)
                                         #:cexty (cy extrusion-center)
                                         #:extx (cx extrusion-vector)
                                         #:exty (cy extrusion-vector)
-                                        #:extz (cz extrusion-vector))))
+                                        #:extz (cz extrusion-vector)
+                                        #:visible visible-edges
+                                        #:material material
+                                        #:type type-of-material
+                                        #:thickness thickness)))
 
 #|
 Function to rotate a Shell
@@ -276,19 +295,30 @@ Example of usage: (hole-on-shell hpoints harcs hheight shellId)
                         (list (xy 2 0)(xy 11 0)(xy 6 1)(xy 10 1))
                         (list (xy 3 0)(xy 8 0)(xy 7 1)(xy 11 1)))))
 |#
-(define (morph reference-point coords edges polygons)
-  (let* ((msg (morphmsg* #:refx (cx reference-point)
+(define default-morph-material (make-parameter "GENERIC - PREFABRICATED"))
+(define (morph reference-point coords edges polygons #:material [material (default-morph-material)] #:level [level (current-level)])
+  (let* ((sub-poly-sizes (get-sub-polys polygons))
+         (msg-poly-sizes (intlistmsg* #:ilist sub-poly-sizes))
+         (msg (morphmsg* #:refx (cx reference-point)
                          #:refy (cy reference-point)
-                         #:refz (cz reference-point)))
-        (sub-poly-sizes (get-sub-polys polygons))
-        (msg-poly-sizes (intlistmsg* #:ilist sub-poly-sizes)))
+                         #:refz (cz reference-point)
+                         #:pts (prepare-points-to-send coords)
+                         #:edges (prepare-points-to-send edges)
+                         #:polygons (prepare-points-to-send (flatten polygons))
+                         #:sizespolygons msg-poly-sizes
+                         #:material material
+                         #:level (storyinfo-index level))))
+    (send/rcv-id "Morph" msg)
+    #|
     (write-msg "Morph" msg)
     (send-points coords)
     (send-points edges)
     (send-points (flatten polygons))
     (let ((output (connection-out (bim-connection))))
       (write-sized serialize msg-poly-sizes output))
-    (read-guid)))
+    (read-guid)
+    |#
+    ))
 
 (define (box-2points point1 point2 #:bottom-level [bottom-level (current-level)])
   (let ((x1 (cx point1))
@@ -417,11 +447,11 @@ Example of usage: (hole-on-shell hpoints harcs hheight shellId)
 
 ;(send (polygon-points (list (xy -1 -1)(xy 1 -1)(xy 1 1)(xy -1 1))))
 ;Creates a polygon given points. Points aren't closed.
-(define (polygon points)
+(define (polygon points [material (default-morph-material)])
   (let* ((sides (length points))
          (edges (polygon-edges sides))
          (polygon (internal-polygon sides)))
-    (morph (u0) points edges polygon)))
+    (morph (u0) points edges polygon #:material material)))
 
 ;Returns edges for a solid formed by points
 ;Points are given in counter-clockwise order,
@@ -460,11 +490,11 @@ Example of usage: (hole-on-shell hpoints harcs hheight shellId)
 ;Counter-clockwise order
 ;First half of points: base
 ;Second half of points: top 
-(define (solid solid-points)
+(define (solid solid-points [material (default-morph-material)] #:level [level (current-level)])
   (let* ((sides (/ (length solid-points) 2))
          (edges (solid-edges solid-points))
          (polygons (internal-solid sides)))
-  (morph (u0) solid-points edges polygons)))
+  (morph (u0) solid-points edges polygons #:material material #:level level)))
 
 (define (test-solid-edges sides [start 0])
   (let* ((base-edges (polygon-edges sides start))
@@ -567,8 +597,10 @@ Example of usage: (hole-on-shell hpoints harcs hheight shellId)
     (morph (u0) (sweep-coords points path) (sweep-solid-edges sides n-faces) (sweep-solid-polygons sides n-faces))))
 
 ;Does an extrusion given polygon-points and a vector for the extrusion
-(define (extrusion polygon-points vector)
-  (solid (polygon-apply-vector polygon-points vector)))
+(define (extrusion polygon-points vector [material (default-morph-material)] #:level [level (current-level)])
+  (solid (polygon-apply-vector polygon-points vector)
+         material
+         #:level level))
 
 (define (pyramid-points p top sides radius [rotation 0])
   (if (number? top)
@@ -597,10 +629,16 @@ Example of usage: (hole-on-shell hpoints harcs hheight shellId)
                                   0 sides sides #f)))
     (append (list base) sides-pol)))
 
-(define (pyramid pyramid-points)
+(define (pyramid pyramid-points [material (default-morph-material)] #:level [level (current-level)])
   (let ((edges (pyramid-edges pyramid-points))
         (polygons (internal-pyramid pyramid-points)))
-  (morph (u0) pyramid-points edges polygons)))
+  (morph (u0) pyramid-points edges polygons #:material material #:level level)))
+
+(define (pyramid-by-center center top radius [n-points 100] #:material [material (default-morph-material)]#:level [level (current-level)])
+  (pyramid (append (polygon-points center n-points radius)
+                   (list top))
+           material
+           #:level level)) 
 
 (define (morph-translate el x y z)
   (send/rcv-id "MorphTrans" (transformmsg* #:guid el
