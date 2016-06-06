@@ -11,11 +11,14 @@
 (require (prefix-in % "geometry.rkt"))
 (require (prefix-in % "objects.rkt"))
 (require (prefix-in % "communication.rkt"))
+(require "objects.rkt")
 (provide immediate-mode?
          current-backend-name
          (rename-out [%disconnect disconnect]
                      [%send send]
                      [%ensure-connection start-backend])
+         ;;This needs to be fixed to only provide what is relevant
+         (all-from-out "objects.rkt")
 #|         mt
          ft
          box
