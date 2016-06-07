@@ -71,11 +71,12 @@ the arc will be the opposite of the previous result.
                                   #:angle angle
                                   #:begang begang
                                   #:endang endang)))
-(define (line p0 p1)
+;Line is not used, instead we use a poly-lines for line
+#;(define (line p0 p1)
   (write-msg "Line" (linemsg* #:pts (prepare-points-to-send (list p0 p1))))
   (read-guid))
 
-(define (poly-line pts [arcs (list)])
+(define (line pts [arcs (list)])
   (write-msg "PolyLine" (polylinemsg* #:pts (prepare-points-to-send pts)
                                       #:arcs (prepare-arcs-to-send arcs)))
   (read-guid))
@@ -447,7 +448,7 @@ Example of usage: (hole-on-shell hpoints harcs hheight shellId)
 
 ;(send (polygon-points (list (xy -1 -1)(xy 1 -1)(xy 1 1)(xy -1 1))))
 ;Creates a polygon given points. Points aren't closed.
-(define (polygon points [material (default-morph-material)])
+(define (surface-polygon points [material (default-morph-material)])
   (let* ((sides (length points))
          (edges (polygon-edges sides))
          (polygon (internal-polygon sides)))
