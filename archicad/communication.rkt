@@ -139,6 +139,17 @@
                                            #:py lst-y 
                                            #:pz lst-z) (connection-out (bim-connection)))))
 |#
+
+;;TODO rework conditions, too confusing...
+(define (close-guide points first-el [no-lists? #t])
+  (cond
+    [(and (null? points) no-lists?)(list first-el)]
+    [(null? points) (list)]
+    [(and (list? (car points)) no-lists?) (cons first-el (cons (append (car points) (list (caar points))) (close-guide (cdr points) first-el #f)))]
+    [(list? (car points))(cons (append (car points) (list (caar points))) (close-guide (cdr points) first-el #f))]
+    [else (cons (car points) (close-guide (cdr points) first-el no-lists?))]))
+
+
 (define (prepare-points-to-send lst)
   (let ((lst-x (list))
         (lst-y (list))
