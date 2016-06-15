@@ -106,7 +106,8 @@
   (required primitive:bool flipx 8)
   (required primitive:bool flipy 9)
   (required struct:additionalparams params 10)
-  (required primitive:double depthoffset 11)))
+  (required primitive:double depthoffset 11)
+  (optional primitive:string layer 12)))
 (define-message-type
  windowmessage
  ((optional primitive:string guid 1)
@@ -118,7 +119,8 @@
   (required primitive:double height 7)
   (required primitive:double depthoffset 8)
   (required primitive:bool flipx 9)
-  (required primitive:bool flipy 10)))
+  (required primitive:bool flipy 10)
+  (optional primitive:string layer 11)))
 (define-message-type
  circlemessage
  ((required primitive:double p0x 1)
@@ -204,7 +206,8 @@
   (required primitive:string horizontalframematerial 11)
   (required primitive:string framematerial 12)
   (required primitive:double panelsangle 13)
-  (required primitive:double offset 14)))
+  (required primitive:double offset 14)
+  (optional primitive:string layer 15)))
 (define-message-type
  translatemsg
  ((required primitive:double tx 1)
@@ -220,13 +223,15 @@
   (required primitive:int32 bottomlevel 5)
   (repeated primitive:int32 subpolygons 6)
   (required struct:pointsmessage pts 7)
-  (required struct:polyarcsmessage parcs 8)))
+  (required struct:polyarcsmessage parcs 8)
+  (optional primitive:string layer 9)))
 (define-message-type
  meshmessage
  ((required primitive:double level 1)
   (required primitive:string material 2)
   (required primitive:int32 bottomlevel 3)
-  (optional primitive:string overridematerial 4)))
+  (optional primitive:string overridematerial 4)
+  (optional primitive:string layer 5)))
 (define-message-type
  rotatemsg
  ((repeated primitive:string guid 1)
@@ -254,7 +259,8 @@
   (required primitive:double slantangle 11)
   (required primitive:double slantdirection 12)
   (required primitive:string profilename 13)
-  (required primitive:double bottomoffset 14)))
+  (optional primitive:double bottomoffset 14)
+  (optional primitive:string layer 15)))
 (define-message-type
  storymsg
  ((required primitive:double height 1) (required primitive:string name 2)))
@@ -274,7 +280,8 @@
   (required primitive:string material 3)
   (required primitive:string type 4)
   (required primitive:string referenceline 5)
-  (required primitive:double thickness 6)))
+  (required primitive:double thickness 6)
+  (optional primitive:string layer 7)))
 (define-message-type
  columnsfromslab
  ((required primitive:string guid 1)
@@ -282,7 +289,8 @@
   (required primitive:string material 3)
   (required primitive:double depth 4)
   (required primitive:double width 5)
-  (required primitive:bool circlebased 6)))
+  (required primitive:bool circlebased 6)
+  (optional primitive:string layer 7)))
 (define-message-type
  stairsmsg
  ((required primitive:string name 1)
@@ -294,14 +302,16 @@
   (required primitive:double angle 7)
   (required primitive:int32 bottomindex 8)
   (required primitive:bool usexyfixsize 9)
-  (required struct:additionalparams params 10)))
+  (required struct:additionalparams params 10)
+  (optional primitive:string layer 11)))
 (define-message-type
  roofmsg
  ((required primitive:double height 1)
   (required primitive:string material 2)
   (required primitive:double thickness 3)
   (required primitive:string type 4)
-  (required primitive:int32 bottomlevel 5)))
+  (required primitive:int32 bottomlevel 5)
+  (optional primitive:string layer 6)))
 (define-message-type holemsg ((required primitive:string guid 1)))
 (define-message-type
  mirrormsg
@@ -430,7 +440,8 @@
   (required primitive:int32 bottomlevel 8)
   (required primitive:double angle 9)
   (required primitive:string material 10)
-  (required primitive:string profilename 11)))
+  (required primitive:string profilename 11)
+  (optional primitive:string layer 12)))
 (define-message-type intarray ((repeated primitive:int32 lst 1)))
 (define-message-type doublearray ((repeated primitive:double lst 1)))
 (define-message-type boolarray ((repeated primitive:bool lst 1)))
@@ -448,7 +459,8 @@
   (required primitive:double angle 9)
   (required struct:additionalparams params 10)
   (optional primitive:string name 11)
-  (required primitive:int32 level 12)))
+  (required primitive:int32 level 12)
+  (optional primitive:string layer 13)))
 (define-message-type
  libpartmsg
  ((required primitive:string name 1)
@@ -475,7 +487,9 @@
   (required struct:polyarcsmessage arcs 2)
   (required primitive:string material 3)
   (required primitive:string name 4)))
-(define-message-type layermsg ((required primitive:string name 1)))
+(define-message-type
+ layermsg
+ ((required primitive:string name 1) (optional primitive:int32 connection 2)))
 (define-message-type
  layerelementmsg
  ((required primitive:string guid 1) (required primitive:string layer 2)))
