@@ -329,6 +329,9 @@ Example of usage:
 (define (view-3d)
   (write-msg-name "3D"))
 
+(define (view-2d)
+  (write-msg-name "2D"))
+
 ;(send (open-file "D:\\GitHubRep\\Tese\\Development\\Examples\\Models\\AT for eCADDe.pln"))
 ;(send (open-file "D:\\GitHubRep\\Tese\\Development\\Examples\\Models\\AT for eCADDe.ifc"))
 ;(send (open-file "C:\\Users\\Client\\Desktop\\SmallTower.ifc"))
@@ -337,11 +340,21 @@ Example of usage:
                            #:extension (last (string-split path ".")))))
     (write-msg "OpenFile" msg)))
 
-(define (create-layer name)
-  (let ((msg (layermsg* #:name name)))
+;When connection is 0, elements on that layer will not intersect
+(define (create-layer name [connection 1])
+  (let ((msg (layermsg* #:name name
+                        #:connection connection)))
     (write-msg "Layer" msg)))
 
 (define (shape-layer name guid)
   (let ((msg (layerelementmsg* #:layer name
                                #:guid guid)))
     (write-msg "LayerElem" msg)))
+
+(define (hide-layer name)
+  (let ((msg (layermsg* #:name name)))
+    (write-msg "HideLayer" msg)))
+
+(define (show-layer name)
+  (let ((msg (layermsg* #:name name)))
+    (write-msg "ShowLayer" msg)))
