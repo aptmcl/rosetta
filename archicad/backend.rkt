@@ -844,7 +844,7 @@ The following example does not work as intended. Rotating the args to closed-spl
  (rename-out [%delete-levels delete-levels]))
 
 (define (level height)
-  (%create-level #:height height))
+  (%level height))
 
 (require (only-in "communication.rkt" current-level default-level-to-level-height create-layer shape-layer))
 

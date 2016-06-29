@@ -293,9 +293,9 @@ Function to create a level given a height, this uses absolute height
 Will create a level with 10 height, if there isn't one
  height: height of the level
 Example of usage: 
-(send (create-level 10.0))
+(send (level 10.0))
 |#
-(define (create-level #:height [height 0])
+(define (level height)
   (let ((msg (storymsg* #:height height
                         #:name "Story")))
     (write-msg "Story" msg)

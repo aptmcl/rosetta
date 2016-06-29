@@ -240,7 +240,7 @@
   (required primitive:bool copy 4)))
 (define-message-type
  trimmsg
- ((required primitive:string guid1 1) (required primitive:string guid2 2)))
+ ((repeated primitive:string guids 1) (repeated primitive:string guids2 2)))
 (define-message-type
  intersectmsg
  ((required primitive:string guid1 1) (required primitive:string guid2 2)))
@@ -312,7 +312,11 @@
   (required primitive:string type 4)
   (required primitive:int32 bottomlevel 5)
   (optional primitive:string layer 6)))
-(define-message-type holemsg ((required primitive:string guid 1)))
+(define-message-type
+ holemsg
+ ((required primitive:string guid 1)
+  (optional struct:pointsmessage pts 2)
+  (optional struct:polyarcsmessage arcs 3)))
 (define-message-type
  mirrormsg
  ((required primitive:string guid 1)
@@ -521,7 +525,8 @@
   (repeated primitive:double axis 9)
   (required primitive:string material 10)
   (required primitive:string type 11)
-  (required primitive:double thickness 12)))
+  (required primitive:double thickness 12)
+  (required primitive:double height 13)))
 (define-message-type
  extshellmsg
  ((optional struct:pointsmessage pts 1)
