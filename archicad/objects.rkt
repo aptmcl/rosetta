@@ -439,12 +439,11 @@ Function to create a hole on a slab
 Example of usage: 
 (send (hole-slab (slab slabPoints) hole-points))
 |#
-(define (hole-slab slab-id listpoints [listarcs (list)])
-  (let ((slab-msg (holemsg* #:guid slab-id)))
-    (write-msg "HoleSlab" slab-msg)  
-    (send-points (append listpoints (list (car listpoints))))
-    (send-arcs listarcs)
-    (read-guid)))
+(define (hole-slab slab-id pts [arcs (list)])
+  (let ((msg (holemsg* #:guid slab-id
+                       #:pts (prepare-points-to-send (close-guide pts (car pts)))
+                       #:arcs (prepare-arcs-to-send arcs))))
+    (send/rcv-id "HoleSlab" msg)))
 
 
 #|
@@ -1047,14 +1046,14 @@ Function to mirror an element on the y-axis
                                     #:axis "y"
                                     #:copy copy)))
 
-#|NOT WORKING
+#|
 Function to trim an element
 Receives the ID of two elements to trim 
 Example of usage: (trim-element idWall idSlab)
 |#
-(define (trim-elements ID1 ID2)
-  (send/no-rcv "Trim" (trimmsg* #:guid1 ID1
-                                #:guid2 ID2)))
+(define (trim-elements ids [shell-ids (list)])
+  (send/no-rcv "Trim" (trimmsg* #:guids ids
+                                #:guids2 shell-ids)))
 
 #|
 Function to intersect a wall with an element
