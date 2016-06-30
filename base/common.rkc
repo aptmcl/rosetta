@@ -459,5 +459,48 @@ In order to implement this, we need to create shapes that represent failed opera
            (xyz ,(cx t) ,(cy t) ,(cz t))
            ,l)))
 
+;;Turtle-like operations
+
+(provide line-to
+         arc-to
+         arc-left
+         arc-right
+         advance
+         line-xy-to
+         line-yx-to)
+
+(define (line-to pv)
+  (let ((p (loc-at pv)))
+    (add-to-path! (line (current-loc) p))
+    (current-loc p)))
+
+(define (arc-to r start-a da)
+  (let ((p (+pol (current-loc) (- r) (+ (current-dir) start-a))))
+    (begin0
+      (add-to-path! (arc p r (+ (current-dir) start-a) da))
+      (current-loc (+pol p r (+ (current-dir) start-a da))))))
+
+(define (arc-left r [da pi/2])
+  (arc-to r 3pi/2 da)
+  (turn da))
+
+(define (arc-right r [da pi/2])
+  (arc-to r pi/2 (- da))
+  (turn (- da)))
+
+(define (advance d)
+  (line-to (vpol d (current-dir))))
+
+(define (line-xy-to pv)
+  (let ((p (loc-at pv)))
+    (let ((v (p-p p (current-loc))))
+      (add-to-path! (line-to (vx (cx v))))
+      (add-to-path! (line-to (vy (cy v)))))))
+
+(define (line-yx-to pv)
+  (let ((p (loc-at pv)))
+    (let ((v (p-p p (current-loc))))
+      (add-to-path! (line-to (vy (cy v))))
+      (add-to-path! (line-to (vx (cx v)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;END OF COMMON PART
