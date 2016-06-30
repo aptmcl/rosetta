@@ -172,7 +172,8 @@ Example of usage: (shell lstpoints lstarcs)
                    #:type-of-material [type-of-material (default-shell-type-of-material)]
                    #:material [material (cond [(eq? type-of-material "Basic") "GENERIC - STRUCTURAL"]
                                               [(eq? type-of-material "Composite") "Generic Wall/Shell"])]
-                   #:thickness [thickness (default-shell-thickness)])
+                   #:thickness [thickness (default-shell-thickness)]
+                   #:height [height 0])
   (send/rcv-id "RevShell" (revshellmsg* #:pts (prepare-points-to-send pts)
                                         #:arcs (prepare-arcs-to-send arcs)
                                         #:level (storyinfo-index level)
@@ -184,7 +185,8 @@ Example of usage: (shell lstpoints lstarcs)
                                         #:axis axis
                                         #:material material
                                         #:type type-of-material
-                                        #:thickness thickness)))
+                                        #:thickness thickness
+                                        #:height height)))
 #|
 (send (ext-shell (list (x 0)(x 5)(xy 5 5)(xy 0 5))
                    (xyz 3 3 3)
