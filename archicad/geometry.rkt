@@ -635,7 +635,7 @@ Example of usage: (hole-on-shell hpoints harcs hheight shellId)
         (polygons (internal-pyramid pyramid-points)))
   (morph (u0) pyramid-points edges polygons #:material material #:level level)))
 
-(define (pyramid-by-center center top radius [n-points 100] #:material [material (default-morph-material)]#:level [level (current-level)])
+(define (pyramid-by-center center top radius [n-points 100] #:material [material (default-morph-material)] #:level [level (current-level)])
   (pyramid (append (polygon-points center n-points radius)
                    (list top))
            material
