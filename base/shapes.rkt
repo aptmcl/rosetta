@@ -522,3 +522,50 @@
 (def-base-shape 3D-shape (wall [p0 : Loc] [p1 : Loc] [bottom-level : Any] [top-level : Any] [family : Any]))
 (def-base-shape 3D-shape (walls [vertices : Locs] [bottom-level : Any] [top-level : Any] [family : Any]))
 (def-base-shape 3D-shape (door [wall : Any] [loc : Loc] [family : Any]))
+(def-base-shape 3D-shape (panel [vertices : Locs] [level : Any] [family : Any]))
+
+;;Turtle-like operations
+
+(provide 
+ path
+ reset-path
+ move-to
+ turn
+ loc-at
+ add-to-path!
+ current-loc
+ current-dir)
+
+(define current-loc : (Parameterof Loc) (make-parameter (u0)))
+(define current-dir : Real (make-parameter 0))
+(define current-path : (Listof Shape) (make-parameter (list)))
+
+(define (add-to-path! [shape : Shape])
+  (current-path (cons shape (current-path))))
+
+(define-syntax-rule
+  (path expr ...)
+  (parameterize ((current-loc (current-loc))
+                 (current-dir (current-dir))
+                 (current-path (list))
+                 (immediate-mode? #f))
+    expr ...
+    (reverse (current-path))))
+
+(define (reset-path [loc : Loc (u0)] [dir : Real 0])
+  (current-loc loc)
+  (current-dir dir))
+
+(define (loc-at [pv : (U Loc Vec)])
+  (cond ((vec? pv) (p+v (current-loc) pv))
+        ((loc? pv) pv)
+        (else
+         (error "Argument not a location or vector" pv))))
+
+(define (move-to [pv : (U Loc Vec)])
+  (let ((p (loc-at pv)))
+    (current-loc p)
+    p))
+
+(define (turn [phi : Real])
+  (current-dir (+ (current-dir) phi)))
