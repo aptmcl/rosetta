@@ -11,6 +11,7 @@
 (define to-folder (string->some-system-path "C:\\Program Files\\GRAPHISOFT\\ArchiCAD 18\\Add-ons" 'windows)) 
 
 ;TODO - Add more errors
+#;
 (define (move-addon)
   (let ((to-file (build-path to-folder "RosettaArchiCAD.apx")))
     (unless (file-exists? to-file)
@@ -19,6 +20,25 @@
                                           (displayln "Warning: Addon cannot be moved because it is being used")]
                                          [else (raise exn)]))])
         (copy-file from-addon to-file #t)))))
+
+(define moved-addon-files? #f)
+
+(define (move-addon)
+  (define (safe-move from todir)
+    (when (file-exists? from)
+      (let-values ([(path suffix ignore) (split-path from)])
+        (let ((to (build-path todir suffix)))
+          (copy-file from to #t)
+          (delete-file from)))))
+  (unless moved-addon-files?
+    (display "Checking plugin...")
+    (if (directory-exists? to-folder)
+        (begin
+          (safe-move from-addon to-folder)
+          (set! moved-addon-files? #t)
+          (displayln "done!"))
+        (displayln "I could not find ArchiCAD 18. Are you sure it is installed?"))))
+
 
 #|
 (define (move-addon)
