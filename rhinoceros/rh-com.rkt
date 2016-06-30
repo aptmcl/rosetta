@@ -474,6 +474,9 @@ DivideCurveEquidistant
       (delete-existing-objects ids)))
 |#
 
+(def-com document-path () (U String Void))
+(def-com document-name () (U String Void))
+
 (def-com duplicate-edge-curves ([shape Id] #:opt [select? Boolean]) Ids)
 (def-com duplicate-surface-border ([shape Id] #:opt [type Integer]) IdsOrVoid)
 
@@ -547,9 +550,11 @@ DivideCurveEquidistant
 
 ;;How do we access the COM-OBJECT if Rhino only returns Strings?
 (def-com-method normalized-length-parameter curve ([curve Com-Object] [t Real]) Real)
+(def-com objects-by-name ([name String] #:opt [select? Boolean] [include-lights? Boolean]) IdsOrVoid)
 (def-com object-layer ([shape Id] #:opt [name String]) String)
 (def-com object-color ([shape Id] #:opt [color RGB]) RGB)
 (def-com (objects-color ObjectColor) ([shape Ids] #:opt [color RGB]) RGB)
+(def-com object-name ([shape Id] #:opt [name String]) String)
 #|
 (def offset-curve (id point real #:opt point integer) ids)
 (def offset-surface (id real) id)
@@ -767,7 +772,7 @@ DivideCurveEquidistant
   ;; (let ((u (surface-domain id 0))
   ;;       (v (surface-domain id 1)))
   ;;   (evaluate-surface id (list (car u) (car v)))))
-
+|#
 
 (provide render-view)
 (define (render-view path)
@@ -790,7 +795,6 @@ Call Rhino.Command("-_SelNone",False)
     Next
     Call Rhino.EnableRedraw(True)
 
-|#
 |#
 
 (define #:forall (T) (trace [msg : String] [v : T]) : T
@@ -851,6 +855,43 @@ Call Rhino.Command("-_SelNone",False)
            #t)))
      (cap-planar-holes id)
      id)))
+
+(provide export-as-obj)
+(define (export-as-obj [path : String] #:write-precision [write-precision : Integer 15])
+  (command "SelAll")
+  (command (string-append
+            "-Export " path ".obj "
+            "_Geometry=_Mesh "
+            "_EndOfLine=CRLF "
+            ;"_ExportRhinoObjectNames=_ExportObjectsAsOBJGroups "
+            "_ExportRhinoObjectNames=_ExportObjectsAsOBJObjects "
+            "_ExportMeshTextureCoordinates=_Yes "
+            "_ExportMeshVertexNormals=_No "
+            "_CreateNGons=_No "
+            "_ExportMaterialDefinitions=_No "
+            "_YUp=_No "
+            "_WrapLongLines=Yes "
+            "_VertexWelding=_Welded "
+            (format "_WritePrecision=~A " write-precision)
+            "_Enter "
+            
+            "_DetailedOptions "
+            "_JaggedSeams=_No "
+            "_PackTextures=_No "
+            "_Refine=_Yes "
+            "_SimplePlane=_No "
+            
+            "_AdvancedOptions "
+            "_Angle=50 "
+            "_AspectRatio=0 "
+            "_Distance=0.0"
+            "_Density=0 "
+            "_Density=0.45 "
+            "_Grid=0 "
+            "_MaxEdgeLength=0 "
+            "_MinEdgeLength=0.0001 "
+            
+            "_Enter _Enter")))
 
 (provide start)
 (define (start)
