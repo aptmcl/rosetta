@@ -86,7 +86,7 @@
   ([thickness : Real 0.3]))
 
 (def-bim-family wall
-  ([thickness : Real 1]))
+  ([thickness : Real 0.3]))
 
 (def-bim-family door
   ([width : (Option Real) #f]
