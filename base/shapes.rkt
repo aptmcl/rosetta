@@ -24,7 +24,8 @@
          0D-shape?
          1D-shape?
          2D-shape?
-         3D-shape?)
+         3D-shape?
+         virtual)
 
 
 (define immediate-mode? : (Parameter Boolean)
@@ -235,6 +236,19 @@
       (= created (add1 deleted)))
     (values realizer deleter realized?)))
 
+
+(define virtual-shapes : (Listof Shape) (make-parameter (list)))
+
+(define (add-to-virtual-shapes! [shape : Shape])
+  (virtual-shapes (cons shape (virtual-shapes))))
+
+(define-syntax-rule
+  (virtual expr ...)
+  (parameterize ((immediate-mode? #f)
+                 (virtual-shapes (list)))
+    expr ...
+    (reverse (virtual-shapes))))
+
 (define-syntax (def-base-shape stx)
   (syntax-case stx ()
     [(_ type ((name constructor-name) param ...))
@@ -258,8 +272,9 @@
                               deleter
                               realized?
                               param-name ...)))
-                 (when (immediate-mode?)
-                   (realizer))
+                 (if (immediate-mode?)
+                   (realizer)
+                   (add-to-virtual-shapes! s))
                  s))))))]
     [(def type (name param ...))
      (with-syntax ([constructor-name (build-name #'name "new-~A")])
@@ -532,25 +547,17 @@
  move-to
  turn
  loc-at
- add-to-path!
  current-loc
  current-dir)
 
 (define current-loc : (Parameterof Loc) (make-parameter (u0)))
 (define current-dir : Real (make-parameter 0))
-(define current-path : (Listof Shape) (make-parameter (list)))
-
-(define (add-to-path! [shape : Shape])
-  (current-path (cons shape (current-path))))
 
 (define-syntax-rule
   (path expr ...)
   (parameterize ((current-loc (current-loc))
-                 (current-dir (current-dir))
-                 (current-path (list))
-                 (immediate-mode? #f))
-    expr ...
-    (reverse (current-path))))
+                 (current-dir (current-dir)))
+    (virtual expr ...)))
 
 (define (reset-path [loc : Loc (u0)] [dir : Real 0])
   (current-loc loc)
