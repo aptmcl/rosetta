@@ -783,7 +783,6 @@
          (%view-display-mode "Perspective" 2) ;;render
          (values camera target lens))
         (else
-         (error "Finish this") #;#;
          (%current-view "Perspective")
          (let ((camera (%view-camera))
                (target (%view-target))
@@ -914,6 +913,13 @@ Command: _viewcapturetofile
      (do-ref ([r shape])
        (%object-layer r new-layer))
      (void)]))
+
+(provide document-path)
+(define (document-path)
+  (let ((path (%document-path)))
+    (if (void? path)
+        #f
+        (build-path (string->path path) (%document-name)))))
 
 (require "../base/bim-operations.rkt")
 (provide (all-from-out "../base/bim-operations.rkt"))

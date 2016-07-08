@@ -16,6 +16,7 @@
 
 (define-signature bim-ops-dependencies^
   ([right-cuboid : (->)]
+   [cuboid : (->)]
    [irregular-prism : (->)]
    [create-layer : (-> String Any)]
    [shape-layer : (->)]
@@ -56,7 +57,8 @@
    [slab : (->)]
    [roof : (->)]
    [wall : (->)]
-   [door : (->)]))
+   [door : (->)]
+   [panel : (->)]))
 
 (define-unit bim-ops@
   (import bim-ops-dependencies^ bim-levels^)
@@ -125,7 +127,19 @@
 
 (def-shape/no-provide (door [wall : Any] [loc : Loc] [family : Any (default-door-family)])
   "To be continued")
-)
+
+(def-shape/no-provide (panel [vertices : Locs] [level : Level (current-level)] [family : Panel-Family (default-panel-family)])
+  (let ((p0 (second vertices))
+        (p1 (first vertices))
+        (p2 (third vertices)))
+    (let ((n (vz (panel-family-thickness family)
+                 (cs-from-o-vx-vy p0 (p-p p1 p0) (p-p p2 p0)))))
+      (let ((s (cuboid (map loc-in-world
+                            (append (map (lambda (v) (p+v v n)) vertices)
+                                    (map (lambda (v) (p-v v n)) vertices))))))
+        (shape-layer s (bim-family-layer family))
+        s))))
+  )
 
 (define-signature bim-extra-ops^
   ([slab-rectangle : (->)]

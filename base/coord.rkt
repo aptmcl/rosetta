@@ -51,6 +51,7 @@
          loc=?
          loc?
          loc<-
+         vec?
          +x +y +z +xy +xz +yz +xyz
          +vx +vy +vz +vxy +vxz +vyz +vxyz
          pol +pol
@@ -390,6 +391,8 @@
   ()
   #:property
   prop:custom-write fprint-VXyz)
+
+(define vec? VXyz?)
 
 (define (vxyz [x : Real] [y : Real] [z : Real] [cs : Cs (current-cs)]) : Vec
   (VXyz (Cs-transformation cs)
@@ -1056,3 +1059,4 @@
   (vxyz (bbox-length-x bbox)
         (bbox-length-y bbox)
         (bbox-length-z bbox)))
+

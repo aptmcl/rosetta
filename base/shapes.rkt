@@ -24,7 +24,8 @@
          0D-shape?
          1D-shape?
          2D-shape?
-         3D-shape?)
+         3D-shape?
+         virtual)
 
 
 (define immediate-mode? : (Parameter Boolean)
@@ -235,6 +236,19 @@
       (= created (add1 deleted)))
     (values realizer deleter realized?)))
 
+
+(define virtual-shapes : (Listof Shape) (make-parameter (list)))
+
+(define (add-to-virtual-shapes! [shape : Shape])
+  (virtual-shapes (cons shape (virtual-shapes))))
+
+(define-syntax-rule
+  (virtual expr ...)
+  (parameterize ((immediate-mode? #f)
+                 (virtual-shapes (list)))
+    expr ...
+    (reverse (virtual-shapes))))
+
 (define-syntax (def-base-shape stx)
   (syntax-case stx ()
     [(_ type ((name constructor-name) param ...))
@@ -258,8 +272,9 @@
                               deleter
                               realized?
                               param-name ...)))
-                 (when (immediate-mode?)
-                   (realizer))
+                 (if (immediate-mode?)
+                   (realizer)
+                   (add-to-virtual-shapes! s))
                  s))))))]
     [(def type (name param ...))
      (with-syntax ([constructor-name (build-name #'name "new-~A")])
@@ -522,3 +537,42 @@
 (def-base-shape 3D-shape (wall [p0 : Loc] [p1 : Loc] [bottom-level : Any] [top-level : Any] [family : Any]))
 (def-base-shape 3D-shape (walls [vertices : Locs] [bottom-level : Any] [top-level : Any] [family : Any]))
 (def-base-shape 3D-shape (door [wall : Any] [loc : Loc] [family : Any]))
+(def-base-shape 3D-shape (panel [vertices : Locs] [level : Any] [family : Any]))
+
+;;Turtle-like operations
+
+(provide 
+ path
+ reset-path
+ move-to
+ turn
+ loc-at
+ current-loc
+ current-dir)
+
+(define current-loc : (Parameterof Loc) (make-parameter (u0)))
+(define current-dir : Real (make-parameter 0))
+
+(define-syntax-rule
+  (path expr ...)
+  (parameterize ((current-loc (current-loc))
+                 (current-dir (current-dir)))
+    (virtual expr ...)))
+
+(define (reset-path [loc : Loc (u0)] [dir : Real 0])
+  (current-loc loc)
+  (current-dir dir))
+
+(define (loc-at [pv : (U Loc Vec)])
+  (cond ((vec? pv) (p+v (current-loc) pv))
+        ((loc? pv) pv)
+        (else
+         (error "Argument not a location or vector" pv))))
+
+(define (move-to [pv : (U Loc Vec)])
+  (let ((p (loc-at pv)))
+    (current-loc p)
+    p))
+
+(define (turn [phi : Real])
+  (current-dir (+ (current-dir) phi)))

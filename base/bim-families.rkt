@@ -7,26 +7,17 @@
   ([path : String]
    [map : (Listof (Cons Keyword (Option Any)))]
    [layer-name : String]
-   [layer-ref : (Box (Option Layer))])
+   [layer-ref : (Box (Option Layer))]
+   [properties : Any])
   #:type-name BIM-Family)
 
 (provide bim-family-layer-ref
          bim-family-layer-name)
 
-#;(provide ;;BIM extensions
- beam
- column
- door
- roof
- roof-rectangle
- slab
- slab-rectangle
- wall)
-
-
-
 (define (layer-name-from-path [path : String]) : Layer
-  (last (regexp-match #rx"([a-zA-Z]+).rfa" path)))
+  (let ((revit-name (regexp-match #rx"([a-zA-Z]+).rfa" path)))
+    (or (and revit-name (last revit-name))
+        path)))
 
 (define-for-syntax (build-name fmt id)
   (format-id id #:source id fmt (syntax-e id)))
@@ -64,18 +55,24 @@
                       instance-name)
              (struct struct-name bim-family
                ([param-name : param-type] ...))
-             (define default-name (make-parameter (struct-name "" '() layer-name (rk:box #f) param-default ...)))
-             (define (load-name [path : String] . class-params)
+             (define default-name (make-parameter (struct-name "" '() layer-name (rk:box #f) (list) param-default ...)))
+             (define (load-name [path : String]
+                                #:properties [properties : Any #f]
+                                . class-params)
                (struct-name path
                             (list (cons 'param-key param-name) ...)
                             (layer-name-from-path path)
                             (rk:box #f)
+                            properties
                             param-default ...))
-             (define (instance-name [family : BIM-Family] . instance-params)
+             (define (instance-name [family : BIM-Family]
+                                    #:properties [properties : Any (bim-family-properties family)]
+                                    . instance-params)
                (struct-name (bim-family-path family)
                             (bim-family-map family)
                             (bim-family-layer-name family)
                             (bim-family-layer-ref family)
+                            properties
                             param-name ...))))))]))
 
 (def-bim-family beam
@@ -89,7 +86,7 @@
   ([thickness : Real 0.3]))
 
 (def-bim-family wall
-  ([thickness : Real 1]))
+  ([thickness : Real 0.3]))
 
 (def-bim-family door
   ([width : (Option Real) #f]
@@ -97,15 +94,9 @@
 
 (def-bim-family column
   ([width : Real 10]
-   [depth : (Option Real) #f]))
+   [depth : (Option Real) #f]
+   [circular-section? : Boolean #f]))
 
-#;#;
-(define (slab-rectangle [p : Loc] [length : Real] [width : Real] [level : Level (current-level)] [family : Slab-Family (default-slab-family)])
-  (slab (list p (+x p length) (+xy p length width) (+y p width))
-        level
-        family))
-
-(define (roof-rectangle [p : Loc] [length : Real] [width : Real] [level : Level (current-level)] [family : Roof-Family (default-roof-family)])
-  (roof (list p (+x p length) (+xy p length width) (+y p width))
-        level
-        family))
+(def-bim-family panel
+  ((thickness : Real 0.01)
+   (material : String "Glass")))

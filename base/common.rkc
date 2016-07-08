@@ -459,5 +459,4 @@ In order to implement this, we need to create shapes that represent failed opera
            (xyz ,(cx t) ,(cy t) ,(cz t))
            ,l)))
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;END OF COMMON PART
