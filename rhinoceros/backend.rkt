@@ -917,8 +917,9 @@ Command: _viewcapturetofile
 (provide document-path)
 (define (document-path)
   (let ((path (%document-path)))
-    (and path
-         (build-path (string->path path) (%document-name)))))
+    (if (void? path)
+        #f
+        (build-path (string->path path) (%document-name)))))
 
 (require "../base/bim-operations.rkt")
 (provide (all-from-out "../base/bim-operations.rkt"))
