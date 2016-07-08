@@ -117,11 +117,10 @@
 
 (provide Ref Shape Shapes)
 
-#|
 (require racket/include)
-(include "../base/common.rkc")
+;(include "../base/common.rkc")
+(include "../base/turtle.rkc")
 
-|#
 (define (current-backend-name) "ArchiCAD")
 
 #|
@@ -913,8 +912,7 @@ The following example does not work as intended. Rotating the args to closed-spl
 
 (def-shape (door [wall : Any] [loc : Loc] [family : Any (default-door-family)])
   (%door (shape-reference wall)
-         (cx loc)
-         #:bottom (cy loc)
+         (loc-in-world loc)
          #:width (or (door-family-width family)
                      -10000)
          #:height (or (door-family-height family)
@@ -933,7 +931,8 @@ The following example does not work as intended. Rotating the args to closed-spl
               #:level level))))
 
 ;;This should be moved to a different place (probably, an independent unit)
-(provide slab-rectangle roof-rectangle slab-path)
+(provide slab-rectangle roof-rectangle slab-path slab-opening slab-opening-path)
+
 (define (slab-rectangle [p : Loc] [length : Real] [width : Real] [level : Level (current-level)] [family : Slab-Family (default-slab-family)])
   (slab (list p (+x p length) (+xy p length width) (+y p width))
         level
@@ -958,12 +957,40 @@ The following example does not work as intended. Rotating the args to closed-spl
                  (loop (cdr p)
                        (append vs (list (+pol (arc-center e) (arc-radius e) (arc-start-angle e))))
                        (append arcs (list (arc-amplitude e)))))
+                ((circle? e)
+                 (loop
+                  (virtual
+                   (cons (arc (circle-center e) (circle-radius e) 0 pi)
+                         (cons (arc (circle-center e) (circle-radius e) pi pi)
+                               (cdr p))))
+                  vs
+                  arcs))
                 (else
                  (error "Unknown path component" e)))))))
 
+#|
+
+Slabs should be updated to support paths instead of vertices. Vertices are just a particular case that can trivially generate a path
+|#
 (define (slab-path [path : path] [level : Level (current-level)] [family : Slab-Family (default-slab-family)])
   (let-values ([(locs arcs) (locs-and-arcs path)])
-    (%slab (map loc-in-world locs)
-           #:parcs arcs
-           #:bottom-level level
-           #:thickness (slab-family-thickness family))))
+    (new-slab
+     (lambda ()
+       (%slab (map loc-in-world locs)
+              #:parcs arcs
+              #:bottom-level level
+              #:thickness (slab-family-thickness family)))
+     locs level family)))
+
+(define (slab-opening [slab : Any] [vertices : Locs])
+  (%hole-slab (shape-reference slab)
+              (map loc-in-world vertices))
+  slab)
+
+(define (slab-opening-path [slab : Any] [path : path])
+  (let-values ([(locs arcs) (locs-and-arcs path)])
+    (%hole-slab (shape-reference slab)
+                (map loc-in-world locs)
+                arcs)
+    slab))
+
