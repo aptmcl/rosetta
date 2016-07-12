@@ -12,11 +12,12 @@
 
 (define-syntax-rule
   (module-begin form ...)
-  (#%module-begin form ... (disconnect)))
+  (#%module-begin
+   (dynamic-wind
+    void
+    (lambda () form ...)
+    disconnect)))
 
 (define-syntax-rule
   (top-interaction . form)
   (#%top-interaction . (send form)))
-
-
-(start-backend)
