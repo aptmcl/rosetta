@@ -16,13 +16,17 @@
 
 (define (bim-connection)
   (unless conn
-    (ensure-connection))
+    (start-connection))
   conn)
 
-(define server-addr "localhost")
+;;Function to quit
+(define (disconnect)
+  (write-msg-name "quit")
+  (set! conn #f)
+  "quit successful")
 
-(define (connect)
-  (ensure-connection))
+
+(define server-addr "localhost")
 
 (define moved-addon-files? #f)
 
@@ -35,7 +39,7 @@
     (set! moved-addon-files? #t)))
 
 
-(define (ensure-connection)
+(define (start-connection)
   (move-addon-files)
   (define time-out-tries 10)
   (let rec ((n time-out-tries))
@@ -50,24 +54,15 @@
                              (sleep 2)
                              (rec (- n 1)))
                            (raise e)))])
-      (start-connection))))
-
-(define (start-connection)
   (let-values([(in out) (tcp-connect server-addr 53800)])
     (file-stream-buffer-mode in 'none)
     (file-stream-buffer-mode out 'none)
     (set! conn (connection in out))
-    (set-current-level! (make-parameter (check-level)))))
-
-;;Function to quit
-(define (disconnect)
-  (write-msg-name "quit")
-  "quit successful")
+    (set-current-level! (make-parameter (check-level)))))))
 
 ;;Usage: (send (create-...) (create-...) ... )
 (define-syntax-rule (send expr ...)
   (begin
-    (connect)
     (parameterize ((current-level (check-level)))
       expr ...)
     (disconnect)))

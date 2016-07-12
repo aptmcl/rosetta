@@ -13,10 +13,8 @@
 (require (prefix-in % "communication.rkt"))
 (provide immediate-mode?
          current-backend-name
-         (rename-out [%connect connect]
-                     [%disconnect disconnect]
-                     [%send send]
-                     [%ensure-connection start-backend]))
+         (rename-out [%disconnect disconnect]
+                     [%send send]))
 ;;This needs to be fixed to only provide what is relevant
 (require "objects.rkt")
 (provide (all-from-out "objects.rkt"))
