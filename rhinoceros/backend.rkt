@@ -368,7 +368,11 @@
           (let ((ref (car refs)))
             (if (%is-point ref)
                 ref
-                (singleton-ref (%add-planar-srf refs))))
+                ;;First, try a planar surface
+                (let ((ids (%add-planar-srf refs)))
+                  (if (null? ids) ;;Failed, try a patch
+                      (%add-patch refs 3 3)
+                      (singleton-ref ids)))))
           (%add-edge-srf refs)))
     (delete-shapes profiles)))
 

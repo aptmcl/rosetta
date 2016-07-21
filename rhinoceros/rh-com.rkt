@@ -312,7 +312,8 @@
   Id)
 |#
 
-(def-com add-planar-srf ([objects Ids]) Ids)
+(def-com add-patch ([objects Ids] [u-spans Int] [v-spans Int] #:opt [tolerance Double] [trim Boolean] [point-spacing Double] [flexibility Double] [surface-pull Double] [fix-edges Boolean]) Id)
+(def-com add-planar-srf ([objects Ids]) IdsOrVoid)
 
 #|
 
