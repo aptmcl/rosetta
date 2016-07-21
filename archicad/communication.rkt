@@ -61,10 +61,10 @@
     (connection in out)))))
 
 ;;Usage: (send (create-...) (create-...) ... )
-(define-syntax-rule (send expr ...)
-  (begin
-    (parameterize ((current-level (check-level)))
-      expr ...)
+(define-syntax-rule
+  (send expr ...)
+  (begin0
+    (begin expr ...)
     (disconnect)))
 
 ;;Function to send name 
