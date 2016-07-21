@@ -3,7 +3,7 @@
 (provide circle-from-three-points-2d
          circle-from-three-points
          nearest-point-from-lines)
-
+(provide epsilon)
 (define epsilon (make-parameter 1e-8))
 
 (define (nearest-point-from-lines [l0p0 : Loc] [l0p1 : Loc] [l1p0 : Loc] [l1p1 : Loc]) : Loc
@@ -24,7 +24,7 @@
               (values (/ (- (* b e) (* c d)) D)
                       (/ (- (* a e) (* b d)) D)))])
       (let ((p0 (p+v l0p0 (v*r u sc)))
-            (p1 (p+v l1p0 (v*r v sc))))
+            (p1 (p+v l1p0 (v*r v tc))))
         (intermediate-point p0 p1)))))
 
 (define (circle-from-three-points-2d [v0 : Loc] [v1 : Loc] [v2 : Loc]) : (Values Loc Real)
