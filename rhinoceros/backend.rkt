@@ -610,10 +610,14 @@
                  (%add-loft-srf (shapes-refs profiles) %com-omit %com-omit
                                 (if ruled? %lt-straight %lt-normal)
                                 %com-omit %com-omit closed?)))
-               ((> (length rails) 2)
-                (error 'guided-loft "Rhino only supports two rails but were passed ~A" (length rails)))
+               ((null? (cdr rails))
+                (singleton-ref
+                 (%add-sweep1 (shape-ref (car rails)) (shapes-refs profiles))))
+               ((null? (cddr rails))
+                (singleton-ref
+                 (%add-sweep2 (shapes-refs rails) (shapes-refs profiles))))
                (else
-                (%add-sweep2 (shapes-refs rails) (shapes-refs profiles))))))
+                (error 'guided-loft "Rhino only supports two rails but were passed ~A" (length rails))))))
     (when solid?
       (%cap-planar-holes r))
     (delete-shapes profiles)
