@@ -20,7 +20,7 @@
          create-layer
          current-layer
          curve-start-location
-         curve-end-location
+         curve-closest-location
          curve-domain
          curve-end-location
          curve-frame-at
@@ -722,6 +722,10 @@
 
 (define (curve-end-location [curve : Shape]) : Loc
   (%curve-end-point (shape-ref curve)))
+
+(define (curve-closest-location [curve : Shape] [p : Loc]) : Loc
+  (let ((r (shape-ref curve)))
+    (%curve-perp-frame r (%curve-closest-point r p))))
 
 (define (curve-domain [curve : Shape]) : (Values Real Real)
   (let ((d (%curve-domain (shape-ref curve))))

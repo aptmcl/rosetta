@@ -22,7 +22,7 @@
          create-layer
          current-layer
          curve-start-location
-         curve-end-location
+         curve-closest-location
          curve-domain
          curve-end-location
          curve-frame-at
@@ -288,6 +288,9 @@ The following example does not work as intended. Rotating the args to closed-spl
 
 (define (curve-end-location [curve : Shape]) : Loc
   (%curve-end-point (shape-ref curve)))
+
+(define (curve-closest-location [curve : Shape] [p : Loc]) : Loc
+  (%curve-closest-point (shape-ref curve) p))
 
 (define (curve-domain [curve : Shape]) : (Values Real Real)
   (let ((r (shape-ref curve)))

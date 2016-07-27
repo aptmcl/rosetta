@@ -1957,6 +1957,7 @@
 (def-autolisp (vlax-curve-getEndParam [c Com-Object]) Real)
 (def-autolisp (vlax-curve-getDistAtParam [c Com-Object] [t Real]) Real)
 (def-autolisp (vlax-curve-getParamAtDist [c Com-Object] [length Real]) Real)
+(def-autolisp (vlax-curve-getClosestPointTo [c Com-Object] [p (List Real Real Real)]) Real)
 #|
 ;These functions are not safe as the Lisp object might have been moved by the Lisp GC
 (def-autolisp (vlax-curve-getStartPoint [c Com-Object]) Com-Object)
@@ -1970,11 +1971,13 @@
 (defun safe-vlax-curve-getFirstDeriv (c r) (vlax-curve-getFirstDeriv (handent c) r))
 (defun safe-vlax-curve-getSecondDeriv (c r) (vlax-curve-getSecondDeriv (handent c) r))
 (defun safe-vlax-curve-getPointAtParam (c r) (vlax-curve-getPointAtParam (handent c) r))
+(defun safe-vlax-curve-getClosestPointTo (c x y z) (vlax-curve-getClosestPointTo (handent c) (list x y z)))
 
 (provide curve-start-point
          curve-end-point
          curve-start-param
          curve-end-param
+         curve-closest-point
          curve-length
          curve-tangent-at
          curve-normal-at
@@ -2023,6 +2026,10 @@
 
 (define (curve-point-at [c : Com-Object] [t : Real]) : Loc
   (loc<-list (safe-vlax-curve-getPointAtParam (handle c) t)))
+
+(define (curve-closest-point [c : Com-Object] [p : Loc]) : Loc
+  (let ((p (loc-in-world p)))
+    (loc<-list (safe-vlax-curve-getClosestPointTo (handle c) (cx p) (cy p) (cz p)))))
 
 (define (xvec-for [t : Vec] [n : Vec])
   (define (~zero? [x : Real]) : Boolean
