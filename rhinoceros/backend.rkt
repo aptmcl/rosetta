@@ -29,6 +29,8 @@
          curve-start-location
          enable-update
          disable-update
+         loft
+         loft-ruled
          map-curve-division
          map-curve-length-division
          map-surface-division
@@ -557,12 +559,34 @@
 
 (define (surface-boundary [shape : Shape]) : Shape
   (begin0
-    (map-ref ([r shape])
-      ;;HACK to be completed for the case of multiple
-      ;;borders. Probably, return a failed union of curves
-      (singleton-ref (%duplicate-surface-border r)))
+    (new-curve
+     (thunk
+      (map-ref ([r shape])
+       ;;HACK to be completed for the case of multiple
+       ;;borders. Probably, return a failed union of curves
+       (singleton-ref (%duplicate-surface-border r)))))
     (delete-shape shape)))
 
+
+(define (curve?? [s : Shape]) : Boolean
+  (or (curve? s)
+      (line? s)
+      (closed-line? s)
+      (spline? s)
+      (closed-spline? s)
+      (circle? s)
+      (arc? s)
+      ;;ask the backend
+      (andmap %is-curve (shape-refs s))))
+
+(define (surface?? [s : Shape]) : Boolean
+  (or (surface? s)
+      (surface-circle? s)
+      (surface-arc? s)
+      (surface-rectangle? s)
+      (surface-polygon? s)
+      ;;ask the backend
+      (andmap %is-surface (shape-refs s))))
 
 (define (loft-curve-point [curve : Shape] [point : (Point-Shape Ref)])
   (begin0
@@ -580,14 +604,21 @@
 
 (define (loft-profiles [profiles : Shapes] [rails : (Listof (Curve-Shape RefOp))]
                        [solid? : Boolean] [ruled? : Boolean] [closed? : Boolean])
-  (if (> (length rails) 2)
-      (error 'guided-loft "Rhino only supports two rails but were passed ~A" (length rails))
-      (let ((r (%add-sweep2 (shapes-refs rails) (shapes-refs profiles))))
-        (when solid?
-          (%cap-planar-holes r))
-        (delete-shapes profiles)
-        (delete-shapes rails)
-        r)))
+  (let ((r
+         (cond ((null? rails)
+                (singleton-ref
+                 (%add-loft-srf (shapes-refs profiles) %com-omit %com-omit
+                                (if ruled? %lt-straight %lt-normal)
+                                %com-omit %com-omit closed?)))
+               ((> (length rails) 2)
+                (error 'guided-loft "Rhino only supports two rails but were passed ~A" (length rails)))
+               (else
+                (%add-sweep2 (shapes-refs rails) (shapes-refs profiles))))))
+    (when solid?
+      (%cap-planar-holes r))
+    (delete-shapes profiles)
+    (delete-shapes rails)
+    r))
 
 (define (loft-curves [shapes : Shapes] [rails : (Listof (Curve-Shape RefOp))]
                      [ruled? : Boolean #f] [closed? : Boolean #f])
@@ -601,7 +632,7 @@
               [ruled? : Boolean #f] [closed? : Boolean #f]) : Shape
   (cond ((null? (cdr profiles))
          (error 'loft "just one cross section"))
-        ((andmap 0D-shape? profiles)
+        ((andmap point? #;0D-shape? profiles)
          (assert (null? rails))
          (begin0
            ((if ruled?
@@ -613,9 +644,9 @@
          (new-loft
           (thunk
            (cond 
-             ((andmap 1D-shape? profiles)
+             ((andmap curve?? #;1D-shape? profiles)
               (loft-curves profiles rails ruled? closed?))
-             ((andmap 2D-shape? profiles)
+             ((andmap surface?? #;2D-shape? profiles)
               (loft-surfaces profiles rails ruled? closed?))
              ((null? (cddr profiles))
               (assert (null? rails))
@@ -627,9 +658,9 @@
                                    (values (cadr profiles) (car profiles)))
                                   (else
                                    (error 'loft-shapes "cross sections are not either points or curves or surfaces ~A" profiles)))])
-                (cond ((1D-shape? s)
+                (cond ((curve?? #;1D-shape? s)
                        (loft-curve-point s p))
-                      ((2D-shape? s)
+                      ((surface?? #;2D-shape? s)
                        (loft-surface-point s p))
                       (else
                        (error 'loft-shapes "can't loft the shapes ~A" profiles)))))

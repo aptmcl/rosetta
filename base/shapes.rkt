@@ -393,6 +393,7 @@
 
 (def-base-shape 0D-shape (point [position : Loc (u0)]))
 
+(def-base-shape 1D-shape (curve)) ;;For automatically generated curves
 (def-base-shape 1D-shape (line [vertices : (Listof Loc) (list (u0) (ux))]))
 #|
 (def-base-shape (bounding-box s))
