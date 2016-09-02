@@ -742,6 +742,18 @@ DivideCurveEquidistant
 
 ; commands
 
+
+(provide loft-command)
+(define (loft-command ids [ruled? : Boolean] [closed? : Boolean])
+  (unselect-all-objects)
+  (select-objects ids)
+  (command (format "-_Loft _Type ~A ~A _enter"
+                   (if ruled? "Straight" "Normal")
+                   "" #;(if closed? "Closed" "Error!!!!")))
+  (begin0
+      (last-created-objects)
+    (unselect-all-objects)))
+
 #|
 
 (provide create-solid-command)

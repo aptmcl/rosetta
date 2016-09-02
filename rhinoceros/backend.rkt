@@ -607,6 +607,8 @@
   (let ((r
          (cond ((null? rails)
                 (singleton-ref
+                 #;(%loft-command (shapes-refs profiles) ruled? closed?)
+                 ;;It's not working properly. Probably, because we do not orient the profiles correctly.
                  (%add-loft-srf (shapes-refs profiles) %com-omit %com-omit
                                 (if ruled? %lt-straight %lt-normal)
                                 %com-omit %com-omit closed?)))
@@ -695,20 +697,13 @@
     (single-ref-or-union refs)))
 
 (def-shape (mirror [shape : Shape] [p : Loc (u0)] [n : Vec (vz)] [copy? : Boolean #t])
-  ;;Stupid mirror bug
-  (%postpone-redraw
-   (let ((maximized? (%is-view-maximized "Perspective")))
-     (unless maximized?
-       (%maximize-restore-view "Perspective"))
-     (let ((xform (%xform-mirror p n)))
-       (begin0
-         (map-ref ([r shape])
-                  (%transform-object r xform copy?))
-         (unless copy?
-           (mark-shape-deleted! shape))
-         (unless maximized?
-           (%maximize-restore-view "Perspective")))))))
-
+  (let ((xform (%xform-mirror p n)))
+    (begin0
+      (map-ref ([r shape])
+               (%transform-object r xform copy?))
+      (unless copy?
+        (mark-shape-deleted! shape)))))
+      
 (provide union-mirror)
 (define (union-mirror [shape : Shape] [p : Loc (u0)] [n : Vec (vz)])
   (union shape (mirror shape p n)))
