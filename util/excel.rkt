@@ -5,6 +5,7 @@
          open-workbook
          new-workbook
          close-workbook
+         save-workbook
          workbook
          sheets
          sheet
@@ -34,8 +35,10 @@
 (def-rw-property ((_values Value2) Com-Object) Cells-Values)
 
 (def-com-method open #f ([path String]) Com-Object)
+(def-com-method close #f (#:opt [save? Boolean] [path String]) Com-Object)
 (def-com-method add #f () Com-Object)
-(def-com-method save #f ([save? Boolean]) Void)
+(def-com-method save #f () Void)
+(def-com-method saveAs #f ([filename String]) Void)
 
 (define (workbooks [e : Com-Object (excel)])
   (_workbooks e))
@@ -49,8 +52,12 @@
   (add workbooks))
 
 ;; Close a workbook
-(define (close-workbook [doc : Com-Object] [save? : Boolean]) : Void
-  (save doc save?))
+(define (close-workbook [doc : Com-Object] [save? : Boolean #f] [path : Path-String ""]) : Void
+  (close doc #;#;save? path))
+
+;; Save workbook
+(define (save-workbook [doc : Com-Object] [path : Path-String]) : Void
+  (saveAs doc (if (path? path) (path->string path) path)))
 
 ;; Obtain an already opened workbook
 (define (workbook [name : (U String Integer) 1] [workbooks : Com-Object (workbooks)]) : Com-Object
