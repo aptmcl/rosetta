@@ -1,3 +1,4 @@
+;#lang typed/racket/base
 #lang typed/racket/base/no-check
 (require (for-syntax racket/base))
 (require (for-syntax racket/syntax))
@@ -28,9 +29,9 @@
          virtual)
 
 
-(define immediate-mode? : (Parameter Boolean)
+(define immediate-mode? : (Parameterof Boolean)
   (make-parameter #t))
-(define allow-degenerate-radius? : (Parameter Boolean)
+(define allow-degenerate-radius? : (Parameterof Boolean)
   (make-parameter #f))
 
 (provide Base-Shape Base-Shapes
@@ -237,10 +238,10 @@
     (values realizer deleter realized?)))
 
 
-(define virtual-shapes : (Listof Shape) (make-parameter (list)))
+(define virtual-shapes : (Parameterof (Listof Any)) (make-parameter null))
 
-(define (add-to-virtual-shapes! [shape : Shape])
-  (virtual-shapes (cons shape (virtual-shapes))))
+(define #:forall (R) (add-to-virtual-shapes! [s : (shape R)])
+  (virtual-shapes (cons s (virtual-shapes))))
 
 (define-syntax-rule
   (virtual expr ...)
@@ -552,7 +553,7 @@
  current-dir)
 
 (define current-loc : (Parameterof Loc) (make-parameter (u0)))
-(define current-dir : Real (make-parameter 0))
+(define current-dir : (Parameterof Real) (make-parameter 0))
 
 (define-syntax-rule
   (path expr ...)
