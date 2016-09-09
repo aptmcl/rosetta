@@ -31,6 +31,7 @@
          curve-start-location
          enable-update
          disable-update
+         hide-shape
          loft
          loft-ruled
          map-curve-division
@@ -44,6 +45,7 @@
          select-shapes
          shape-layer
          shape-color
+         show-shape
          view
          view-top
          zoom-extents
@@ -899,6 +901,15 @@ The following example does not work as intended. Rotating the args to closed-spl
   (%clear-selection-command)
   (%select-shapes-command (shapes-refs ss))
   (void))
+
+(define (hide-shape [s : Shape]) : Void
+  (for ([r (shape-refs s)])
+    (%visible r #f)))
+
+(define (show-shape [s : Shape]) : Void
+  (for ([r (shape-refs s)])
+    (%visible r #t)))
+
 
 (require racket/unit)
 (require "../base/bim-operations.rkt")

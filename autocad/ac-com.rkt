@@ -1170,7 +1170,10 @@
 (def-rw-property (VisibilityEdge2 3DFace) Boolean)
 (def-rw-property (VisibilityEdge3 3DFace) Boolean)
 (def-rw-property (VisibilityEdge4 3DFace) Boolean)
-(def-rw-property (Visible All) Boolean)
+|#
+;;HACK is this working? It doesn't seem like it
+(def-rw-property (visible All) Boolean)
+#|
 (def-ro-property (VIsolineDensity Surface) Long)
 (def-ro-property (Volume 3DSolid) Double)
 (def-rw-property (Weights Spline) Double)
