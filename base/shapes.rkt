@@ -17,6 +17,7 @@
          mark-deleted!
          shape-reference
          realized?
+         realize!
          with-references
          rectangle-deltas
          rectangle-morph
@@ -195,6 +196,12 @@
 (: shape-reference (All (R) ((shape R) -> R)))
 (define (shape-reference sh)
   ((shape-realizer sh)))
+
+(: realize! (All (R) ((shape R) -> (shape R))))
+(define (realize! sh)
+  ((shape-realizer sh))
+  sh)
+
 
 (: realized? (All (R) (-> (shape R) Boolean)))
 (define (realized? sh)
@@ -531,6 +538,8 @@
 (def-base-shape 3D-shape (rectangular-mass [center : Loc] [width : Real] [length : Real] [height : Real]))
 
 ;;BIM
+(struct (R) BIM-shape 3D-shape
+  ([family : Any]))
 
 (def-base-shape 3D-shape (beam [p0 : Loc] [p1 : Loc] [family : Any]))
 (def-base-shape 3D-shape (column [center : Loc] [bottom-level : Any] [top-level : Any] [family : Any]))
@@ -538,16 +547,17 @@
 (def-base-shape 3D-shape (roof [vertices : Locs] [level : Any] [family : Any]))
 (def-base-shape 3D-shape (wall [p0 : Loc] [p1 : Loc] [bottom-level : Any] [top-level : Any] [family : Any]))
 (def-base-shape 3D-shape (walls [vertices : Locs] [bottom-level : Any] [top-level : Any] [family : Any]))
-(def-base-shape 3D-shape (door [wall : Any] [loc : Loc] [family : Any]))
+ (def-base-shape 3D-shape (door [wall : Any] [loc : Loc] [family : Any]))
 (def-base-shape 3D-shape (panel [vertices : Locs] [level : Any] [family : Any]))
 
 ;;Turtle-like operations
 
-(provide 
+(provide
  path
  reset-path
  move-to
  turn
+ walk
  loc-at
  current-loc
  current-dir)
@@ -576,5 +586,8 @@
     (current-loc p)
     p))
 
-(define (turn [phi : Real])
+(define (turn [phi : Real pi/2])
   (current-dir (+ (current-dir) phi)))
+
+(define (walk [d : Real])
+  (move-to (vpol d (current-dir))))
