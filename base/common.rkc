@@ -149,6 +149,18 @@
 (define (delete-shapes [shapes : Shapes (list)]) : Void
   (for-each delete-shape shapes))
 
+(define-syntax-rule
+  (with-temp-ref ([r s]) body ...)
+  (let ([r s])
+    (let ([r? (realized? r)])
+      (let ([r (shape-reference r)])
+        (begin0
+          (begin
+            body ...)
+          (unless r?
+            (delete-shape s)))))))
+
+
 #|
 
 Boolean operations can fail for a variety of reasons. Particularly, if
