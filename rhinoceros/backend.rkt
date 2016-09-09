@@ -11,6 +11,8 @@
 (provide (all-from-out "../base/shapes.rkt"))
 (provide (all-from-out "../util/geometry.rkt"))
 (provide immediate-mode?
+         realized?
+         realize!
          current-backend-name
          all-shapes
          bounding-box
@@ -29,6 +31,7 @@
          curve-start-location
          enable-update
          disable-update
+         hide-shape
          loft
          loft-ruled
          map-curve-division
@@ -47,6 +50,7 @@
          select-shapes
          shape-layer
          shape-color
+         show-shape
          zoom-extents
 )
 
@@ -512,9 +516,13 @@
                (error "Continue this"))))))))
 
 (def-shape (thicken [surf : (Extrudable-Shape RefOp)] [h : Real 1])
+  (begin0
+    (%offset-surface (shape-ref surf) h %com-omit #t #t)
+    (mark-deleted! surf))
+  #;#;#;#;
   (%unselect-all-objects)
   (%select-objects (shape-refs surf))
-  (%command (format "OffsetSrf Solid=Yes ~A _Enter" h))
+  (%command (format "OffsetSrf BothSides=Yes Solid=Yes ~A _Enter" h))
   (begin0
     (single-ref-or-union (%last-created-objects))
     (mark-deleted! surf)))
@@ -718,8 +726,9 @@
 (define (curve-end-location [curve : Shape]) : Loc
   (%curve-end-point (shape-ref curve)))
 
+;;HACK: Should we be using with-temp-ref everywhere?
 (define (curve-closest-location [curve : Shape] [p : Loc]) : Loc
-  (let ((r (shape-ref curve)))
+  (with-temp-ref ([r curve])
     (%curve-perp-frame r (%curve-closest-point r p))))
 
 (define (curve-domain [curve : Shape]) : (Values Real Real)
@@ -900,6 +909,12 @@ Command: _viewcapturetofile
 (define (select-shapes [ss : Shapes]) : Void
   (%select-objects (shapes-refs ss))
   (void))
+
+(define (hide-shape [s : Shape]) : Void
+  (%hide-objects (shape-refs s)))
+
+(define (show-shape [s : Shape]) : Void
+  (%show-objects (shape-refs s)))
 
 (define (disable-update)
   (%enable-redraw #f))
