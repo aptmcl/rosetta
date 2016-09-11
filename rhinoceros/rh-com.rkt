@@ -312,13 +312,15 @@
   Id)
 |#
 
-(def-com add-planar-srf ([objects Ids]) Ids)
+(def-com add-patch ([objects Ids] [u-spans Int] [v-spans Int] #:opt [tolerance Double] [trim Boolean] [point-spacing Double] [flexibility Double] [surface-pull Double] [fix-edges Boolean]) Id)
+(def-com add-planar-srf ([objects Ids]) IdsOrVoid)
 
 #|
 
 (def-com Add-plane-surface (plane real real) Id)
 |#
 (def-com add-point ([Center Point]) Id)
+(def-com add-points ([points ArrDouble]) Ids)
 (def-com add-polyline ([locs ArrDouble]) Id)
 (def-com add-rev-srf ([shape Id] [axis ArrDouble] #:opt [start Number] [end Number]) Id)
 (def-com add-sphere ([center Point] [radius Double]) Id)
@@ -473,6 +475,9 @@ DivideCurveEquidistant
       (delete-existing-objects ids)))
 |#
 
+(def-com document-path () (U String Void))
+(def-com document-name () (U String Void))
+
 (def-com duplicate-edge-curves ([shape Id] #:opt [select? Boolean]) Ids)
 (def-com duplicate-surface-border ([shape Id] #:opt [type Integer]) IdsOrVoid)
 
@@ -494,6 +499,8 @@ DivideCurveEquidistant
 (def-com get-object (#:opt [message String] [type Integer] [pre-select? Boolean] [select? Boolean] [objects Ids]) Id)
 (def-com get-point (#:opt [message String] [point Point] [radius Double] [plane? Boolean]) Point)
 (def-com get-real (#:opt [message String] [default Double] [min Double] [max Double]) Double)
+(def-com hide-objects ([objs Ids]) Boolean)
+
 (def-com intersect-breps ([id0 Id] [id1 Id] #:opt [tolerance Double]) IdsOrVoid)
 
 (def-com (primitive-intersects? intersectBreps)
@@ -525,10 +532,7 @@ DivideCurveEquidistant
 (def-com is-point ([shape Id]) BoolOrVoid)
 (def-com is-surface ([shape Id]) BoolOrVoid)
 (def-com is-view-maximized ([name String]) BoolOrVoid)
-#|
-; edit: create an enum for flags
-(def last-created-objects (#:opt Boolean integer) ids)
-|#
+(def-com last-created-objects (#:opt [select? Boolean] [flags Integer]) Ids)
 (def-com layer-color ([layer String] #:opt [color RGB]) RGB)
 (def-com join-curves ([shapes Ids] #:opt [delete? Boolean] [tolerance Real]) Ids)
 (def-com join-surfaces ([shapes Ids] #:opt [delete? Boolean]) Id)
@@ -549,12 +553,14 @@ DivideCurveEquidistant
 
 ;;How do we access the COM-OBJECT if Rhino only returns Strings?
 (def-com-method normalized-length-parameter curve ([curve Com-Object] [t Real]) Real)
+(def-com objects-by-name ([name String] #:opt [select? Boolean] [include-lights? Boolean]) IdsOrVoid)
 (def-com object-layer ([shape Id] #:opt [name String]) String)
 (def-com object-color ([shape Id] #:opt [color RGB]) RGB)
 (def-com (objects-color ObjectColor) ([shape Ids] #:opt [color RGB]) RGB)
+(def-com object-name ([shape Id] #:opt [name String]) String)
+;(def-com offset-curve ([shape Id] point real #:opt point integer) ids)
+(def-com offset-surface ([shape Id] [distance Real] #:opt [tolerance Real] [both-sides? Boolean] [solid? Boolean]) Id)
 #|
-(def offset-curve (id point real #:opt point integer) ids)
-(def offset-surface (id real) id)
 (def plane-from-frame ((o point) (x point) (y point)) rh-plane)
 (def plane-from-normal (point normal) matrix<-nested-plane #;rh-plane)
 (def plane-from-points ((o point) (x point) (y point)) rh-plane)
@@ -617,6 +623,7 @@ DivideCurveEquidistant
       0
       (select-existing-objects objects)))
 (def-com selected-objects (#:opt [include-lights? Boolean] [include-grips? Boolean]) IdsOrVoid)
+(def-com show-objects ([objs Ids]) Boolean)
 (def-com split-brep ([brep Id] [cutter Id] #:opt [delete? Boolean]) IdsOrVoid)
 #|
 (provide split-brep-sloppy-n)
@@ -661,8 +668,8 @@ DivideCurveEquidistant
 ;; (define (surface-surface-intersection surface-a surface-b (tolerance com-omit) (create? com-omit))
 ;;   (rhino-check-invoke "SurfaceSurfaceIntersection" surface-a surface-b tolerance create?))
 
-(def-com surface-volume ([id Id]) (Vector Double Double))
-(def-com surface-volume-centroid ([id Id]) Points)
+(def-com surface-volume ([shape Id]) (Vector Double Double))
+(def-com surface-volume-centroid ([shape Id]) Points)
 
 (def-com add-sweep1 ([rail Id] [shapes Ids]#| #:opt [start Point] [end Point] [closed? Boolean] [style Integer] [up Point] [simplify Integer] [arg Number] |#) Ids)
 (def-com add-sweep2 ([rails Ids] [shapes Ids] #| #:opt [start Point] [end Point] [closed? Boolean] [simple? Boolean] [maintain-height? Boolean] [simplify Integer] [arg Number] |#) Ids)
@@ -670,13 +677,13 @@ DivideCurveEquidistant
 (def-com transform-object ([shape Id] [matrix Rh-Matrix] #:opt [copy? Boolean]) Id)
 (def-com transform-objects ([shapes Ids] [matrix Rh-Matrix] #:opt [copy? Boolean]) Ids)
 ;(def (transform-object-special "TransformObject") (id rh-matrix #:opt Boolean) id)
-#|
-(def unit-absolute-tolerance (#:opt tolerance Boolean) number)
-(def unselect-all-objects () integer)
-(def unselect-object (id) Boolean)
-(def unselect-objects (arr-ids) integer)
-(def unselected-objects (#:opt (include-lights? Boolean) (include-grips? Boolean)) maybe-ids)
 
+(def-com unit-absolute-tolerance (#:opt [tolerance Double] [model-units? Boolean]) Double)
+(def-com unselect-all-objects () Integer)
+(def-com unselect-object ([shape Id]) Boolean)
+(def-com unselect-objects ([shapes Ids]) Integer)
+(def-com unselected-objects (#:opt [select? Boolean] [include-lights? Boolean] [include-grips? Boolean]) IdsOrVoid)
+#|
 #;(define (unselected-objects . args)
   (with-handlers ((com-exn? (λ (e) (list))))
     (vector->list
@@ -733,20 +740,24 @@ DivideCurveEquidistant
 |#
 ;;HACK: We need to provide com-omit to the view parameter
 (def-com zoom-extents (#:opt (view String) (all? Boolean)) Void)
-#|
-(def zoom-selected (#:opt string Boolean) void)
+
+;(def-com zoom-selected (#:opt string Boolean) void)
 
 ; commands
 
-(provide thicken)
-(define (thicken object distance)
+
+(provide loft-command)
+(define (loft-command ids [ruled? : Boolean] [closed? : Boolean])
   (unselect-all-objects)
-  (select-object object)
-  (command (format "OffsetSrf Solid=Yes ~A _Enter" distance))
+  (select-objects ids)
+  (command (format "-_Loft _Type ~A ~A _enter"
+                   (if ruled? "Straight" "Normal")
+                   "" #;(if closed? "Closed" "Error!!!!")))
   (begin0
-      (singleton-id (last-created-objects))
+      (last-created-objects)
     (unselect-all-objects)))
 
+#|
 
 (provide create-solid-command)
 (define (create-solid-command ids)
@@ -777,7 +788,7 @@ DivideCurveEquidistant
   ;; (let ((u (surface-domain id 0))
   ;;       (v (surface-domain id 1)))
   ;;   (evaluate-surface id (list (car u) (car v)))))
-
+|#
 
 (provide render-view)
 (define (render-view path)
@@ -800,7 +811,6 @@ Call Rhino.Command("-_SelNone",False)
     Next
     Call Rhino.EnableRedraw(True)
 
-|#
 |#
 
 (define #:forall (T) (trace [msg : String] [v : T]) : T
@@ -861,6 +871,43 @@ Call Rhino.Command("-_SelNone",False)
            #t)))
      (cap-planar-holes id)
      id)))
+
+(provide export-as-obj)
+(define (export-as-obj [path : String] #:write-precision [write-precision : Integer 15])
+  (command "SelAll")
+  (command (string-append
+            "-Export " path ".obj "
+            "_Geometry=_Mesh "
+            "_EndOfLine=CRLF "
+            ;"_ExportRhinoObjectNames=_ExportObjectsAsOBJGroups "
+            "_ExportRhinoObjectNames=_ExportObjectsAsOBJObjects "
+            "_ExportMeshTextureCoordinates=_Yes "
+            "_ExportMeshVertexNormals=_No "
+            "_CreateNGons=_No "
+            "_ExportMaterialDefinitions=_No "
+            "_YUp=_No "
+            "_WrapLongLines=Yes "
+            "_VertexWelding=_Welded "
+            (format "_WritePrecision=~A " write-precision)
+            "_Enter "
+            
+            "_DetailedOptions "
+            "_JaggedSeams=_No "
+            "_PackTextures=_No "
+            "_Refine=_Yes "
+            "_SimplePlane=_No "
+            
+            "_AdvancedOptions "
+            "_Angle=50 "
+            "_AspectRatio=0 "
+            "_Distance=0.0"
+            "_Density=0 "
+            "_Density=0.45 "
+            "_Grid=0 "
+            "_MaxEdgeLength=0 "
+            "_MinEdgeLength=0.0001 "
+            
+            "_Enter _Enter")))
 
 (provide start)
 (define (start)

@@ -205,7 +205,9 @@
 ;so we use this instead
 (: random-range (-> Real Real Real))
 (define (random-range x0 x1)
-  (+ x0 (random (- x1 x0))))
+  (if (= x0 x1)
+      x0
+      (+ x0 (random (- x1 x0)))))
 
 (provide random-integer-range)
 (define (random-integer-range [x0 : Integer] [x1 : Integer]) : Integer
@@ -322,3 +324,7 @@
 
 (define (frame-filename [filename : String] [i : Integer])
   (~a filename "-frame-" (~r i #:min-width 3  #:pad-string "0")))
+
+(provide radians<-degrees)
+(define (radians<-degrees [d : Real])
+  (* d (/ pi 180)))

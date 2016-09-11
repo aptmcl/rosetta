@@ -1,3 +1,4 @@
+;#lang typed/racket/base
 #lang typed/racket/base/no-check
 (require (for-syntax racket/base))
 (require (for-syntax racket/syntax))
@@ -8,6 +9,7 @@
          Vec
          def-base-shape
          def-shape
+         def-shape/no-provide
          def-shape*
          def*
          immediate-mode?
@@ -15,6 +17,7 @@
          mark-deleted!
          shape-reference
          realized?
+         realize!
          with-references
          rectangle-deltas
          rectangle-morph
@@ -23,12 +26,13 @@
          0D-shape?
          1D-shape?
          2D-shape?
-         3D-shape?)
+         3D-shape?
+         virtual)
 
 
-(define immediate-mode? : (Parameter Boolean)
+(define immediate-mode? : (Parameterof Boolean)
   (make-parameter #t))
-(define allow-degenerate-radius? : (Parameter Boolean)
+(define allow-degenerate-radius? : (Parameterof Boolean)
   (make-parameter #f))
 
 (provide Base-Shape Base-Shapes
@@ -193,6 +197,12 @@
 (define (shape-reference sh)
   ((shape-realizer sh)))
 
+(: realize! (All (R) ((shape R) -> (shape R))))
+(define (realize! sh)
+  ((shape-realizer sh))
+  sh)
+
+
 (: realized? (All (R) (-> (shape R) Boolean)))
 (define (realized? sh)
   ((shape-realized? sh)))
@@ -234,6 +244,19 @@
       (= created (add1 deleted)))
     (values realizer deleter realized?)))
 
+
+(define virtual-shapes : (Parameterof (Listof Any)) (make-parameter null))
+
+(define #:forall (R) (add-to-virtual-shapes! [s : (shape R)])
+  (virtual-shapes (cons s (virtual-shapes))))
+
+(define-syntax-rule
+  (virtual expr ...)
+  (parameterize ((immediate-mode? #f)
+                 (virtual-shapes (list)))
+    expr ...
+    (reverse (virtual-shapes))))
+
 (define-syntax (def-base-shape stx)
   (syntax-case stx ()
     [(_ type ((name constructor-name) param ...))
@@ -257,8 +280,9 @@
                               deleter
                               realized?
                               param-name ...)))
-                 (when (immediate-mode?)
-                   (realizer))
+                 (if (immediate-mode?)
+                   (realizer)
+                   (add-to-virtual-shapes! s))
                  s))))))]
     [(def type (name param ...))
      (with-syntax ([constructor-name (build-name #'name "new-~A")])
@@ -269,7 +293,8 @@
        (syntax/loc stx
          (def type (name param ...))))]))
 
-(define-syntax (def-shape stx)
+
+(define-syntax (def-shape/no-provide stx)
   (syntax-case stx (:)
     [(_ ((name constructor) param ...) body ...)
      (with-syntax ([(param-name ...)
@@ -279,15 +304,21 @@
                              [[name : type] #'name]))
                          (syntax->list #'(param ...)))])
        (syntax/loc stx
-         (begin
-           (provide name)
-           (define (name param ...)
-             (constructor (lambda () body ...)
-                          param-name ...)))))]
+         (define (name param ...)
+           (constructor (lambda () body ...)
+                        param-name ...))))]
     [(def (name param ...) body ...)
      (with-syntax ([constructor (build-name #'name "new-~A")])
        (syntax/loc stx
          (def ((name constructor) param ...) body ...)))]))
+
+(define-syntax (def-shape stx)
+  (syntax-case stx (:)
+    [(_ (name param ...) body ...)
+     (syntax/loc stx
+       (begin
+         (provide name)
+         (def-shape/no-provide (name param ...) body ...)))]))
 
 (define-syntax (def* stx)
   (syntax-case stx (: *)
@@ -370,6 +401,7 @@
 
 (def-base-shape 0D-shape (point [position : Loc (u0)]))
 
+(def-base-shape 1D-shape (curve)) ;;For automatically generated curves
 (def-base-shape 1D-shape (line [vertices : (Listof Loc) (list (u0) (ux))]))
 #|
 (def-base-shape (bounding-box s))
@@ -506,6 +538,8 @@
 (def-base-shape 3D-shape (rectangular-mass [center : Loc] [width : Real] [length : Real] [height : Real]))
 
 ;;BIM
+(struct (R) BIM-shape 3D-shape
+  ([family : Any]))
 
 (def-base-shape 3D-shape (beam [p0 : Loc] [p1 : Loc] [family : Any]))
 (def-base-shape 3D-shape (column [center : Loc] [bottom-level : Any] [top-level : Any] [family : Any]))
@@ -513,4 +547,47 @@
 (def-base-shape 3D-shape (roof [vertices : Locs] [level : Any] [family : Any]))
 (def-base-shape 3D-shape (wall [p0 : Loc] [p1 : Loc] [bottom-level : Any] [top-level : Any] [family : Any]))
 (def-base-shape 3D-shape (walls [vertices : Locs] [bottom-level : Any] [top-level : Any] [family : Any]))
-(def-base-shape 3D-shape (door [wall : Any] [loc : Loc] [family : Any]))
+ (def-base-shape 3D-shape (door [wall : Any] [loc : Loc] [family : Any]))
+(def-base-shape 3D-shape (panel [vertices : Locs] [level : Any] [family : Any]))
+
+;;Turtle-like operations
+
+(provide
+ path
+ reset-path
+ move-to
+ turn
+ walk
+ loc-at
+ current-loc
+ current-dir)
+
+(define current-loc : (Parameterof Loc) (make-parameter (u0)))
+(define current-dir : (Parameterof Real) (make-parameter 0))
+
+(define-syntax-rule
+  (path expr ...)
+  (parameterize ((current-loc (current-loc))
+                 (current-dir (current-dir)))
+    (virtual expr ...)))
+
+(define (reset-path [loc : Loc (u0)] [dir : Real 0])
+  (current-loc loc)
+  (current-dir dir))
+
+(define (loc-at [pv : (U Loc Vec)])
+  (cond ((vec? pv) (p+v (current-loc) pv))
+        ((loc? pv) pv)
+        (else
+         (error "Argument not a location or vector" pv))))
+
+(define (move-to [pv : (U Loc Vec)])
+  (let ((p (loc-at pv)))
+    (current-loc p)
+    p))
+
+(define (turn [phi : Real pi/2])
+  (current-dir (+ (current-dir) phi)))
+
+(define (walk [d : Real])
+  (move-to (vpol d (current-dir))))

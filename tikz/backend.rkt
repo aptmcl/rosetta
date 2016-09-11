@@ -85,31 +85,9 @@
   (with-3d (center)
     (create-arc center radius start-angle amplitude #t)))
 
-#|
-;; elliptical arc
-
-(define (ellipse-morph c xr yr)
-  (cond ((= xr yr 0)
-         (point c))
-        ((= xr 0)
-         (line (+y c (- yr)) (+y c yr)))
-        ((= yr 0)
-         (line (+x c (- xr)) (+x c xr)))
-        (else
-         #f)))
-
-(def-new-shape (ellipse [c (u0)] [xr 1] [yr 1/2])
-  (rhino
-   (or (ellipse-morph c xr yr)
-       (rh:add-ellipse c xr yr)))
-  (autocad
-   (or (ellipse-morph c xr yr)
-       (%transform-from
-        (if (> xr yr)
-            (%ellipse (u0 world-cs) (xyz xr 0 0) (/ yr xr))
-            (%ellipse (u0 world-cs) (xyz 0 yr 0) (/ xr yr)))
-        c))))
-|#
+(def-shape (ellipse [center : Loc (u0)] [radius-x : Real 1] [radius-y : Real 1])
+  (with-3d (center)
+    (%ellipse center radius-x radius-y 0 #f)))
 
 (def-shape* (line [pts : Loc *])
   (%line (map loc-in-world pts)))
@@ -121,6 +99,10 @@
 ;;but we don't check that
 (def-shape* (polygon [pts : Loc *])
   (%closed-line (map loc-in-world pts)))
+
+(def-shape* (surface-polygon [pts : Loc *])
+  (%closed-line (map loc-in-world pts) #t))
+
 
 (def-shape* (spline [pts : Loc *]) ; [v0 : (U #f Vec) #f] [v1 : (U #f Vec) #f])
   (if #f ;(and v0 v1) ;;HACK This should be solved by dealing with optionals
@@ -1968,13 +1950,6 @@ The following example does not work as intended. Rotating the args to closed-spl
   (tikz
    (%closed-spline (map as-world cs))))
 
-
-
-;;A polygon should have all its vertices in the same plane
-;;but we don't check that
-(def-new-shape* (polygon cs)
-  (else
-   (closed-line cs)))
 
 (def-new-shape* (surface-polygon cs)
   (rhino

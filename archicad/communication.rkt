@@ -16,13 +16,19 @@
 
 (define (bim-connection)
   (unless conn
-    (error "Did you forget to initialize the backend?"))
+    (set! conn (start-connection))
+    (set-current-level! (make-parameter (check-level))))
   conn)
 
-(define server-addr "localhost")
+;;Function to quit
+(define (disconnect)
+  (when conn
+    (write-msg-name "quit")
+    (set! conn #f))
+  (void))
 
-(define (connect)
-  (ensure-connection))
+
+(define server-addr "localhost")
 
 (define moved-addon-files? #f)
 
@@ -34,8 +40,7 @@
     (displayln "done!")
     (set! moved-addon-files? #t)))
 
-
-(define (ensure-connection)
+(define (start-connection)
   (move-addon-files)
   (define time-out-tries 10)
   (let rec ((n time-out-tries))
@@ -50,26 +55,16 @@
                              (sleep 2)
                              (rec (- n 1)))
                            (raise e)))])
-      (start-connection))))
-
-(define (start-connection)
   (let-values([(in out) (tcp-connect server-addr 53800)])
     (file-stream-buffer-mode in 'none)
     (file-stream-buffer-mode out 'none)
-    (set! conn (connection in out))
-    (current-level (check-level))))
-
-;;Function to quit
-(define (disconnect)
-  (write-msg-name "quit")
-  "quit successful")
+    (connection in out)))))
 
 ;;Usage: (send (create-...) (create-...) ... )
-(define-syntax-rule (send expr ...)
-  (begin
-    (connect)
-    (parameterize ((current-level (check-level)))
-      expr ...)
+(define-syntax-rule
+  (send expr ...)
+  (begin0
+    (begin expr ...)
     (disconnect)))
 
 ;;Function to send name 
@@ -139,6 +134,17 @@
                                            #:py lst-y 
                                            #:pz lst-z) (connection-out (bim-connection)))))
 |#
+
+;;TODO rework conditions, too confusing...
+(define (close-guide points first-el [no-lists? #t])
+  (cond
+    [(and (null? points) no-lists?)(list first-el)]
+    [(null? points) (list)]
+    [(and (list? (car points)) no-lists?) (cons first-el (cons (append (car points) (list (caar points))) (close-guide (cdr points) first-el #f)))]
+    [(list? (car points))(cons (append (car points) (list (caar points))) (close-guide (cdr points) first-el #f))]
+    [else (cons (car points) (close-guide (cdr points) first-el no-lists?))]))
+
+
 (define (prepare-points-to-send lst)
   (let ((lst-x (list))
         (lst-y (list))
@@ -241,8 +247,12 @@ The file is merely used for consulting
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (define default-level-to-level-height (make-parameter 3))
-
-(define current-level (make-parameter #f))
+(define current-level (make-parameter (storyinfo* #:exists #t
+                                                  #:index 0
+                                                  #:level 0
+                                                  #:name "")))
+(define (set-current-level! level)
+  (set! current-level level))
 
 (define (check-level)
   (write-msg-name "CheckStory")
@@ -278,9 +288,9 @@ Function to create a level given a height, this uses absolute height
 Will create a level with 10 height, if there isn't one
  height: height of the level
 Example of usage: 
-(send (create-level 10.0))
+(send (level 10.0))
 |#
-(define (create-level #:height [height 0])
+(define (level height)
   (let ((msg (storymsg* #:height height
                         #:name "Story")))
     (write-msg "Story" msg)
@@ -314,6 +324,9 @@ Example of usage:
 (define (view-3d)
   (write-msg-name "3D"))
 
+(define (view-2d)
+  (write-msg-name "2D"))
+
 ;(send (open-file "D:\\GitHubRep\\Tese\\Development\\Examples\\Models\\AT for eCADDe.pln"))
 ;(send (open-file "D:\\GitHubRep\\Tese\\Development\\Examples\\Models\\AT for eCADDe.ifc"))
 ;(send (open-file "C:\\Users\\Client\\Desktop\\SmallTower.ifc"))
@@ -322,11 +335,21 @@ Example of usage:
                            #:extension (last (string-split path ".")))))
     (write-msg "OpenFile" msg)))
 
-(define (create-layer name)
-  (let ((msg (layermsg* #:name name)))
+;When connection is 0, elements on that layer will not intersect
+(define (create-layer name [connection 1])
+  (let ((msg (layermsg* #:name name
+                        #:connection connection)))
     (write-msg "Layer" msg)))
 
 (define (shape-layer name guid)
   (let ((msg (layerelementmsg* #:layer name
                                #:guid guid)))
     (write-msg "LayerElem" msg)))
+
+(define (hide-layer name)
+  (let ((msg (layermsg* #:name name)))
+    (write-msg "HideLayer" msg)))
+
+(define (show-layer name)
+  (let ((msg (layermsg* #:name name)))
+    (write-msg "ShowLayer" msg)))

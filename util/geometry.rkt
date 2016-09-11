@@ -3,7 +3,7 @@
 (provide circle-from-three-points-2d
          circle-from-three-points
          nearest-point-from-lines)
-
+(provide epsilon)
 (define epsilon (make-parameter 1e-8))
 
 (define (nearest-point-from-lines [l0p0 : Loc] [l0p1 : Loc] [l1p0 : Loc] [l1p1 : Loc]) : Loc
@@ -24,7 +24,7 @@
               (values (/ (- (* b e) (* c d)) D)
                       (/ (- (* a e) (* b d)) D)))])
       (let ((p0 (p+v l0p0 (v*r u sc)))
-            (p1 (p+v l1p0 (v*r v sc))))
+            (p1 (p+v l1p0 (v*r v tc))))
         (intermediate-point p0 p1)))))
 
 (define (circle-from-three-points-2d [v0 : Loc] [v1 : Loc] [v2 : Loc]) : (Values Loc Real)
@@ -69,4 +69,82 @@
                      (loc-in-cs p1 cs)
                      (loc-in-cs p2 cs))])
         (values c r)))))
+
+#|
+(define (circle-from-sphere-intersection [p0 : Loc] [r0 : Real] [p1 : Loc] [r1: Real])
+  (let ((cs (cs-from-o-n p0 (p-p p1 p0))))
+    ;;Intersect spheres with xy plane
+
+  
+def sss_int(p1, r1, p2, r2, p3, r3):
+    """Intersect three spheres, centered in p1, p2, p3 with radius r1,r2,r3 respectively. 
+       Returns a list of zero, one or two solution points.
+    """
+    solutions = []
+    # plane though p1, p2, p3
+    n = vector.cross(p2-p1, p3-p1)
+    n = n / vector.norm(n)
+    # intersect circles in plane
+    cp1 = vector.vector([0.0,0.0]) 
+    cp2 = vector.vector([vector.norm(p2-p1), 0.0])
+    cpxs = cc_int(cp1, r1, cp2, r2)
+    if len(cpxs) == 0:
+        return []
+    # px, rx, nx is circle 
+    px = p1 + (p2-p1) * cpxs[0][0] / vector.norm(p2-p1)
+    rx = abs(cpxs[0][1])
+    # plane of intersection cicle
+    nx = p2-p1
+    nx = nx / vector.norm(nx)
+    # print "px,rx,nx:",px,rx,nx
+    # py = project p3 on px,nx
+    dy3 = vector.dot(p3-px, nx)
+    py = p3 - (nx * dy3)
+    if tol_gt(dy3, r3):
+        return []
+    ry = math.sin(math.acos(abs(dy3/r3)))*r3
+    # print "py,ry:",py,ry
+    cpx = vector.vector([0.0,0.0]) 
+    cpy = vector.vector([vector.norm(py-px), 0.0])
+    cp4s = cc_int(cpx, rx, cpy, ry)
+    for cp4 in cp4s:
+        p4 = px + (py-px) * cp4[0] / vector.norm(py-px) + n * cp4[1] 
+        solutions.append(p4)  
+    return solutions
+
+(define (circle-intersection p1 r1 p2 r2)
+  (let ((d (distance p1 p2)))
+    (if (< d 
+def cc_int(p1, r1, p2, r2):
+	"""
+	Intersect circle (p1,r1) circle (p2,r2)
+	where p1 and p2 are 2-vectors and r1 and r2 are scalars
+	Returns a list of zero, one or two solution points.
+	"""
+	d = vector.norm(p2-p1)
+	if not tol_gt(d, 0):
+		return []
+	u = ((r1*r1 - r2*r2)/d + d)/2
+	if tol_lt(r1*r1, u*u):
+		return []
+        elif r1*r1 < u*u:
+            v = 0.0
+        else:
+            v = math.sqrt(r1*r1 - u*u)
+	s = (p2-p1) * u / d
+	if tol_eq(vector.norm(s),0):
+	        p3a = p1+vector.vector([p2[1]-p1[1],p1[0]-p2[0]])*r1/d
+	        if tol_eq(r1/d,0):
+                    return [p3a]
+                else:
+                    p3b = p1+vector.vector([p1[1]-p2[1],p2[0]-p1[0]])*r1/d
+                    return [p3a,p3b]
+	else:
+	        p3a = p1 + s + vector.vector([s[1], -s[0]]) * v / vector.norm(s) 
+                if tol_eq(v / vector.norm(s),0):
+                    return [p3a]
+                else:
+                    p3b = p1 + s + vector.vector([-s[1], s[0]]) * v / vector.norm(s)
+    	            return [p3a,p3b]
+|#
 
