@@ -516,16 +516,16 @@
                (error "Continue this"))))))))
 
 (def-shape (thicken [surf : (Extrudable-Shape RefOp)] [h : Real 1])
-  (begin0
-    (%offset-surface (shape-ref surf) h %com-omit #t #t)
-    (mark-deleted! surf))
-  #;#;#;#;
-  (%unselect-all-objects)
-  (%select-objects (shape-refs surf))
-  (%command (format "OffsetSrf BothSides=Yes Solid=Yes ~A _Enter" h))
-  (begin0
-    (single-ref-or-union (%last-created-objects))
-    (mark-deleted! surf)))
+  (let ((s (%offset-surface (shape-ref surf) h %com-omit #t #t)))
+    (begin0
+      (if (void? s)
+          (begin ;Failed! Let's try the command approach
+            (%unselect-all-objects)
+            (%select-objects (shape-refs surf))
+            (%command (format "OffsetSrf BothSides=Yes Solid=Yes ~A _Enter" h))
+            (single-ref-or-union (%last-created-objects)))
+          s)
+      (mark-deleted! surf))))
 
 (def-shape (slice [shape : Shape] [p : Loc (u0)] [n : Vec (vz 1 p)])
   (let ([p (loc-from-o-vz p n)])
