@@ -452,6 +452,10 @@
 
 
 
+(def-shape (thicken [surf : (Extrudable-Shape RefOp)] [h : Real 1])
+  (error "Thicken not available in Sketchup"))
+
+
 (define (bounding-box [s : Shape]) : Locs
   (let ((bb (%boundingBox (shape-reference s))))
     (match bb
