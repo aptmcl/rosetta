@@ -7,9 +7,12 @@
          close-workbook
          save-workbook
          workbook
+         application
          sheets
          sheet
          range
+         used-range
+         delete-range
          get-value
          set-value!
          get-values
@@ -31,17 +34,23 @@
 
 (def-ro-property ((_workbooks WorkBooks) Com-Object) Com-Object)
 (def-ro-property ((_sheets Sheets) Com-Object) Com-Object)
+(def-ro-property ((_application Application) Com-Object) Com-Object)
 (def-rw-property ((_value Value2) Com-Object) Cell-Value)
 (def-rw-property ((_values Value2) Com-Object) Cells-Values)
+(def-rw-property ((display-alerts DisplayAlerts) Com-Object) Boolean)
 
 (def-com-method open #f ([path String]) Com-Object)
 (def-com-method close #f (#:opt [save? Boolean] [path String]) Com-Object)
 (def-com-method add #f () Com-Object)
+(def-com-method delete #f () Void)
 (def-com-method save #f () Void)
 (def-com-method saveAs #f ([filename String]) Void)
 
 (define (workbooks [e : Com-Object (excel)])
   (_workbooks e))
+
+(define (application [workbook : Com-Object (workbook)])
+  (_application workbook))
 
 ;; Open an existing workbook.
 (define (open-workbook [path : Path-String] [workbooks : Com-Object (workbooks)]) : Com-Object
@@ -74,6 +83,13 @@
 ;; Obtain a specific range
 (define (range [rng : String] [sheet : Com-Object (sheet)]) : Com-Object
   (cast (com-get-property* sheet "Range" rng) Com-Object))
+
+(define (used-range [sheet : Com-Object (sheet)]) : Com-Object
+  (cast (com-get-property sheet "UsedRange") Com-Object))
+
+;; Delete a range
+(define (delete-range [range : Com-Object (used-range)]) : Com-Object
+  (delete range))
 
 ;; Obtain the value of a range
 (define (get-value [range : Com-Object]) : Cell-Value
