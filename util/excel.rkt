@@ -6,6 +6,7 @@
          new-workbook
          close-workbook
          save-workbook
+         quit
          workbook
          application
          sheets
@@ -45,6 +46,7 @@
 (def-com-method delete #f () Void)
 (def-com-method save #f () Void)
 (def-com-method saveAs #f ([filename String]) Void)
+(def-com-method quit #f () Void)
 
 (define (workbooks [e : Com-Object (excel)])
   (_workbooks e))
