@@ -446,7 +446,7 @@
 (def-base-shape 3D-shape (irregular-pyramid [cbs : Locs (list (ux) (uy) (uxy))] [ct : Loc (uz)]))
 (def-base-shape 3D-shape (regular-prism [edges : Integer 3] [cb : Loc (u0)] [r : Real 1] [a : Real 0] [h/ct : LocOrZ 1] [inscribed? : Boolean #f]))
 (def-base-shape 3D-shape (irregular-prism [cbs : Locs (list (ux) (uy) (uxy))] [dir : VecOrZ 1]))
-(def-base-shape 3D-shape (right-cuboid [cb : Loc (u0)] [width : Real 1] [height : Real 1] [h/ct : LocOrZ 1]))
+(def-base-shape 3D-shape (right-cuboid [cb : Loc (u0)] [width : Real 1] [height : Real 1] [h/ct : LocOrZ 1] [angle : Real 0]))
 (def-base-shape 3D-shape (box [c : Loc (u0)] [dx/c1 : LocOrZ 1] [dy : Real (if (number? dx/c1) dx/c1 1)] [dz : Real dy]))
 (def-base-shape 3D-shape (cone [cb : Loc (u0)] [r : Real 1] [h/ct : LocOrZ 1]))
 (def-base-shape 3D-shape (cone-frustum [cb : Loc (u0)] [rb : Real 1] [h/ct : LocOrZ 1] [rt : Real 1]))
@@ -541,13 +541,15 @@
 (struct (R) BIM-shape 3D-shape
   ([family : Any]))
 
-(def-base-shape 3D-shape (beam [p0 : Loc] [p1 : Loc] [family : Any]))
+(def-base-shape 3D-shape (beam [p0 : Loc] [p1 : Loc] [angle : Real] [family : Any]))
 (def-base-shape 3D-shape (column [center : Loc] [bottom-level : Any] [top-level : Any] [family : Any]))
 (def-base-shape 3D-shape (slab [vertices : Locs] [level : Any] [family : Any]))
+(def-base-shape 3D-shape (slab-path [path : Any] [level : Level] [family : Any]))
+(def-base-shape 3D-shape (slab-opening-path [slab : Any] [path : Any]))
 (def-base-shape 3D-shape (roof [vertices : Locs] [level : Any] [family : Any]))
 (def-base-shape 3D-shape (wall [p0 : Loc] [p1 : Loc] [bottom-level : Any] [top-level : Any] [family : Any]))
 (def-base-shape 3D-shape (walls [vertices : Locs] [bottom-level : Any] [top-level : Any] [family : Any]))
- (def-base-shape 3D-shape (door [wall : Any] [loc : Loc] [family : Any]))
+(def-base-shape 3D-shape (door [wall : Any] [loc : Loc] [family : Any]))
 (def-base-shape 3D-shape (panel [vertices : Locs] [level : Any] [family : Any]))
 
 ;;Turtle-like operations

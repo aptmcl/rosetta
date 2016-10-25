@@ -861,10 +861,27 @@ The following example does not work as intended. Rotating the args to closed-spl
 (require "../base/bim-families.rkt")
 (provide (all-from-out "../base/bim-families.rkt"))
 
-(def-shape (beam [p0 : Loc] [p1 : Loc] [family : Beam-Family (default-beam-family)])
-  (%beam (loc-in-world p0) (loc-in-world p1)
-         #:beam-width (beam-family-width family)
-         #:beam-height (beam-family-height family)))
+(define (vertical? p0 p1)
+  (< (cyl-rho (p-p p0 p1)) 0.1))
+
+;;Added angle must propagate to other backends.
+(def-shape (beam [p0 : Loc] [p1 : Loc] [angle : Real 0] [family : Beam-Family (default-beam-family)])
+  (if (vertical? p0 p1)
+      (if (< (cz p0) (cz p1))
+          (%column-two-points
+           p0 p1
+           #:width (beam-family-width family)
+           #:depth (beam-family-height family)
+           #:angle angle)
+          (%column-two-points
+           p1 p0
+           #:width (beam-family-width family)
+           #:depth (beam-family-height family)
+           #:angle angle))
+      (%beam (loc-in-world p0) (loc-in-world p1)
+             #:beam-width (beam-family-width family)
+             #:beam-height (beam-family-height family)
+             #;#; #:angle angle)))
 
 (def-shape (column [center : Loc]
                    [bottom-level : Level (current-level)]

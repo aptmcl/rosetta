@@ -266,20 +266,21 @@
 (def-shape (irregular-pyramid [cbs : Locs (list (ux) (uy) (uxy))] [ct : Loc (uz)])
   (%irregular-pyramid cbs ct))
 
-(def-shape (right-cuboid [cb : Loc (u0)] [width : Real 1] [height : Real 1] [h/ct : LocOrZ 1])
+(def-shape (right-cuboid [cb : Loc (u0)] [width : Real 1] [height : Real 1] [h/ct : LocOrZ 1] [angle : Real 0])
   (let-values ([(cb dz) (position-and-height cb h/ct)])
-    (let ((c (+xy cb (/ width -2) (/ height -2)))
-          (dx width)
-          (dy height))
-      (%add-box
-       (list c
-             (+x c dx)
-             (+xy c dx dy)
-             (+y c dy)
-             (+z c dz)
-             (+xz c dx dz)
-             (+xyz c dx dy dz)
-             (+yz c dy dz))))))
+    (let ((cb (if (= angle 0) cb (loc-from-o-phi cb angle))))
+      (let ((c (+xy cb (/ width -2) (/ height -2)))
+            (dx width)
+            (dy height))
+        (%add-box
+         (list c
+               (+x c dx)
+               (+xy c dx dy)
+               (+y c dy)
+               (+z c dz)
+               (+xz c dx dz)
+               (+xyz c dx dy dz)
+               (+yz c dy dz)))))))
 
 (def-shape (cylinder [cb : Loc (u0)] [r : Real 1] [h/ct : LocOrZ 1])
    (let-values ([(c h) (position-and-height cb h/ct)])
