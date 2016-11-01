@@ -803,7 +803,9 @@ The following example does not work as intended. Rotating the args to closed-spl
 (define shape-layer
   (case-lambda
     [([shape : Shape])
-     (%get-layer (%layer (shape-ref shape)))]
+     #;
+     (%get-layer (%layer (shape-ref shape)))
+     (%layer (shape-ref shape))]
     [([shape : Shape] [new-layer : Layer])
      (do-ref ([r shape])
        (%layer r new-layer))
