@@ -271,8 +271,9 @@
                 (if (number? h/ct)
                     (values cb h/ct)
                     (values (loc-from-o-vz cb (p-p h/ct cb)) (distance cb h/ct)))])
-    (let ((c (+xy cb (/ width -2) (/ height -2))))
-      (uncurry-xform c (%addBoxTrans width height length)))))
+    (let ((cb (if (= angle 0) cb (loc-from-o-phi cb angle))))
+      (let ((c (+xy cb (/ width -2) (/ height -2))))
+        (uncurry-xform c (%addBoxTrans width height length))))))
 
 (def-shape (cylinder [cb : Loc (u0)] [r : Real 1] [h/ct : LocOrZ 1])
   (if (number? h/ct)
@@ -450,6 +451,10 @@
 (def-shape (quadrangle-face [p0 : Loc] [p1 : Loc] [p2 : Loc] [p3 : Loc])
   (%addSurfacePolygon (map loc->list-real (list p0 p1 p2 p3))))
 
+
+
+(def-shape (thicken [surf : (Extrudable-Shape RefOp)] [h : Real 1])
+  (error "Thicken not available in Sketchup"))
 
 
 (define (bounding-box [s : Shape]) : Locs

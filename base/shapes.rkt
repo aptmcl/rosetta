@@ -1,3 +1,4 @@
+;#lang typed/racket/base
 #lang typed/racket/base/no-check
 (require (for-syntax racket/base))
 (require (for-syntax racket/syntax))
@@ -16,6 +17,7 @@
          mark-deleted!
          shape-reference
          realized?
+         realize!
          with-references
          rectangle-deltas
          rectangle-morph
@@ -28,9 +30,9 @@
          virtual)
 
 
-(define immediate-mode? : (Parameter Boolean)
+(define immediate-mode? : (Parameterof Boolean)
   (make-parameter #t))
-(define allow-degenerate-radius? : (Parameter Boolean)
+(define allow-degenerate-radius? : (Parameterof Boolean)
   (make-parameter #f))
 
 (provide Base-Shape Base-Shapes
@@ -195,6 +197,12 @@
 (define (shape-reference sh)
   ((shape-realizer sh)))
 
+(: realize! (All (R) ((shape R) -> (shape R))))
+(define (realize! sh)
+  ((shape-realizer sh))
+  sh)
+
+
 (: realized? (All (R) (-> (shape R) Boolean)))
 (define (realized? sh)
   ((shape-realized? sh)))
@@ -237,10 +245,10 @@
     (values realizer deleter realized?)))
 
 
-(define virtual-shapes : (Listof Shape) (make-parameter (list)))
+(define virtual-shapes : (Parameterof (Listof Any)) (make-parameter null))
 
-(define (add-to-virtual-shapes! [shape : Shape])
-  (virtual-shapes (cons shape (virtual-shapes))))
+(define #:forall (R) (add-to-virtual-shapes! [s : (shape R)])
+  (virtual-shapes (cons s (virtual-shapes))))
 
 (define-syntax-rule
   (virtual expr ...)
@@ -393,6 +401,7 @@
 
 (def-base-shape 0D-shape (point [position : Loc (u0)]))
 
+(def-base-shape 1D-shape (curve)) ;;For automatically generated curves
 (def-base-shape 1D-shape (line [vertices : (Listof Loc) (list (u0) (ux))]))
 #|
 (def-base-shape (bounding-box s))
@@ -437,7 +446,7 @@
 (def-base-shape 3D-shape (irregular-pyramid [cbs : Locs (list (ux) (uy) (uxy))] [ct : Loc (uz)]))
 (def-base-shape 3D-shape (regular-prism [edges : Integer 3] [cb : Loc (u0)] [r : Real 1] [a : Real 0] [h/ct : LocOrZ 1] [inscribed? : Boolean #f]))
 (def-base-shape 3D-shape (irregular-prism [cbs : Locs (list (ux) (uy) (uxy))] [dir : VecOrZ 1]))
-(def-base-shape 3D-shape (right-cuboid [cb : Loc (u0)] [width : Real 1] [height : Real 1] [h/ct : LocOrZ 1]))
+(def-base-shape 3D-shape (right-cuboid [cb : Loc (u0)] [width : Real 1] [height : Real 1] [h/ct : LocOrZ 1] [angle : Real 0]))
 (def-base-shape 3D-shape (box [c : Loc (u0)] [dx/c1 : LocOrZ 1] [dy : Real (if (number? dx/c1) dx/c1 1)] [dz : Real dy]))
 (def-base-shape 3D-shape (cone [cb : Loc (u0)] [r : Real 1] [h/ct : LocOrZ 1]))
 (def-base-shape 3D-shape (cone-frustum [cb : Loc (u0)] [rb : Real 1] [h/ct : LocOrZ 1] [rt : Real 1]))
@@ -529,10 +538,14 @@
 (def-base-shape 3D-shape (rectangular-mass [center : Loc] [width : Real] [length : Real] [height : Real]))
 
 ;;BIM
+(struct (R) BIM-shape 3D-shape
+  ([family : Any]))
 
-(def-base-shape 3D-shape (beam [p0 : Loc] [p1 : Loc] [family : Any]))
+(def-base-shape 3D-shape (beam [p0 : Loc] [p1 : Loc] [angle : Real] [family : Any]))
 (def-base-shape 3D-shape (column [center : Loc] [bottom-level : Any] [top-level : Any] [family : Any]))
 (def-base-shape 3D-shape (slab [vertices : Locs] [level : Any] [family : Any]))
+(def-base-shape 3D-shape (slab-path [path : Any] [level : Level] [family : Any]))
+(def-base-shape 3D-shape (slab-opening-path [slab : Any] [path : Any]))
 (def-base-shape 3D-shape (roof [vertices : Locs] [level : Any] [family : Any]))
 (def-base-shape 3D-shape (wall [p0 : Loc] [p1 : Loc] [bottom-level : Any] [top-level : Any] [family : Any]))
 (def-base-shape 3D-shape (walls [vertices : Locs] [bottom-level : Any] [top-level : Any] [family : Any]))
@@ -541,17 +554,18 @@
 
 ;;Turtle-like operations
 
-(provide 
+(provide
  path
  reset-path
  move-to
  turn
+ walk
  loc-at
  current-loc
  current-dir)
 
 (define current-loc : (Parameterof Loc) (make-parameter (u0)))
-(define current-dir : Real (make-parameter 0))
+(define current-dir : (Parameterof Real) (make-parameter 0))
 
 (define-syntax-rule
   (path expr ...)
@@ -574,5 +588,8 @@
     (current-loc p)
     p))
 
-(define (turn [phi : Real])
+(define (turn [phi : Real pi/2])
   (current-dir (+ (current-dir) phi)))
+
+(define (walk [d : Real])
+  (move-to (vpol d (current-dir))))

@@ -11,7 +11,8 @@
    [properties : Any])
   #:type-name BIM-Family)
 
-(provide bim-family-layer-ref
+(provide def-bim-family
+         bim-family-layer-ref
          bim-family-layer-name)
 
 (define (layer-name-from-path [path : String]) : Layer

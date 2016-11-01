@@ -11,6 +11,8 @@
 (provide (all-from-out "../base/shapes.rkt"))
 (provide (all-from-out "../util/geometry.rkt"))
 (provide immediate-mode?
+         realized?
+         realize!
          current-backend-name
          all-shapes
          bounding-box
@@ -20,7 +22,7 @@
          create-layer
          current-layer
          curve-start-location
-         curve-end-location
+         curve-closest-location
          curve-domain
          curve-end-location
          curve-frame-at
@@ -29,6 +31,9 @@
          curve-start-location
          enable-update
          disable-update
+         hide-shape
+         loft
+         loft-ruled
          map-curve-division
          map-curve-length-division
          map-surface-division
@@ -45,6 +50,7 @@
          select-shapes
          shape-layer
          shape-color
+         show-shape
          zoom-extents
 )
 
@@ -260,20 +266,21 @@
 (def-shape (irregular-pyramid [cbs : Locs (list (ux) (uy) (uxy))] [ct : Loc (uz)])
   (%irregular-pyramid cbs ct))
 
-(def-shape (right-cuboid [cb : Loc (u0)] [width : Real 1] [height : Real 1] [h/ct : LocOrZ 1])
+(def-shape (right-cuboid [cb : Loc (u0)] [width : Real 1] [height : Real 1] [h/ct : LocOrZ 1] [angle : Real 0])
   (let-values ([(cb dz) (position-and-height cb h/ct)])
-    (let ((c (+xy cb (/ width -2) (/ height -2)))
-          (dx width)
-          (dy height))
-      (%add-box
-       (list c
-             (+x c dx)
-             (+xy c dx dy)
-             (+y c dy)
-             (+z c dz)
-             (+xz c dx dz)
-             (+xyz c dx dy dz)
-             (+yz c dy dz))))))
+    (let ((cb (if (= angle 0) cb (loc-from-o-phi cb angle))))
+      (let ((c (+xy cb (/ width -2) (/ height -2)))
+            (dx width)
+            (dy height))
+        (%add-box
+         (list c
+               (+x c dx)
+               (+xy c dx dy)
+               (+y c dy)
+               (+z c dz)
+               (+xz c dx dz)
+               (+xyz c dx dy dz)
+               (+yz c dy dz)))))))
 
 (def-shape (cylinder [cb : Loc (u0)] [r : Real 1] [h/ct : LocOrZ 1])
    (let-values ([(c h) (position-and-height cb h/ct)])
@@ -368,7 +375,11 @@
           (let ((ref (car refs)))
             (if (%is-point ref)
                 ref
-                (singleton-ref (%add-planar-srf refs))))
+                ;;First, try a planar surface
+                (let ((ids (%add-planar-srf refs)))
+                  (if (null? ids) ;;Failed, try a patch
+                      (%add-patch refs 3 3)
+                      (singleton-ref ids)))))
           (%add-edge-srf refs)))
     (delete-shapes profiles)))
 
@@ -506,12 +517,16 @@
                (error "Continue this"))))))))
 
 (def-shape (thicken [surf : (Extrudable-Shape RefOp)] [h : Real 1])
-  (%unselect-all-objects)
-  (%select-objects (shape-refs surf))
-  (%command (format "OffsetSrf Solid=Yes ~A _Enter" h))
-  (begin0
-    (single-ref-or-union (%last-created-objects))
-    (mark-deleted! surf)))
+  (let ((s (%offset-surface (shape-ref surf) h %com-omit #t #t)))
+    (begin0
+      (if (void? s)
+          (begin ;Failed! Let's try the command approach
+            (%unselect-all-objects)
+            (%select-objects (shape-refs surf))
+            (%command (format "OffsetSrf BothSides=Yes Solid=Yes ~A _Enter" h))
+            (single-ref-or-union (%last-created-objects)))
+          s)
+      (mark-deleted! surf))))
 
 (def-shape (slice [shape : Shape] [p : Loc (u0)] [n : Vec (vz 1 p)])
   (let ([p (loc-from-o-vz p n)])
@@ -553,12 +568,34 @@
 
 (define (surface-boundary [shape : Shape]) : Shape
   (begin0
-    (map-ref ([r shape])
-      ;;HACK to be completed for the case of multiple
-      ;;borders. Probably, return a failed union of curves
-      (singleton-ref (%duplicate-surface-border r)))
+    (new-curve
+     (thunk
+      (map-ref ([r shape])
+       ;;HACK to be completed for the case of multiple
+       ;;borders. Probably, return a failed union of curves
+       (singleton-ref (%duplicate-surface-border r)))))
     (delete-shape shape)))
 
+
+(define (curve?? [s : Shape]) : Boolean
+  (or (curve? s)
+      (line? s)
+      (closed-line? s)
+      (spline? s)
+      (closed-spline? s)
+      (circle? s)
+      (arc? s)
+      ;;ask the backend
+      (andmap %is-curve (shape-refs s))))
+
+(define (surface?? [s : Shape]) : Boolean
+  (or (surface? s)
+      (surface-circle? s)
+      (surface-arc? s)
+      (surface-rectangle? s)
+      (surface-polygon? s)
+      ;;ask the backend
+      (andmap %is-surface (shape-refs s))))
 
 (define (loft-curve-point [curve : Shape] [point : (Point-Shape Ref)])
   (begin0
@@ -576,14 +613,27 @@
 
 (define (loft-profiles [profiles : Shapes] [rails : (Listof (Curve-Shape RefOp))]
                        [solid? : Boolean] [ruled? : Boolean] [closed? : Boolean])
-  (if (> (length rails) 2)
-      (error 'guided-loft "Rhino only supports two rails but were passed ~A" (length rails))
-      (let ((r (%add-sweep2 (shapes-refs rails) (shapes-refs profiles))))
-        (when solid?
-          (%cap-planar-holes r))
-        (delete-shapes profiles)
-        (delete-shapes rails)
-        r)))
+  (let ((r
+         (cond ((null? rails)
+                (singleton-ref
+                 #;(%loft-command (shapes-refs profiles) ruled? closed?)
+                 ;;It's not working properly. Probably, because we do not orient the profiles correctly.
+                 (%add-loft-srf (shapes-refs profiles) %com-omit %com-omit
+                                (if ruled? %lt-straight %lt-normal)
+                                %com-omit %com-omit closed?)))
+               ((null? (cdr rails))
+                (singleton-ref
+                 (%add-sweep1 (shape-ref (car rails)) (shapes-refs profiles))))
+               ((null? (cddr rails))
+                (singleton-ref
+                 (%add-sweep2 (shapes-refs rails) (shapes-refs profiles))))
+               (else
+                (error 'guided-loft "Rhino only supports two rails but were passed ~A" (length rails))))))
+    (when solid?
+      (%cap-planar-holes r))
+    (delete-shapes profiles)
+    (delete-shapes rails)
+    r))
 
 (define (loft-curves [shapes : Shapes] [rails : (Listof (Curve-Shape RefOp))]
                      [ruled? : Boolean #f] [closed? : Boolean #f])
@@ -597,7 +647,7 @@
               [ruled? : Boolean #f] [closed? : Boolean #f]) : Shape
   (cond ((null? (cdr profiles))
          (error 'loft "just one cross section"))
-        ((andmap 0D-shape? profiles)
+        ((andmap point? #;0D-shape? profiles)
          (assert (null? rails))
          (begin0
            ((if ruled?
@@ -609,9 +659,9 @@
          (new-loft
           (thunk
            (cond 
-             ((andmap 1D-shape? profiles)
+             ((andmap curve?? #;1D-shape? profiles)
               (loft-curves profiles rails ruled? closed?))
-             ((andmap 2D-shape? profiles)
+             ((andmap surface?? #;2D-shape? profiles)
               (loft-surfaces profiles rails ruled? closed?))
              ((null? (cddr profiles))
               (assert (null? rails))
@@ -623,9 +673,9 @@
                                    (values (cadr profiles) (car profiles)))
                                   (else
                                    (error 'loft-shapes "cross sections are not either points or curves or surfaces ~A" profiles)))])
-                (cond ((1D-shape? s)
+                (cond ((curve?? #;1D-shape? s)
                        (loft-curve-point s p))
-                      ((2D-shape? s)
+                      ((surface?? #;2D-shape? s)
                        (loft-surface-point s p))
                       (else
                        (error 'loft-shapes "can't loft the shapes ~A" profiles)))))
@@ -656,20 +706,13 @@
     (single-ref-or-union refs)))
 
 (def-shape (mirror [shape : Shape] [p : Loc (u0)] [n : Vec (vz)] [copy? : Boolean #t])
-  ;;Stupid mirror bug
-  (%postpone-redraw
-   (let ((maximized? (%is-view-maximized "Perspective")))
-     (unless maximized?
-       (%maximize-restore-view "Perspective"))
-     (let ((xform (%xform-mirror p n)))
-       (begin0
-         (map-ref ([r shape])
-                  (%transform-object r xform copy?))
-         (unless copy?
-           (mark-shape-deleted! shape))
-         (unless maximized?
-           (%maximize-restore-view "Perspective")))))))
-
+  (let ((xform (%xform-mirror p n)))
+    (begin0
+      (map-ref ([r shape])
+               (%transform-object r xform copy?))
+      (unless copy?
+        (mark-shape-deleted! shape)))))
+      
 (provide union-mirror)
 (define (union-mirror [shape : Shape] [p : Loc (u0)] [n : Vec (vz)])
   (union shape (mirror shape p n)))
@@ -683,6 +726,11 @@
 
 (define (curve-end-location [curve : Shape]) : Loc
   (%curve-end-point (shape-ref curve)))
+
+;;HACK: Should we be using with-temp-ref everywhere?
+(define (curve-closest-location [curve : Shape] [p : Loc]) : Loc
+  (with-temp-ref ([r curve])
+    (%curve-perp-frame r (%curve-closest-point r p))))
 
 (define (curve-domain [curve : Shape]) : (Values Real Real)
   (let ((d (%curve-domain (shape-ref curve))))
@@ -862,6 +910,12 @@ Command: _viewcapturetofile
 (define (select-shapes [ss : Shapes]) : Void
   (%select-objects (shapes-refs ss))
   (void))
+
+(define (hide-shape [s : Shape]) : Void
+  (%hide-objects (shape-refs s)))
+
+(define (show-shape [s : Shape]) : Void
+  (%show-objects (shape-refs s)))
 
 (define (disable-update)
   (%enable-redraw #f))

@@ -312,7 +312,8 @@
   Id)
 |#
 
-(def-com add-planar-srf ([objects Ids]) Ids)
+(def-com add-patch ([objects Ids] [u-spans Int] [v-spans Int] #:opt [tolerance Double] [trim Boolean] [point-spacing Double] [flexibility Double] [surface-pull Double] [fix-edges Boolean]) Id)
+(def-com add-planar-srf ([objects Ids]) IdsOrVoid)
 
 #|
 
@@ -498,6 +499,8 @@ DivideCurveEquidistant
 (def-com get-object (#:opt [message String] [type Integer] [pre-select? Boolean] [select? Boolean] [objects Ids]) Id)
 (def-com get-point (#:opt [message String] [point Point] [radius Double] [plane? Boolean]) Point)
 (def-com get-real (#:opt [message String] [default Double] [min Double] [max Double]) Double)
+(def-com hide-objects ([objs Ids]) Boolean)
+
 (def-com intersect-breps ([id0 Id] [id1 Id] #:opt [tolerance Double]) IdsOrVoid)
 
 (def-com (primitive-intersects? intersectBreps)
@@ -555,9 +558,9 @@ DivideCurveEquidistant
 (def-com object-color ([shape Id] #:opt [color RGB]) RGB)
 (def-com (objects-color ObjectColor) ([shape Ids] #:opt [color RGB]) RGB)
 (def-com object-name ([shape Id] #:opt [name String]) String)
+;(def-com offset-curve ([shape Id] point real #:opt point integer) ids)
+(def-com offset-surface ([shape Id] [distance Real] #:opt [tolerance Real] [both-sides? Boolean] [solid? Boolean]) Id)
 #|
-(def offset-curve (id point real #:opt point integer) ids)
-(def offset-surface (id real) id)
 (def plane-from-frame ((o point) (x point) (y point)) rh-plane)
 (def plane-from-normal (point normal) matrix<-nested-plane #;rh-plane)
 (def plane-from-points ((o point) (x point) (y point)) rh-plane)
@@ -620,6 +623,7 @@ DivideCurveEquidistant
       0
       (select-existing-objects objects)))
 (def-com selected-objects (#:opt [include-lights? Boolean] [include-grips? Boolean]) IdsOrVoid)
+(def-com show-objects ([objs Ids]) Boolean)
 (def-com split-brep ([brep Id] [cutter Id] #:opt [delete? Boolean]) IdsOrVoid)
 #|
 (provide split-brep-sloppy-n)
@@ -740,6 +744,18 @@ DivideCurveEquidistant
 ;(def-com zoom-selected (#:opt string Boolean) void)
 
 ; commands
+
+
+(provide loft-command)
+(define (loft-command ids [ruled? : Boolean] [closed? : Boolean])
+  (unselect-all-objects)
+  (select-objects ids)
+  (command (format "-_Loft _Type ~A ~A _enter"
+                   (if ruled? "Straight" "Normal")
+                   "" #;(if closed? "Closed" "Error!!!!")))
+  (begin0
+      (last-created-objects)
+    (unselect-all-objects)))
 
 #|
 

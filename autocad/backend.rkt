@@ -22,7 +22,7 @@
          create-layer
          current-layer
          curve-start-location
-         curve-end-location
+         curve-closest-location
          curve-domain
          curve-end-location
          curve-frame-at
@@ -31,6 +31,7 @@
          curve-start-location
          enable-update
          disable-update
+         hide-shape
          loft
          loft-ruled
          map-curve-division
@@ -44,6 +45,7 @@
          select-shapes
          shape-layer
          shape-color
+         show-shape
          view
          view-top
          zoom-extents
@@ -289,6 +291,9 @@ The following example does not work as intended. Rotating the args to closed-spl
 (define (curve-end-location [curve : Shape]) : Loc
   (%curve-end-point (shape-ref curve)))
 
+(define (curve-closest-location [curve : Shape] [p : Loc]) : Loc
+  (%curve-closest-point (shape-ref curve) p))
+
 (define (curve-domain [curve : Shape]) : (Values Real Real)
   (let ((r (shape-ref curve)))
     (values (%curve-start-param r) (%curve-end-param r))))
@@ -486,11 +491,12 @@ The following example does not work as intended. Rotating the args to closed-spl
      cbs
      (map (lambda ([p : Loc]) (p+v p dir)) cbs))))
 
-(def-shape (right-cuboid [cb : Loc (u0)] [width : Real 1] [height : Real 1] [h/ct : LocOrZ 1])
+(def-shape (right-cuboid [cb : Loc (u0)] [width : Real 1] [height : Real 1] [h/ct : LocOrZ 1] [angle : Real 0])
   (let-values ([(cb dz) (position-and-height cb h/ct)])
-    (%transform
-     (%add-box (+z (u0 world-cs) (/ dz 2.0)) width height dz)
-     cb)))
+    (let ((cb (if (= angle 0) cb (loc-from-o-phi cb angle))))
+      (%transform
+       (%add-box (+z (u0 world-cs) (/ dz 2.0)) width height dz)
+       cb))))
 
 (def-shape (cylinder [cb : Loc (u0)] [r : Real 1] [h/ct : LocOrZ 1])
    (let-values ([(c h) (position-and-height cb h/ct)])
@@ -681,7 +687,7 @@ The following example does not work as intended. Rotating the args to closed-spl
      (if (number? dir)
          (%extrude-command-length (shape-refs profile) dir (surface-region? profile))
          (%extrude-command-direction (shape-refs profile) (u0 world-cs) dir (surface-region? profile))))
-     (delete-shape profile)))
+    (delete-shape profile)))
 
 (def-shape (sweep [path : (Curve-Shape RefOp)] [profile : (Extrudable-Shape RefOp)] [rotation : Real 0] [scale : Real 1])
   (let ((surface? (surface-region? profile)))
@@ -896,6 +902,15 @@ The following example does not work as intended. Rotating the args to closed-spl
   (%clear-selection-command)
   (%select-shapes-command (shapes-refs ss))
   (void))
+
+(define (hide-shape [s : Shape]) : Void
+  (for ([r (shape-refs s)])
+    (%visible r #f)))
+
+(define (show-shape [s : Shape]) : Void
+  (for ([r (shape-refs s)])
+    (%visible r #t)))
+
 
 (require racket/unit)
 (require "../base/bim-operations.rkt")
