@@ -15,7 +15,13 @@
 
 (define crash-on-no-material? (make-parameter #t))
 (define crash-on-no-name? (make-parameter #t))
-(define default-layer (make-parameter "Default Layer"))
+(define trim? (make-parameter #f))
+(define non-trim-layer (make-parameter "Non Trim Layer"))
+(define trim-layer (make-parameter "Trim Layer"))
+(define (default-layer)
+  (if (trim?)
+      (trim-layer)
+      (non-trim-layer)))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;Functions to create objects;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -34,6 +40,7 @@ DoubleSlanted - alpha and beta angle needed /\
 |#
 (define default-wall-profile (make-parameter "Normal"))
 
+
 #|
 Function used to create a wall
  
@@ -48,7 +55,7 @@ Example of usage:
 Question:
 Make the wall always double slanted whatever the angles?
 |#
-(define (wall guide 
+(define (walls guide 
               #:alignment [alignment (default-wall-alignment)]
               #:bottom-level [bottom-level (current-level)]
               #:top-level [top-level (upper-level #:level bottom-level)]
@@ -57,8 +64,9 @@ Make the wall always double slanted whatever the angles?
               #:arcs [arcs (list)]
               
               #:type-of-material [type-of-material (default-wall-type-of-material)]
-              #:material [material (default-wall-material) 
-                          #;(cond [(eq? type-of-material "Basic") "GENERIC - STRUCTURAL"]
+              #:material [material
+                          #;(default-wall-material) 
+                          (cond [(eq? type-of-material "Basic") "GENERIC - STRUCTURAL"]
                                 [(eq? type-of-material "Composite") "Generic Wall/Shell"])]
               #:alpha-angle [alpha-angle (/ pi 2)]
               #:beta-angle [beta-angle (/ pi 2)]
@@ -145,7 +153,8 @@ Make the wall always double slanted whatever the angles?
           (begin 
             (disconnect)
             (error (string-append "The material does not exist - " material)))
-          (if (null? (cdr (elementidlist-guid result)))
+          (elementidlist-guid result)
+          #;(if (null? (cdr (elementidlist-guid result)))
               (car (elementidlist-guid result))
               (elementidlist-guid result))))))
 
@@ -154,6 +163,57 @@ Make the wall always double slanted whatever the angles?
       (list)
       (cons (+ counter (length (car holes)))
             (sub-polygons-from-list (cdr holes) (+ counter (length (car holes)))))))
+
+(define (wall pt0 pt1 
+              #:alignment [alignment (default-wall-alignment)]
+              #:bottom-level [bottom-level (current-level)]
+              #:top-level [top-level (upper-level #:level bottom-level)]
+              ;;ArchiCAD ONLY --------------------------------------------------------------
+              #:thickness [thickness (default-wall-thickness)]
+              #:arcs [arcs (list)]
+              
+              #:type-of-material [type-of-material (default-wall-type-of-material)]
+              #:material [material
+                          #;(default-wall-material) 
+                          (cond [(eq? type-of-material "Basic") "GENERIC - STRUCTURAL"]
+                                [(eq? type-of-material "Composite") "Generic Wall/Shell"])]
+              #:alpha-angle [alpha-angle (/ pi 2)]
+              #:beta-angle [beta-angle (/ pi 2)]
+              #:type-of-profile [type-of-profile (default-wall-profile)]
+              #:height [height null]
+              #:profile-name [profile-name ""]
+              #:flipped? [flipped? #f]
+              #:bottom-offset [bottom-offset 0]
+              #:layer [layer (default-layer)]
+              #:windows [windows (list)]
+              #:window-order [window-order (list)]
+              #:reference-offset [reference-offset 0]
+              #:ref-material [ref-material ""]
+              #:opp-material [opp-material ""]
+              #:sid-material [sid-material ""])
+  (car (walls (list pt0 pt1)
+              #:alignment alignment
+              #:bottom-level bottom-level
+              #:top-level top-level
+              #:thickness thickness
+              #:arcs arcs
+              
+              #:type-of-material type-of-material
+              #:material material
+              #:alpha-angle alpha-angle
+              #:beta-angle beta-angle
+              #:type-of-profile type-of-profile
+              #:height height
+              #:profile-name profile-name
+              #:flipped? flipped?
+              #:bottom-offset bottom-offset
+              #:layer layer
+              #:windows windows
+              #:window-order window-order
+              #:reference-offset reference-offset
+              #:ref-material ref-material
+              #:opp-material opp-material
+              #:sid-material sid-material)))
 
 #|
 Function used to create a door into an existing wall
@@ -168,16 +228,18 @@ Function used to create a door into an existing wall
 Example of usage:
 (send (door wallId 1.0 0.0))
 |#
+(define default-door-type (make-parameter "Door 18"))
+
 (define (door guid
               p
-              #:type [type-of-door "Door 18"]
+              #:type [type-of-door (default-door-type)]
               #:width [width -10000]
               #:height [height -10000]
               #:flip-x [flip-x #f]
               #:flip-y [flip-y #f]
-              #:additional-parameters [additional-parameters (list)]
+              #:properties [properties (list)]
               #:layer [layer (default-layer)])
-  (let ((splitted-list (split-params-list additional-parameters)))
+  (let ((splitted-list (split-params-list properties)))
         (send/rcv-id "Door" (doormessage* #:guid guid
                                           #:objloc (cx p)
                                           #:depthoffset (cy p)
@@ -207,8 +269,8 @@ Example of usage:
                       [width -10000] [bottom 0] [height -10000]
                       #:flip-x [flip-x #f]
                       #:flip-y [flip-y #f]
-                      #:additional-parameters [additional-parameters (list)])
-  (let ((splitted-list (split-params-list additional-parameters)))
+                      #:properties [properties (list)])
+  (let ((splitted-list (split-params-list properties)))
         (send/rcv-id "Door" (doormessage* #:guid guid
                                           #:objloc objloc
                                           #:zpos bottom
@@ -258,9 +320,9 @@ Example of usage:
                 #:flip-x [flip-x #f]
                 #:flip-y [flip-y #f]
                 #:type-of-window [type-of-window "Window 18"]
-                #:additional-parameters [additional-parameters (list)]
+                #:properties [properties (list)]
                 #:layer [layer (default-layer)])
-  (let ((splitted-list (split-params-list additional-parameters)))
+  (let ((splitted-list (split-params-list properties)))
     (send/rcv-id "Window" (windowmessage* #:guid guid
                                           #:objloc (cx p)
                                           #:depthoffset (cy p)
@@ -385,8 +447,8 @@ Example of usage:
   (let ((points (close-guide points (car points))))
     (list (flatten points) (sub-polys-position points))))
 
-(define default-slab-alignment (make-parameter "Center"))
-(define default-slab-type-of-material (make-parameter "Composite"))
+(define default-slab-reference (make-parameter "Top"))
+(define default-slab-type-of-material (make-parameter "Basic"))
 #;(define default-slab-material  
     (make-parameter (cond [(eq? (default-slab-type-of-material) "Basic") "GENERIC - INTERNAL CLADDING"]
                           [(eq? (default-slab-type-of-material) "Composite") "Generic Slab/Roof"])))
@@ -400,6 +462,7 @@ Example of usage:
                                          [(eq? type-of-material "Composite") "Generic Slab/Roof"])]
               #:parcs [parcs (list)]
               #:layer [layer (default-layer)]
+              #:reference [reference (default-slab-reference)]
               ;#:sub-polygons [sub-polygons (list (length guide))]
               )
   (let* ((slab-info (prepare-points guide))
@@ -411,7 +474,8 @@ Example of usage:
                                  #:subpolygons (cadr slab-info)
                                  #:pts (prepare-points-to-send (car slab-info))
                                  #:parcs (prepare-arcs-to-send parcs)
-                                 #:layer layer)))
+                                 #:layer layer
+                                 #:reference reference)))
     (write-msg "NewSlab" slab-msg)  
     ;(send-points guide)
     ;(send-points (car slab-info))
@@ -439,11 +503,19 @@ Function to create a hole on a slab
 Example of usage: 
 (send (hole-slab (slab slabPoints) hole-points))
 |#
-(define (hole-slab slab-id pts [arcs (list)])
-  (let ((msg (holemsg* #:guid slab-id
+
+(define (hole id pts arcs type)
+  (let ((msg (holemsg* #:guid id
                        #:pts (prepare-points-to-send (close-guide pts (car pts)))
-                       #:arcs (prepare-arcs-to-send arcs))))
+                       #:arcs (prepare-arcs-to-send arcs)
+                       #:type type)))
     (send/rcv-id "HoleSlab" msg)))
+
+(define (hole-slab slab-id pts [arcs (list)])
+  (hole slab-id pts arcs 0))
+
+(define (hole-roof roof-id pts [arcs (list)])
+  (hole roof-id pts arcs 1))
 
 
 #|
@@ -642,7 +714,68 @@ Example of usage:
     ;(read-guid)
     (read-material-guid)))
 
-(define (split-params-list lsst)
+(define (split-params-list property-lst)
+  (let ((names (list))
+        (int-values (list))
+        (double-values (list))
+        (string-values (list))
+        (bool-values (list))
+        (lst-int-values (list))
+        (lst-double-values (list))
+        (lst-string-values (list))
+        (lst-bool-values (list))
+        (param-types (list))
+        (is-array? (list))
+        (store? #t))
+    (when (not (empty? property-lst))
+        (begin (for ([name property-lst]
+                     [value (cdr property-lst)])
+                    (if store?
+                        (begin
+                          (set! names (append names (list name)))
+                          (if (list? value)
+                              (begin
+                                (set! is-array? (append is-array? (list #t)))
+                                (cond [(string? (car value))
+                                       (begin
+                                         (set! param-types (append param-types (list "s")))
+                                         (set! lst-string-values (append lst-string-values (list (stringarray* #:lst value)))))]
+                                      [(real? (car value))
+                                       (begin
+                                         (set! param-types (append param-types (list "d")))
+                                         (set! lst-double-values (append lst-double-values (list (doublearray* #:lst value)))))]
+                                      [(integer? (car value))
+                                       (begin
+                                         (set! param-types (append param-types (list "i")))
+                                         (set! lst-int-values (append lst-int-values (list (intarray* #:lst value)))))]
+                                      [(boolean? (car value))
+                                       (begin
+                                         (set! param-types (append param-types (list "b")))
+                                         (set! lst-bool-values (append lst-bool-values (list (boolarray* #:lst value)))))]))
+                              (begin
+                                (set! is-array? (append is-array? (list #f)))
+                                (cond [(string? value)
+                                       (begin
+                                         (set! param-types (append param-types (list "s")))
+                                         (set! string-values (append string-values (list value))))]
+                                      [(real? value)
+                                       (begin
+                                         (set! param-types (append param-types (list "d")))
+                                         (set! double-values (append double-values (list value))))]
+                                      [(integer? value)
+                                       (begin
+                                         (set! param-types (append param-types (list "i")))
+                                         (set! int-values (append int-values (list value))))]
+                                      [(boolean? value)
+                                       (begin
+                                         (set! param-types (append param-types (list "b")))
+                                         (set! bool-values (append bool-values (list value))))])))
+                          (set! store? #f))
+                        (set! store? #t)))))
+               (list names int-values double-values string-values bool-values lst-int-values lst-double-values lst-string-values lst-bool-values param-types is-array?)))
+
+
+#;(define (split-params-list lsst)
   (let ((names (list))
         (int-values (list))
         (double-values (list))
@@ -717,9 +850,9 @@ Example of usage:
                 #:use-obj-sect-attrs? [use-obj-sect-attrs? #t]
                 #:angle [angle 0]
                 #:height [height 0]
-                #:additional-parameters [additional-parameters (list)]
+                #:properties [properties (list)]
                 #:layer [layer (default-layer)])
-  (let* ((splitted-list (split-params-list additional-parameters))
+  (let* ((splitted-list (split-params-list properties))
          (msg (if (string? index/name)
                   (objectmsg* #:index 0
                               #:posx (cx orig-pos)
@@ -776,6 +909,12 @@ Function to create stairs
  orig-pos: position of the stairs
 
 (send (stairs "Stair L-Shape 18" (u0) #:additional-parameters (list (list "stairSlabThk" 2))))
+(send (stairs "Stair Spiral 18" (u0) #:additional-parameters (list (list "angle" (/ (* 10 2pi) 360))
+                                                                     (list "zzyzx" 0.3)
+                                                                     (list "nRisers" 3)
+                                                                     (list "iShowRailingOn" 4)
+                                                                     (list "bShowRailAboveBreakLine" #f)
+                                                                     (list "bShowRailOnFloorPlan" #f))))
 |#
 (define (stairs name 
                 orig-pos 
@@ -784,10 +923,12 @@ Function to create stairs
                 #:y-ratio [y-ratio 1]
                 #:bottom-offset [bottom-offset 0] 
                 #:bottom-level [bottom-level (current-level)]
+                #:top-level [top-level (upper-level #:level bottom-level)]
                 #:use-xy-fix-size [use-xy-fix-size #f]
-                #:additional-parameters [additional-parameters (list)]
-                #:layer [layer (default-layer)])
-  (let* ((splitted-list (split-params-list additional-parameters))
+                #:properties [properties (list)]
+                #:layer [layer (default-layer)]
+                #:height [height 0])
+  (let* ((splitted-list (split-params-list properties))
          (msg (stairsmsg* #:name name
                           #:posx (cx orig-pos)
                           #:posy (cy orig-pos)
@@ -796,6 +937,7 @@ Function to create stairs
                           #:yratio y-ratio
                           #:angle angle
                           #:bottomindex (storyinfo-index bottom-level)
+                          #:upperindex (storyinfo-index top-level)
                           #:usexyfixsize use-xy-fix-size
                           #:params (additionalparams* #:names (list-ref splitted-list 0)
                                                       #:integers (list-ref splitted-list 1)
@@ -808,7 +950,8 @@ Function to create stairs
                                                       #:boolarrays (list-ref splitted-list 8)
                                                       #:paramtype (list-ref splitted-list 9)
                                                       #:isarray (list-ref splitted-list 10))
-                          #:layer layer)))
+                          #:layer layer
+                          #:height height)))
     ;(list names int-values double-values string-values bool-values lst-int-values lst-double-values lst-string-values lst-bool-values param-types is-array?)
     (write-msg "Stairs" msg)
     ;(read-guid)
@@ -833,8 +976,8 @@ To use the created library part, reference by name!
                       #:parameter-code [parameter-code ""]
                       #:type [type "Object"]
                       #:parent-id [parent-id "ModelElement"]
-                      #:additional-parameters [additional-parameters (list)])
-  (let* ((splitted-list (split-params-list additional-parameters))
+                      #:properties [properties (list)])
+  (let* ((splitted-list (split-params-list properties))
          (msg (libpartmsg* #:name name
                            #:twocode 2D-section
                            #:threecode 3D-section
@@ -868,7 +1011,7 @@ Example of usage:
 (send (roof slabPoints 3))
 |#
 (define default-roof-alignment (make-parameter "Center"))
-(define default-roof-type-of-material (make-parameter "Composite"))
+(define default-roof-type-of-material (make-parameter "Basic"))
 #;(define default-roof-material  
     (make-parameter (cond [(eq? (default-roof-type-of-material) "Basic") "GENERIC - STRUCTURAL"]
                           [(eq? (default-roof-type-of-material) "Composite") "Generic Roof/Shell"])))
