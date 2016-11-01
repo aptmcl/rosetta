@@ -15,7 +15,7 @@
 
 (define crash-on-no-material? (make-parameter #t))
 (define crash-on-no-name? (make-parameter #t))
-(define trim? (make-parameter #t))
+(define trim? (make-parameter #f))
 (define non-trim-layer (make-parameter "Non Trim Layer"))
 (define trim-layer (make-parameter "Trim Layer"))
 (define (default-layer)
