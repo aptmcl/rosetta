@@ -81,10 +81,12 @@
    [height : Real 10]))
 
 (def-bim-family slab
-  ([thickness : Real 0.3]))
+  ([thickness : Real 0.3]
+   [coating-thickness : Real 0]))
 
 (def-bim-family roof
-  ([thickness : Real 0.3]))
+  ([thickness : Real 0.3]
+   [coating-thickness : Real 0]))
 
 (def-bim-family wall
   ([thickness : Real 0.3]))

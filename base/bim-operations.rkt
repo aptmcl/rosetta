@@ -105,7 +105,9 @@
 (def-shape/no-provide (slab [vertices : Locs] [level : Level (current-level)] [family : Slab-Family (default-slab-family)])
   (let ((s (irregular-prism
             (map (lambda ([p : Loc])
-                   (+z p (level-height level)))
+                   (+z p (+ (level-height level)
+                            (- (slab-family-thickness family))
+                            (slab-family-coating-thickness family))))
                  vertices)
             (slab-family-thickness family))))
     (shape-layer s (bim-family-layer family))
@@ -122,26 +124,35 @@
                 ((arc? e)
                  (error "Unfinished"))
                 ((circle? e)
-                 (extrusion
-                  (surface-circle (+z (+z (circle-center e) (- (cz (circle-center e))))
-                                      (level-height level))
-                                  (circle-radius e))
-                  (vz (- (slab-family-thickness family)))))
+                 (let ((s
+                        (extrusion
+                         (surface-circle (+z (+z (circle-center e) (- (cz (circle-center e))))
+                                             (level-height level))
+                                         (circle-radius e))
+                         (vz (- (slab-family-coating-thickness family)
+                                (slab-family-thickness family))))))
+                   (shape-layer s (bim-family-layer family))
+                   (shape-reference s)))
                 (else
                  (error "Unknown path component" e)))))))
 
 
 (def-shape/no-provide (slab-opening-path [slab : Any] [path : Any])
-  (subtraction
-   (shape-reference slab)
-   (shape-reference (slab-path path (slab-path-level slab) (slab-path-family slab)))))
-
+  (let ((layer (shape-layer slab)))
+    (let ((s
+           (subtraction
+            slab
+            (slab-path path (slab-path-level slab) (slab-path-family slab)))))
+      (shape-layer s layer)
+      (shape-reference s))))
 
         
 (def-shape/no-provide (roof [vertices : Locs] [level : Level (current-level)] [family : Roof-Family (default-roof-family)])
   (let ((s (irregular-prism
             (map (lambda ([p : Loc])
-                   (+z p (level-height level)))
+                   (+z p (+ (level-height level)
+                            (- (roof-family-thickness family))
+                            (roof-family-coating-thickness family))))
                  vertices)
             (roof-family-thickness family))))
     (shape-layer s (bim-family-layer family))
