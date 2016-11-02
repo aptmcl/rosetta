@@ -58,7 +58,7 @@ Make the wall always double slanted whatever the angles?
 (define (walls guide 
               #:alignment [alignment (default-wall-alignment)]
               #:bottom-level [bottom-level (current-level)]
-              #:top-level [top-level (upper-level #:level bottom-level)]
+              #:top-level [top-level (upper-level bottom-level)]
               ;;ArchiCAD ONLY --------------------------------------------------------------
               #:thickness [thickness (default-wall-thickness)]
               #:arcs [arcs (list)]
@@ -167,7 +167,7 @@ Make the wall always double slanted whatever the angles?
 (define (wall pt0 pt1 
               #:alignment [alignment (default-wall-alignment)]
               #:bottom-level [bottom-level (current-level)]
-              #:top-level [top-level (upper-level #:level bottom-level)]
+              #:top-level [top-level (upper-level bottom-level)]
               ;;ArchiCAD ONLY --------------------------------------------------------------
               #:thickness [thickness (default-wall-thickness)]
               #:arcs [arcs (list)]
@@ -381,7 +381,7 @@ Example of usage:
                                                #t)]
                       #:arcs [arcs (list)]
                       #:bottom-level [bottom-level (current-level)]
-                      #:top-level [top-level (upper-level #:level bottom-level)]
+                      #:top-level [top-level (upper-level bottom-level)]
                       #:offset [offset 0]
                       #:layer [layer (default-layer)])
   (let ((c-wall-msg (curtainwallmsg* #:pts (prepare-points-to-send guide)
@@ -598,7 +598,7 @@ Example of usage:
 |#
 (define (column orig-pos
                 #:bottom-level [bottom-level (current-level)]
-                #:top-level [top-level (upper-level #:level bottom-level)]
+                #:top-level [top-level (upper-level bottom-level)]
                 ;;ArchiCAD ONLY --------------------------------------------------------------
                 #:circle-based? [circle-based? #f]
                 #:angle [angle 0]
@@ -923,7 +923,7 @@ Function to create stairs
                 #:y-ratio [y-ratio 1]
                 #:bottom-offset [bottom-offset 0] 
                 #:bottom-level [bottom-level (current-level)]
-                #:top-level [top-level (upper-level #:level bottom-level)]
+                #:top-level [top-level (upper-level bottom-level)]
                 #:use-xy-fix-size [use-xy-fix-size #f]
                 #:properties [properties (list)]
                 #:layer [layer (default-layer)]
