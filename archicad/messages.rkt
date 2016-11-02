@@ -224,7 +224,8 @@
   (repeated primitive:int32 subpolygons 6)
   (required struct:pointsmessage pts 7)
   (required struct:polyarcsmessage parcs 8)
-  (optional primitive:string layer 9)))
+  (optional primitive:string layer 9)
+  (optional primitive:string reference 10)))
 (define-message-type
  meshmessage
  ((required primitive:double level 1)
@@ -303,7 +304,9 @@
   (required primitive:int32 bottomindex 8)
   (required primitive:bool usexyfixsize 9)
   (required struct:additionalparams params 10)
-  (optional primitive:string layer 11)))
+  (optional primitive:string layer 11)
+  (optional primitive:double height 12)
+  (optional primitive:int32 upperindex 13)))
 (define-message-type
  roofmsg
  ((required primitive:double height 1)
@@ -316,7 +319,8 @@
  holemsg
  ((required primitive:string guid 1)
   (optional struct:pointsmessage pts 2)
-  (optional struct:polyarcsmessage arcs 3)))
+  (optional struct:polyarcsmessage arcs 3)
+  (optional primitive:int32 type 4)))
 (define-message-type
  mirrormsg
  ((required primitive:string guid 1)

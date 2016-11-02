@@ -856,8 +856,8 @@ The following example does not work as intended. Rotating the args to closed-spl
 
 (define (upper-level [lvl : Level (current-level)]
                      [height : Real (default-level-to-level-height)])
-  (%upper-level #:level lvl
-                #:height height))
+  (%upper-level lvl
+                height))
 
 (require "../base/bim-families.rkt")
 (provide (all-from-out "../base/bim-families.rkt"))
@@ -911,7 +911,8 @@ The following example does not work as intended. Rotating the args to closed-spl
                  [bottom-level : Level (current-level)]
                  [top-level : Level (upper-level bottom-level)]
                  [family : Any (default-wall-family)])
-  (%wall (list p0 p1)
+  (%wall p0
+         p1
          #:bottom-level bottom-level
          #:top-level top-level
          #:thickness (or (wall-family-thickness family)
@@ -921,11 +922,11 @@ The following example does not work as intended. Rotating the args to closed-spl
                  [bottom-level : Level (current-level)]
                  [top-level : Level (upper-level bottom-level)]
                  [family : Any (default-wall-family)])
-  (%wall vertices
-         #:bottom-level bottom-level
-         #:top-level top-level
-         #:thickness (or (wall-family-thickness family)
-                         (%default-wall-thickness))))
+  (%walls vertices
+          #:bottom-level bottom-level
+          #:top-level top-level
+          #:thickness (or (wall-family-thickness family)
+                          (%default-wall-thickness))))
 
 (def-shape (door [wall : Any] [loc : Loc] [family : Any (default-door-family)])
   (%door (shape-reference wall)
