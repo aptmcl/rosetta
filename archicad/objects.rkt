@@ -1,6 +1,6 @@
 #lang racket
 (provide (except-out (all-defined-out)
-                     ))
+                     trim?))
 
 (require "protobuf1/protobuf.rkt")
 (require "protobuf1/encoding.rkt")
