@@ -75,18 +75,25 @@
   (irregular-prism pts height))
 
   
-  (define (bim-family-layer [bim-family : BIM-Family])
-    (or (unbox (bim-family-layer-ref bim-family))
-        (let ((layer (create-layer (bim-family-layer-name bim-family))))
-          (set-box! (bim-family-layer-ref bim-family) layer)
-          layer)))
+(define (bim-family-layer [bim-family : BIM-Family])
+  (or (unbox (bim-family-layer-ref bim-family))
+      (let ((layer (create-layer (bim-family-layer-name bim-family))))
+        (set-box! (bim-family-layer-ref bim-family) layer)
+        layer)))
+
+(define (vertical? p0 p1)
+  (< (cyl-rho (p-p p0 p1)) 1e-10))
 
 (def-shape/no-provide (beam [p0 : Loc] [p1 : Loc] [angle : Real 0] [family : Beam-Family (default-beam-family)])
-  (let ((h (beam-family-height family)))
-    (let ((s (right-cuboid (+z p0 (/ h -2))
-                           (beam-family-width family) h
-                           (+z p1 (/ h -2))
-                           angle)))
+  (let ((h (beam-family-height family))
+        (w (beam-family-width family)))
+    (let ((s (if (vertical? p0 p1)
+                 (right-cuboid p0 w h p1 angle)
+                 (let-values ([(cb dz) (position-and-height p0 p1)])
+                   (right-cuboid (loc-in-world (+y cb (/ h -2)))
+                                 (beam-family-width family) h
+                                 (loc-in-world (+yz cb (/ h -2) dz))
+                                 angle)))))
       (shape-layer s (bim-family-layer family))
       (shape-reference s))))
 

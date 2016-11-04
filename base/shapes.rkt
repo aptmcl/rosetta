@@ -13,6 +13,7 @@
          def-shape*
          def*
          immediate-mode?
+         trim?
          allow-degenerate-radius?
          mark-deleted!
          shape-reference
@@ -29,6 +30,8 @@
          3D-shape?
          virtual)
 
+;This is used in some backends
+(define trim? (make-parameter #f))
 
 (define immediate-mode? : (Parameterof Boolean)
   (make-parameter #t))

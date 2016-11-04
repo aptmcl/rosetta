@@ -12,6 +12,7 @@
 (require (prefix-in % "objects.rkt"))
 (require (prefix-in % "communication.rkt"))
 (provide immediate-mode?
+         trim?
          current-backend-name
          (rename-out [%disconnect disconnect]
                      [%send send]))
@@ -864,9 +865,10 @@ The following example does not work as intended. Rotating the args to closed-spl
 (define (vertical? p0 p1)
   (< (cyl-rho (p-p p0 p1)) 0.1))
 
+
 ;;Added angle must propagate to other backends.
 (def-shape (beam [p0 : Loc] [p1 : Loc] [angle : Real 0] [family : Beam-Family (default-beam-family)])
-  (if (vertical? p0 p1)
+  (if (or (trim?) (vertical? p0 p1))
       (if (< (cz p0) (cz p1))
           (%column-two-points
            p0 p1
