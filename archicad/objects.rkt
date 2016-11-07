@@ -1270,3 +1270,16 @@ TODO: delete a door that was deleted before because the wall was deleted
 
 (define (delete-all-elements)
   (write-msg-name "DeleteAll"))
+
+
+;; CAMERA
+(define (camera c-pos t-pos lens [sun-azimuth pi] [sun-altitude pi/4])
+  (send/no-rcv "Camera" (cameramsg* #:cx (cx c-pos)
+                                    #:cy (cy c-pos)
+                                    #:cz (cz c-pos)
+                                    #:tx (cx t-pos)
+                                    #:ty (cy t-pos)
+                                    #:tz (cz t-pos)
+                                    #:lens lens
+                                    #:sunazimuth sun-azimuth
+                                    #:sunaltitude sun-altitude)))

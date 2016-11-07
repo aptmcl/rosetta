@@ -547,5 +547,16 @@
   (required primitive:string type 12)
   (required primitive:double thickness 13)))
 (define-message-type rendermsg ((required primitive:string file 1)))
+(define-message-type
+ cameramsg
+ ((required primitive:double cx 1)
+  (required primitive:double cy 2)
+  (required primitive:double cz 3)
+  (required primitive:double tx 4)
+  (required primitive:double ty 5)
+  (required primitive:double tz 6)
+  (required primitive:double lens 7)
+  (required primitive:double sunazimuth 8)
+  (required primitive:double sunaltitude 9)))
 
 (provide (all-defined-out))
