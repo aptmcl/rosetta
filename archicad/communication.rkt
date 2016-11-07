@@ -361,3 +361,10 @@ Example of usage:
 (define (show-layer name)
   (let ((msg (layermsg* #:name name)))
     (write-msg "ShowLayer" msg)))
+
+(define (get-layer el)
+  (let ((msg (elementid* #:guid el
+                         #:crashmaterial #f)))
+    (write-msg "GetLayer" msg)
+    (namemessage-name (read-sized (cut deserialize (namemessage*) <>)
+                                  (connection-in (bim-connection))))))
