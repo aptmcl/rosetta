@@ -11,7 +11,8 @@
    [properties : Any])
   #:type-name BIM-Family)
 
-(provide bim-family-layer-ref
+(provide def-bim-family
+         bim-family-layer-ref
          bim-family-layer-name)
 
 (define (layer-name-from-path [path : String]) : Layer
@@ -80,10 +81,12 @@
    [height : Real 10]))
 
 (def-bim-family slab
-  ([thickness : Real 0.3]))
+  ([thickness : Real 0.3]
+   [coating-thickness : Real 0]))
 
 (def-bim-family roof
-  ([thickness : Real 0.3]))
+  ([thickness : Real 0.3]
+   [coating-thickness : Real 0]))
 
 (def-bim-family wall
   ([thickness : Real 0.3]))

@@ -12,6 +12,7 @@
 (require (prefix-in % "objects.rkt"))
 (require (prefix-in % "communication.rkt"))
 (provide immediate-mode?
+         trim?
          current-backend-name
          (rename-out [%disconnect disconnect]
                      [%send send]))
@@ -855,16 +856,34 @@ The following example does not work as intended. Rotating the args to closed-spl
 
 (define (upper-level [lvl : Level (current-level)]
                      [height : Real (default-level-to-level-height)])
-  (%upper-level #:level lvl
-                #:height height))
+  (%upper-level lvl
+                height))
 
 (require "../base/bim-families.rkt")
 (provide (all-from-out "../base/bim-families.rkt"))
 
-(def-shape (beam [p0 : Loc] [p1 : Loc] [family : Beam-Family (default-beam-family)])
-  (%beam (loc-in-world p0) (loc-in-world p1)
-         #:beam-width (beam-family-width family)
-         #:beam-height (beam-family-height family)))
+(define (vertical? p0 p1)
+  (< (cyl-rho (p-p p0 p1)) 0.1))
+
+
+;;Added angle must propagate to other backends.
+(def-shape (beam [p0 : Loc] [p1 : Loc] [angle : Real 0] [family : Beam-Family (default-beam-family)])
+  (if (or (trim?) (vertical? p0 p1))
+      (if (< (cz p0) (cz p1))
+          (%column-two-points
+           p0 p1
+           #:width (beam-family-width family)
+           #:depth (beam-family-height family)
+           #:angle angle)
+          (%column-two-points
+           p1 p0
+           #:width (beam-family-width family)
+           #:depth (beam-family-height family)
+           #:angle angle))
+      (%beam (loc-in-world p0) (loc-in-world p1)
+             #:beam-width (beam-family-width family)
+             #:beam-height (beam-family-height family)
+             #;#; #:angle angle)))
 
 (def-shape (column [center : Loc]
                    [bottom-level : Level (current-level)]
@@ -892,7 +911,8 @@ The following example does not work as intended. Rotating the args to closed-spl
                  [bottom-level : Level (current-level)]
                  [top-level : Level (upper-level bottom-level)]
                  [family : Any (default-wall-family)])
-  (%wall (list p0 p1)
+  (%wall p0
+         p1
          #:bottom-level bottom-level
          #:top-level top-level
          #:thickness (or (wall-family-thickness family)
@@ -902,11 +922,11 @@ The following example does not work as intended. Rotating the args to closed-spl
                  [bottom-level : Level (current-level)]
                  [top-level : Level (upper-level bottom-level)]
                  [family : Any (default-wall-family)])
-  (%wall vertices
-         #:bottom-level bottom-level
-         #:top-level top-level
-         #:thickness (or (wall-family-thickness family)
-                         (%default-wall-thickness))))
+  (%walls vertices
+          #:bottom-level bottom-level
+          #:top-level top-level
+          #:thickness (or (wall-family-thickness family)
+                          (%default-wall-thickness))))
 
 (def-shape (door [wall : Any] [loc : Loc] [family : Any (default-door-family)])
   (%door (shape-reference wall)

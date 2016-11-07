@@ -17,7 +17,9 @@
 (define (bim-connection)
   (unless conn
     (set! conn (start-connection))
-    (set-current-level! (make-parameter (check-level))))
+    (set-current-level! (make-parameter (check-level)))
+    (create-layer "Non Trim Layer" 0)
+    (create-layer "Trim Layer"))
   conn)
 
 ;;Function to quit
@@ -65,6 +67,12 @@
   (send expr ...)
   (begin0
     (begin expr ...)
+    (disconnect)))
+#;(define-syntax-rule (send expr ...)
+  (begin
+    (connect)
+    (parameterize ((current-level (check-level)))
+      expr ...)
     (disconnect)))
 
 ;;Function to send name 
@@ -297,8 +305,8 @@ Example of usage:
     (read-sized (cut deserialize (storyinfo*) <>)
                 (connection-in (bim-connection)))))
 
-(define (upper-level #:level [level (current-level)]
-                     #:height [height (default-level-to-level-height)])
+(define (upper-level [level (current-level)]
+                     [height (default-level-to-level-height)])
   (let ((msg (upperlevelmsg* #:height height
                              #:index (storyinfo-index level))))
     (write-msg "UpperLevel" msg)
@@ -341,7 +349,7 @@ Example of usage:
                         #:connection connection)))
     (write-msg "Layer" msg)))
 
-(define (shape-layer name guid)
+(define (shape-layer guid name)
   (let ((msg (layerelementmsg* #:layer name
                                #:guid guid)))
     (write-msg "LayerElem" msg)))
@@ -353,3 +361,10 @@ Example of usage:
 (define (show-layer name)
   (let ((msg (layermsg* #:name name)))
     (write-msg "ShowLayer" msg)))
+
+(define (get-layer el)
+  (let ((msg (elementid* #:guid el
+                         #:crashmaterial #f)))
+    (write-msg "GetLayer" msg)
+    (namemessage-name (read-sized (cut deserialize (namemessage*) <>)
+                                  (connection-in (bim-connection))))))
