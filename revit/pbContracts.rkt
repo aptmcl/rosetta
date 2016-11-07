@@ -177,6 +177,18 @@
   (required primitive:double width 6)
   (required struct:idstrc familyid 7)))
 (define-message-type
+ columnpointsstrc
+ ((required primitive:double p0coordx 1)
+  (required primitive:double p0coordy 2)
+  (required primitive:double p0coordz 3)
+  (required primitive:double p1coordx 4)
+  (required primitive:double p1coordy 5)
+  (required primitive:double p1coordz 6)
+  (required struct:idstrc baselevel 7)
+  (required struct:idstrc toplevel 8)
+  (required primitive:double width 9)
+  (required struct:idstrc familyid 10)))
+(define-message-type
  flooropeningstrc
  ((required primitive:double p0coordx 1)
   (required primitive:double p0coordy 2)
@@ -199,18 +211,14 @@
  stairrunstrc
  ((required struct:idstrc bottom-level 1)
   (required struct:idstrc top-level 2)
-  (required primitive:double bottomp0coordx 3)
-  (required primitive:double bottomp0coordy 4)
-  (required primitive:double bottomp0coordz 5)
-  (required primitive:double bottomp1coordx 6)
-  (required primitive:double bottomp1coordy 7)
-  (required primitive:double bottomp1coordz 8)
-  (required primitive:double topp0coordx 9)
-  (required primitive:double topp0coordy 10)
-  (required primitive:double topp0coordz 11)
-  (required primitive:double topp1coordx 12)
-  (required primitive:double topp1coordy 13)
-  (required primitive:double topp1coordz 14)))
+  (required primitive:double p0coordx 3)
+  (required primitive:double p0coordy 4)
+  (required primitive:double p0coordz 5)
+  (required primitive:double p1coordx 6)
+  (required primitive:double p1coordy 7)
+  (required primitive:double p1coordz 8)
+  (required primitive:double width 9)
+  (required struct:idstrc family 10)))
 (define-message-type
  stairstrc
  ((required struct:idstrc bottom-level 1)
