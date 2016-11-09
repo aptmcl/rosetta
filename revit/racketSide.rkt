@@ -421,6 +421,19 @@
                             #:width width
                             #:familyid family)))
 
+(define (create-column-from-points center top #:bottom-level[bottom-level (current-level)] #:top-level[top-level (upper-level #:level bottom-level)] #:width [width 0] #:family[family (default-column-family)])
+  (send/rcv-id "createColumnPoints"
+               (columnpointsstrc* #:p0coordx (cx center)
+                                            #:p0coordy (cy center)
+                                            #:p0coordz (cz center)
+                                            #:p1coordx (cx top)
+                                            #:p1coordy (cy top)
+                                            #:p1coordz (cz top)
+                                            #:baselevel bottom-level
+                                            #:toplevel top-level
+                                            #:width width
+                                            #:familyid family)))
+
 (define (intersect-wall idw idf)
   (send/rcv-id "intersectWF" idw idf))
 
