@@ -22,7 +22,7 @@
   (if (trim?)
       (trim-layer)
       (non-trim-layer)))
-(define default-top-link (make-parameter #t))
+;(define default-top-link (make-parameter #t))
   
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;Functions to create objects;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -62,7 +62,7 @@ Make the wall always double slanted whatever the angles?
               #:bottom-level [bottom-level (current-level)]
               #:top-level [top-level (upper-level bottom-level)]
               ;;ArchiCAD ONLY --------------------------------------------------------------
-              #:top-linked? [top-linked? (default-top-link)]
+              ;#:top-linked? [top-linked? (default-top-link)]
               #:thickness [thickness (default-wall-thickness)]
               #:arcs [arcs (list)]
               
@@ -118,7 +118,8 @@ Make the wall always double slanted whatever the angles?
                             #:refmat ref-material
                             #:oppmat opp-material
                             #:sidmat sid-material
-                            #:toplinked top-linked?)
+                            ;#:toplinked top-linked?
+                            )
                   (wallmsg* #:pts (if (pointsmessage? guide)
                                       guide
                                       (prepare-points-to-send guide))
@@ -149,7 +150,8 @@ Make the wall always double slanted whatever the angles?
                             #:refmat ref-material
                             #:oppmat opp-material
                             #:sidmat sid-material
-                            #:toplinked top-linked?))))
+                            ;#:toplinked top-linked?
+                            ))))
     (write-msg "NewWall" msg)
     ;(send-points guide)
     (let ((result (read-guids*)))
@@ -196,7 +198,8 @@ Make the wall always double slanted whatever the angles?
               #:ref-material [ref-material ""]
               #:opp-material [opp-material ""]
               #:sid-material [sid-material ""]
-              #:top-linked? [top-linked? (default-top-link)])
+              ;#:top-linked? [top-linked? (default-top-link)]
+              )
   (car (walls (list pt0 pt1)
               #:alignment alignment
               #:bottom-level bottom-level
@@ -220,7 +223,8 @@ Make the wall always double slanted whatever the angles?
               #:ref-material ref-material
               #:opp-material opp-material
               #:sid-material sid-material
-              #:top-linked? top-linked?)))
+              ;#:top-linked? top-linked?
+              )))
 
 #|
 Function used to create a door into an existing wall
@@ -404,7 +408,8 @@ Example of usage:
                       #:transom-frame-depth [transom-frame-depth 0.1]
                       #:transom-frame-depth-offset [transom-frame-depth-offset 0.11]
                       ;Does NOT work because API does not support it
-                      #:top-linked? [top-linked? (default-top-link)])
+                      ;#:top-linked? [top-linked? (default-top-link)]
+                      )
   (let ((c-wall-msg (if (null? height)
                         (curtainwallmsg* #:pts (prepare-points-to-send guide)
                                          #:arcs (prepare-arcs-to-send arcs)
@@ -432,7 +437,8 @@ Example of usage:
                                          #:tframewidth transom-frame-width
                                          #:tframedepth transom-frame-depth
                                          #:tframeoffset transom-frame-depth-offset
-                                         #:toplinked top-linked?)
+                                         ;#:toplinked top-linked?
+                                         )
                         (curtainwallmsg* #:pts (prepare-points-to-send guide)
                                          #:arcs (prepare-arcs-to-send arcs)
                                          #:bottomindex (storyinfo-index bottom-level)
@@ -460,7 +466,8 @@ Example of usage:
                                          #:tframewidth transom-frame-width
                                          #:tframedepth transom-frame-depth
                                          #:tframeoffset transom-frame-depth-offset
-                                         #:toplinked top-linked?))))
+                                         ;#:toplinked top-linked?
+                                         ))))
     (send/rcv-id "CurtainWall" c-wall-msg)))
 #|Functions do not work. Nothing happens. 
 (define (internal-transform-curtain-wall cwall op x y z angle scale)
@@ -662,7 +669,7 @@ Example of usage:
                 #:bottom-level [bottom-level (current-level)]
                 #:top-level [top-level (upper-level bottom-level)]
                 ;;ArchiCAD ONLY --------------------------------------------------------------
-                #:top-linked? [top-linked? (default-top-link)]
+                ;#:top-linked? [top-linked? (default-top-link)]
                 #:circle-based? [circle-based? #f]
                 #:angle [angle 0]
                 #:depth [depth 0.15]
@@ -687,7 +694,8 @@ Example of usage:
                               #:upperindex (storyinfo-index top-level)
                               #:profilename profile-name
                               #:layer layer
-                              #:toplinked top-linked?)
+                              ;#:toplinked top-linked?
+                              )
                  (columnmsg*  #:posx (cx orig-pos)
                               #:posy (cy orig-pos)
                               #:bottom (cz orig-pos)
@@ -702,21 +710,20 @@ Example of usage:
                               #:upperindex (storyinfo-index top-level)
                               #:profilename profile-name
                               #:layer layer
-                              #:toplinked top-linked?))))
+                              ;#:toplinked top-linked?
+                              ))))
     (write-msg "NewColumn" msg)
     ;(read-guid)
     (read-material-guid)))
 (define (column-two-points p1 p2
                 #:bottom-level [bottom-level (current-level)]
-                #:top-level [top-level (upper-level bottom-level)]
                 ;;ArchiCAD ONLY --------------------------------------------------------------
                 #:circle-based? [circle-based? #f]
                 #:angle [angle 0]
                 #:depth [depth 0.15]
                 #:width [width 0.15]
                 #:profile-name [profile-name ""]
-                #:layer [layer (default-layer)]
-                #:top-linked? [top-linked? (default-top-link)])
+                #:layer [layer (default-layer)])
   (let ((msg (columnmsg*  #:posx (cx p1)
                           #:posy (cy p1)
                           #:bottom (cz p1)
@@ -728,10 +735,9 @@ Example of usage:
                           #:slantangle (- pi/2 (sph-psi (p-p p2 p1)))
                           #:slantdirection  (- (sph-phi (p-p p2 p1)) pi/2) 
                           #:bottomindex (storyinfo-index bottom-level)
-                          #:upperindex (storyinfo-index top-level)
+                          #:upperindex (storyinfo-index bottom-level)
                           #:profilename profile-name
-                          #:layer layer
-                          #:toplinked top-linked?)))
+                          #:layer layer)))
     (write-msg "NewColumn" msg)
     ;(read-guid)
     (read-material-guid)))
@@ -997,7 +1003,8 @@ Function to create stairs
                 #:layer [layer (default-layer)]
                 #:height [height 0]
                 ;Does NOT work because API does not support it
-                #:top-linked? [top-linked? (default-top-link)])
+                ;#:top-linked? [top-linked? (default-top-link)]
+                )
   (let* ((splitted-list (split-params-list properties))
          (msg (stairsmsg* #:name name
                           #:posx (cx orig-pos)
@@ -1022,7 +1029,8 @@ Function to create stairs
                                                       #:isarray (list-ref splitted-list 10))
                           #:layer layer
                           #:height height
-                          #:toplink top-linked?)))
+                          ;#:toplink top-linked?
+                          )))
     ;(list names int-values double-values string-values bool-values lst-int-values lst-double-values lst-string-values lst-bool-values param-types is-array?)
     (write-msg "Stairs" msg)
     ;(read-guid)
