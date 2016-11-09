@@ -22,6 +22,8 @@
   (if (trim?)
       (trim-layer)
       (non-trim-layer)))
+;(define default-top-link (make-parameter #t))
+  
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;Functions to create objects;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -60,6 +62,7 @@ Make the wall always double slanted whatever the angles?
               #:bottom-level [bottom-level (current-level)]
               #:top-level [top-level (upper-level bottom-level)]
               ;;ArchiCAD ONLY --------------------------------------------------------------
+              ;#:top-linked? [top-linked? (default-top-link)]
               #:thickness [thickness (default-wall-thickness)]
               #:arcs [arcs (list)]
               
@@ -114,7 +117,9 @@ Make the wall always double slanted whatever the angles?
                             #:refoffset reference-offset
                             #:refmat ref-material
                             #:oppmat opp-material
-                            #:sidmat sid-material)
+                            #:sidmat sid-material
+                            ;#:toplinked top-linked?
+                            )
                   (wallmsg* #:pts (if (pointsmessage? guide)
                                       guide
                                       (prepare-points-to-send guide))
@@ -144,7 +149,9 @@ Make the wall always double slanted whatever the angles?
                             #:refoffset reference-offset
                             #:refmat ref-material
                             #:oppmat opp-material
-                            #:sidmat sid-material))))
+                            #:sidmat sid-material
+                            ;#:toplinked top-linked?
+                            ))))
     (write-msg "NewWall" msg)
     ;(send-points guide)
     (let ((result (read-guids*)))
@@ -190,7 +197,9 @@ Make the wall always double slanted whatever the angles?
               #:reference-offset [reference-offset 0]
               #:ref-material [ref-material ""]
               #:opp-material [opp-material ""]
-              #:sid-material [sid-material ""])
+              #:sid-material [sid-material ""]
+              ;#:top-linked? [top-linked? (default-top-link)]
+              )
   (car (walls (list pt0 pt1)
               #:alignment alignment
               #:bottom-level bottom-level
@@ -213,7 +222,9 @@ Make the wall always double slanted whatever the angles?
               #:reference-offset reference-offset
               #:ref-material ref-material
               #:opp-material opp-material
-              #:sid-material sid-material)))
+              #:sid-material sid-material
+              ;#:top-linked? top-linked?
+              )))
 
 #|
 Function used to create a door into an existing wall
@@ -383,22 +394,80 @@ Example of usage:
                       #:bottom-level [bottom-level (current-level)]
                       #:top-level [top-level (upper-level bottom-level)]
                       #:offset [offset 0]
-                      #:layer [layer (default-layer)])
-  (let ((c-wall-msg (curtainwallmsg* #:pts (prepare-points-to-send guide)
-                                     #:arcs (prepare-arcs-to-send arcs)
-                                     #:bottomindex (storyinfo-index bottom-level)
-                                     #:upperindex (storyinfo-index top-level)
-                                     #:primaries primary-segments
-                                     #:secondaries secondary-segments
-                                     #:mainpanels main-panel?
-                                     #:panelmaterial secondary-panel-material
-                                     #:secpanelmaterial panel-material 
-                                     #:verticalframematerial vertical-segments-material
-                                     #:horizontalframematerial horizontal-segments-material
-                                     #:framematerial boundary-material
-                                     #:panelsangle panels-angle
-                                     #:offset offset
-                                     #:layer layer)))
+                      #:layer [layer (default-layer)]
+                      #:height [height null]
+                      #:main-panel-thickness [main-panel-thickness 0.2]
+                      #:secondary-panel-thickness [secondary-panel-thickness 0.2]
+                      #:boundary-frame-width [boundary-frame-width 0.1]
+                      #:boundary-frame-depth [boundary-frame-depth 0.3]
+                      #:boundary-frame-depth-offset [boundary-frame-depth-offset 0.25]
+                      #:mullion-frame-width [mullion-frame-width 0.08]
+                      #:mullion-frame-depth [mullion-frame-depth 0.25]
+                      #:mullion-frame-depth-offset [mullion-frame-depth-offset 0.2]
+                      #:transom-frame-width [transom-frame-width 0.06]
+                      #:transom-frame-depth [transom-frame-depth 0.1]
+                      #:transom-frame-depth-offset [transom-frame-depth-offset 0.11]
+                      ;Does NOT work because API does not support it
+                      ;#:top-linked? [top-linked? (default-top-link)]
+                      )
+  (let ((c-wall-msg (if (null? height)
+                        (curtainwallmsg* #:pts (prepare-points-to-send guide)
+                                         #:arcs (prepare-arcs-to-send arcs)
+                                         #:bottomindex (storyinfo-index bottom-level)
+                                         #:upperindex (storyinfo-index top-level)
+                                         #:primaries primary-segments
+                                         #:secondaries secondary-segments
+                                         #:mainpanels main-panel?
+                                         #:panelmaterial secondary-panel-material
+                                         #:secpanelmaterial panel-material 
+                                         #:verticalframematerial vertical-segments-material
+                                         #:horizontalframematerial horizontal-segments-material
+                                         #:framematerial boundary-material
+                                         #:panelsangle panels-angle
+                                         #:offset offset
+                                         #:layer layer
+                                         #:mainpanelthickness main-panel-thickness
+                                         #:secondarypanelthickness secondary-panel-thickness
+                                         #:bframewidth boundary-frame-width
+                                         #:bframedepth boundary-frame-depth
+                                         #:bframeoffset boundary-frame-depth-offset
+                                         #:mframewidth mullion-frame-width
+                                         #:mframedepth mullion-frame-depth
+                                         #:mframeoffset mullion-frame-depth-offset
+                                         #:tframewidth transom-frame-width
+                                         #:tframedepth transom-frame-depth
+                                         #:tframeoffset transom-frame-depth-offset
+                                         ;#:toplinked top-linked?
+                                         )
+                        (curtainwallmsg* #:pts (prepare-points-to-send guide)
+                                         #:arcs (prepare-arcs-to-send arcs)
+                                         #:bottomindex (storyinfo-index bottom-level)
+                                         #:upperindex (storyinfo-index top-level)
+                                         #:primaries primary-segments
+                                         #:secondaries secondary-segments
+                                         #:mainpanels main-panel?
+                                         #:panelmaterial secondary-panel-material
+                                         #:secpanelmaterial panel-material 
+                                         #:verticalframematerial vertical-segments-material
+                                         #:horizontalframematerial horizontal-segments-material
+                                         #:framematerial boundary-material
+                                         #:panelsangle panels-angle
+                                         #:offset offset
+                                         #:layer layer
+                                         #:height height
+                                         #:mainpanelthickness main-panel-thickness
+                                         #:secondarypanelthickness secondary-panel-thickness
+                                         #:bframewidth boundary-frame-width
+                                         #:bframedepth boundary-frame-depth
+                                         #:bframeoffset boundary-frame-depth-offset
+                                         #:mframewidth mullion-frame-width
+                                         #:mframedepth mullion-frame-depth
+                                         #:mframeoffset mullion-frame-depth-offset
+                                         #:tframewidth transom-frame-width
+                                         #:tframedepth transom-frame-depth
+                                         #:tframeoffset transom-frame-depth-offset
+                                         ;#:toplinked top-linked?
+                                         ))))
     (send/rcv-id "CurtainWall" c-wall-msg)))
 #|Functions do not work. Nothing happens. 
 (define (internal-transform-curtain-wall cwall op x y z angle scale)
@@ -600,6 +669,7 @@ Example of usage:
                 #:bottom-level [bottom-level (current-level)]
                 #:top-level [top-level (upper-level bottom-level)]
                 ;;ArchiCAD ONLY --------------------------------------------------------------
+                ;#:top-linked? [top-linked? (default-top-link)]
                 #:circle-based? [circle-based? #f]
                 #:angle [angle 0]
                 #:depth [depth 0.15]
@@ -623,7 +693,9 @@ Example of usage:
                               #:bottomindex (storyinfo-index bottom-level)
                               #:upperindex (storyinfo-index top-level)
                               #:profilename profile-name
-                              #:layer layer)
+                              #:layer layer
+                              ;#:toplinked top-linked?
+                              )
                  (columnmsg*  #:posx (cx orig-pos)
                               #:posy (cy orig-pos)
                               #:bottom (cz orig-pos)
@@ -637,7 +709,9 @@ Example of usage:
                               #:bottomindex (storyinfo-index bottom-level)
                               #:upperindex (storyinfo-index top-level)
                               #:profilename profile-name
-                              #:layer layer))))
+                              #:layer layer
+                              ;#:toplinked top-linked?
+                              ))))
     (write-msg "NewColumn" msg)
     ;(read-guid)
     (read-material-guid)))
@@ -927,7 +1001,10 @@ Function to create stairs
                 #:use-xy-fix-size [use-xy-fix-size #f]
                 #:properties [properties (list)]
                 #:layer [layer (default-layer)]
-                #:height [height 0])
+                #:height [height 0]
+                ;Does NOT work because API does not support it
+                ;#:top-linked? [top-linked? (default-top-link)]
+                )
   (let* ((splitted-list (split-params-list properties))
          (msg (stairsmsg* #:name name
                           #:posx (cx orig-pos)
@@ -951,7 +1028,9 @@ Function to create stairs
                                                       #:paramtype (list-ref splitted-list 9)
                                                       #:isarray (list-ref splitted-list 10))
                           #:layer layer
-                          #:height height)))
+                          #:height height
+                          ;#:toplink top-linked?
+                          )))
     ;(list names int-values double-values string-values bool-values lst-int-values lst-double-values lst-string-values lst-bool-values param-types is-array?)
     (write-msg "Stairs" msg)
     ;(read-guid)

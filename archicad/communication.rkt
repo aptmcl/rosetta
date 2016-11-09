@@ -307,9 +307,14 @@ Example of usage:
 
 (define (upper-level [level (current-level)]
                      [height (default-level-to-level-height)])
-  (let ((msg (upperlevelmsg* #:height height
+  #;(let ((msg (upperlevelmsg* #:height height
                              #:index (storyinfo-index level))))
     (write-msg "UpperLevel" msg)
+    (read-sized (cut deserialize (storyinfo*) <>)
+                (connection-in (bim-connection))))
+  (let ((msg (storymsg* #:height (+ (storyinfo-level level) height)
+                        #:name "Story")))
+    (write-msg "Story" msg)
     (read-sized (cut deserialize (storyinfo*) <>)
                 (connection-in (bim-connection)))))
 
