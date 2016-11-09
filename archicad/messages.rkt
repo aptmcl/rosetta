@@ -75,7 +75,8 @@
   (required primitive:double refoffset 19)
   (required primitive:string refmat 20)
   (required primitive:string oppmat 21)
-  (required primitive:string sidmat 22)))
+  (required primitive:string sidmat 22)
+  (optional primitive:bool toplinked 23)))
 (define-message-type
  getwallmsg
  ((repeated struct:wallmsg walls 1) (repeated primitive:string guid 2)))
@@ -207,7 +208,20 @@
   (required primitive:string framematerial 12)
   (required primitive:double panelsangle 13)
   (required primitive:double offset 14)
-  (optional primitive:string layer 15)))
+  (optional primitive:string layer 15)
+  (optional primitive:double height 16)
+  (optional primitive:bool toplinked 17)
+  (optional primitive:double mainpanelthickness 18)
+  (optional primitive:double secondarypanelthickness 19)
+  (optional primitive:double bframewidth 20)
+  (optional primitive:double bframedepth 21)
+  (optional primitive:double bframeoffset 22)
+  (optional primitive:double mframewidth 23)
+  (optional primitive:double mframedepth 24)
+  (optional primitive:double mframeoffset 25)
+  (optional primitive:double tframewidth 26)
+  (optional primitive:double tframedepth 27)
+  (optional primitive:double tframeoffset 28)))
 (define-message-type
  translatemsg
  ((required primitive:double tx 1)
@@ -261,7 +275,8 @@
   (required primitive:double slantdirection 12)
   (required primitive:string profilename 13)
   (optional primitive:double bottomoffset 14)
-  (optional primitive:string layer 15)))
+  (optional primitive:string layer 15)
+  (optional primitive:bool toplinked 16)))
 (define-message-type
  storymsg
  ((required primitive:double height 1) (required primitive:string name 2)))
@@ -306,7 +321,8 @@
   (required struct:additionalparams params 10)
   (optional primitive:string layer 11)
   (optional primitive:double height 12)
-  (optional primitive:int32 upperindex 13)))
+  (optional primitive:int32 upperindex 13)
+  (optional primitive:bool toplinked 14)))
 (define-message-type
  roofmsg
  ((required primitive:double height 1)
