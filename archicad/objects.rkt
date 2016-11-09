@@ -708,6 +708,7 @@ Example of usage:
     (read-material-guid)))
 (define (column-two-points p1 p2
                 #:bottom-level [bottom-level (current-level)]
+                #:top-level [top-level (upper-level bottom-level)]
                 ;;ArchiCAD ONLY --------------------------------------------------------------
                 #:circle-based? [circle-based? #f]
                 #:angle [angle 0]
@@ -727,7 +728,7 @@ Example of usage:
                           #:slantangle (- pi/2 (sph-psi (p-p p2 p1)))
                           #:slantdirection  (- (sph-phi (p-p p2 p1)) pi/2) 
                           #:bottomindex (storyinfo-index bottom-level)
-                          #:upperindex (storyinfo-index bottom-level)
+                          #:upperindex (storyinfo-index top-level)
                           #:profilename profile-name
                           #:layer layer
                           #:toplinked top-linked?)))
