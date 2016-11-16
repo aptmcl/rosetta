@@ -75,8 +75,7 @@
   (required primitive:double refoffset 19)
   (required primitive:string refmat 20)
   (required primitive:string oppmat 21)
-  (required primitive:string sidmat 22)
-  (optional primitive:bool toplinked 23)))
+  (required primitive:string sidmat 22)))
 (define-message-type
  getwallmsg
  ((repeated struct:wallmsg walls 1) (repeated primitive:string guid 2)))
