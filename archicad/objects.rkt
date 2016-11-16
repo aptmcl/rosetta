@@ -22,6 +22,8 @@
   (if (trim?)
       (trim-layer)
       (non-trim-layer)))
+;(define default-top-link (make-parameter #t))
+  
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;Functions to create objects;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -60,13 +62,14 @@ Make the wall always double slanted whatever the angles?
               #:bottom-level [bottom-level (current-level)]
               #:top-level [top-level (upper-level bottom-level)]
               ;;ArchiCAD ONLY --------------------------------------------------------------
+              ;#:top-linked? [top-linked? (default-top-link)]
               #:thickness [thickness (default-wall-thickness)]
               #:arcs [arcs (list)]
               
               #:type-of-material [type-of-material (default-wall-type-of-material)]
               #:material [material
                           #;(default-wall-material) 
-                          (cond [(eq? type-of-material "Basic") "GENERIC - STRUCTURAL"]
+                          (cond [(eq? type-of-material "Basic") "GENERIC - INTERNAL FILLER"]
                                 [(eq? type-of-material "Composite") "Generic Wall/Shell"])]
               #:alpha-angle [alpha-angle (/ pi 2)]
               #:beta-angle [beta-angle (/ pi 2)]
@@ -75,7 +78,7 @@ Make the wall always double slanted whatever the angles?
               #:profile-name [profile-name ""]
               #:flipped? [flipped? #f]
               #:bottom-offset [bottom-offset 0]
-              #:layer [layer (default-layer)]
+              #:layer [layer "Structural Bearing"]
               #:windows [windows (list)]
               #:window-order [window-order (list)]
               #:reference-offset [reference-offset 0]
@@ -114,7 +117,9 @@ Make the wall always double slanted whatever the angles?
                             #:refoffset reference-offset
                             #:refmat ref-material
                             #:oppmat opp-material
-                            #:sidmat sid-material)
+                            #:sidmat sid-material
+                            ;#:toplinked top-linked?
+                            )
                   (wallmsg* #:pts (if (pointsmessage? guide)
                                       guide
                                       (prepare-points-to-send guide))
@@ -144,7 +149,9 @@ Make the wall always double slanted whatever the angles?
                             #:refoffset reference-offset
                             #:refmat ref-material
                             #:oppmat opp-material
-                            #:sidmat sid-material))))
+                            #:sidmat sid-material
+                            ;#:toplinked top-linked?
+                            ))))
     (write-msg "NewWall" msg)
     ;(send-points guide)
     (let ((result (read-guids*)))
@@ -175,7 +182,7 @@ Make the wall always double slanted whatever the angles?
               #:type-of-material [type-of-material (default-wall-type-of-material)]
               #:material [material
                           #;(default-wall-material) 
-                          (cond [(eq? type-of-material "Basic") "GENERIC - STRUCTURAL"]
+                          (cond [(eq? type-of-material "Basic") "GENERIC - INTERNAL FILLER"]
                                 [(eq? type-of-material "Composite") "Generic Wall/Shell"])]
               #:alpha-angle [alpha-angle (/ pi 2)]
               #:beta-angle [beta-angle (/ pi 2)]
@@ -184,13 +191,15 @@ Make the wall always double slanted whatever the angles?
               #:profile-name [profile-name ""]
               #:flipped? [flipped? #f]
               #:bottom-offset [bottom-offset 0]
-              #:layer [layer (default-layer)]
+              #:layer [layer "Structural - Bearing"]
               #:windows [windows (list)]
               #:window-order [window-order (list)]
               #:reference-offset [reference-offset 0]
               #:ref-material [ref-material ""]
               #:opp-material [opp-material ""]
-              #:sid-material [sid-material ""])
+              #:sid-material [sid-material ""]
+              ;#:top-linked? [top-linked? (default-top-link)]
+              )
   (car (walls (list pt0 pt1)
               #:alignment alignment
               #:bottom-level bottom-level
@@ -213,7 +222,9 @@ Make the wall always double slanted whatever the angles?
               #:reference-offset reference-offset
               #:ref-material ref-material
               #:opp-material opp-material
-              #:sid-material sid-material)))
+              #:sid-material sid-material
+              ;#:top-linked? top-linked?
+              )))
 
 #|
 Function used to create a door into an existing wall
@@ -238,7 +249,7 @@ Example of usage:
               #:flip-x [flip-x #f]
               #:flip-y [flip-y #f]
               #:properties [properties (list)]
-              #:layer [layer (default-layer)])
+              #:layer [layer "Default Layer"])
   (let ((splitted-list (split-params-list properties)))
         (send/rcv-id "Door" (doormessage* #:guid guid
                                           #:objloc (cx p)
@@ -321,7 +332,7 @@ Example of usage:
                 #:flip-y [flip-y #f]
                 #:type-of-window [type-of-window "Window 18"]
                 #:properties [properties (list)]
-                #:layer [layer (default-layer)])
+                #:layer [layer "Default Layer"])
   (let ((splitted-list (split-params-list properties)))
     (send/rcv-id "Window" (windowmessage* #:guid guid
                                           #:objloc (cx p)
@@ -383,22 +394,80 @@ Example of usage:
                       #:bottom-level [bottom-level (current-level)]
                       #:top-level [top-level (upper-level bottom-level)]
                       #:offset [offset 0]
-                      #:layer [layer (default-layer)])
-  (let ((c-wall-msg (curtainwallmsg* #:pts (prepare-points-to-send guide)
-                                     #:arcs (prepare-arcs-to-send arcs)
-                                     #:bottomindex (storyinfo-index bottom-level)
-                                     #:upperindex (storyinfo-index top-level)
-                                     #:primaries primary-segments
-                                     #:secondaries secondary-segments
-                                     #:mainpanels main-panel?
-                                     #:panelmaterial secondary-panel-material
-                                     #:secpanelmaterial panel-material 
-                                     #:verticalframematerial vertical-segments-material
-                                     #:horizontalframematerial horizontal-segments-material
-                                     #:framematerial boundary-material
-                                     #:panelsangle panels-angle
-                                     #:offset offset
-                                     #:layer layer)))
+                      #:layer [layer "Finish - Wall"]
+                      #:height [height null]
+                      #:main-panel-thickness [main-panel-thickness 0.2]
+                      #:secondary-panel-thickness [secondary-panel-thickness 0.2]
+                      #:boundary-frame-width [boundary-frame-width 0.1]
+                      #:boundary-frame-depth [boundary-frame-depth 0.3]
+                      #:boundary-frame-depth-offset [boundary-frame-depth-offset 0.25]
+                      #:mullion-frame-width [mullion-frame-width 0.08]
+                      #:mullion-frame-depth [mullion-frame-depth 0.25]
+                      #:mullion-frame-depth-offset [mullion-frame-depth-offset 0.2]
+                      #:transom-frame-width [transom-frame-width 0.06]
+                      #:transom-frame-depth [transom-frame-depth 0.1]
+                      #:transom-frame-depth-offset [transom-frame-depth-offset 0.11]
+                      ;Does NOT work because API does not support it
+                      ;#:top-linked? [top-linked? (default-top-link)]
+                      )
+  (let ((c-wall-msg (if (null? height)
+                        (curtainwallmsg* #:pts (prepare-points-to-send guide)
+                                         #:arcs (prepare-arcs-to-send arcs)
+                                         #:bottomindex (storyinfo-index bottom-level)
+                                         #:upperindex (storyinfo-index top-level)
+                                         #:primaries primary-segments
+                                         #:secondaries secondary-segments
+                                         #:mainpanels main-panel?
+                                         #:panelmaterial secondary-panel-material
+                                         #:secpanelmaterial panel-material 
+                                         #:verticalframematerial vertical-segments-material
+                                         #:horizontalframematerial horizontal-segments-material
+                                         #:framematerial boundary-material
+                                         #:panelsangle panels-angle
+                                         #:offset offset
+                                         #:layer layer
+                                         #:mainpanelthickness main-panel-thickness
+                                         #:secondarypanelthickness secondary-panel-thickness
+                                         #:bframewidth boundary-frame-width
+                                         #:bframedepth boundary-frame-depth
+                                         #:bframeoffset boundary-frame-depth-offset
+                                         #:mframewidth mullion-frame-width
+                                         #:mframedepth mullion-frame-depth
+                                         #:mframeoffset mullion-frame-depth-offset
+                                         #:tframewidth transom-frame-width
+                                         #:tframedepth transom-frame-depth
+                                         #:tframeoffset transom-frame-depth-offset
+                                         ;#:toplinked top-linked?
+                                         )
+                        (curtainwallmsg* #:pts (prepare-points-to-send guide)
+                                         #:arcs (prepare-arcs-to-send arcs)
+                                         #:bottomindex (storyinfo-index bottom-level)
+                                         #:upperindex (storyinfo-index top-level)
+                                         #:primaries primary-segments
+                                         #:secondaries secondary-segments
+                                         #:mainpanels main-panel?
+                                         #:panelmaterial secondary-panel-material
+                                         #:secpanelmaterial panel-material 
+                                         #:verticalframematerial vertical-segments-material
+                                         #:horizontalframematerial horizontal-segments-material
+                                         #:framematerial boundary-material
+                                         #:panelsangle panels-angle
+                                         #:offset offset
+                                         #:layer layer
+                                         #:height height
+                                         #:mainpanelthickness main-panel-thickness
+                                         #:secondarypanelthickness secondary-panel-thickness
+                                         #:bframewidth boundary-frame-width
+                                         #:bframedepth boundary-frame-depth
+                                         #:bframeoffset boundary-frame-depth-offset
+                                         #:mframewidth mullion-frame-width
+                                         #:mframedepth mullion-frame-depth
+                                         #:mframeoffset mullion-frame-depth-offset
+                                         #:tframewidth transom-frame-width
+                                         #:tframedepth transom-frame-depth
+                                         #:tframeoffset transom-frame-depth-offset
+                                         ;#:toplinked top-linked?
+                                         ))))
     (send/rcv-id "CurtainWall" c-wall-msg)))
 #|Functions do not work. Nothing happens. 
 (define (internal-transform-curtain-wall cwall op x y z angle scale)
@@ -450,7 +519,7 @@ Example of usage:
 (define default-slab-reference (make-parameter "Top"))
 (define default-slab-type-of-material (make-parameter "Basic"))
 #;(define default-slab-material  
-    (make-parameter (cond [(eq? (default-slab-type-of-material) "Basic") "GENERIC - INTERNAL CLADDING"]
+    (make-parameter (cond [(eq? (default-slab-type-of-material) "Basic") "GENERIC - STRUCTURAL"]
                           [(eq? (default-slab-type-of-material) "Composite") "Generic Slab/Roof"])))
 (define (slab guide
               #:bottom-level [bottom-level (current-level)]
@@ -458,10 +527,10 @@ Example of usage:
               #:thickness [thickness 0.3]
               #:bottom [bottom 0]
               #:type-of-material [type-of-material (default-slab-type-of-material)]
-              #:material [material (cond [(eq? type-of-material "Basic") "GENERIC - INTERNAL CLADDING"]
+              #:material [material (cond [(eq? type-of-material "Basic") "GENERIC - STRUCTURAL"]
                                          [(eq? type-of-material "Composite") "Generic Slab/Roof"])]
               #:parcs [parcs (list)]
-              #:layer [layer (default-layer)]
+              #:layer [layer "Structural - Bearing"]
               #:reference [reference (default-slab-reference)]
               ;#:sub-polygons [sub-polygons (list (length guide))]
               )
@@ -547,7 +616,7 @@ Example of usage:
                          #:thickness [thickness 0.3]
                          #:material [material (walls-from-slab-material-default)]
                          #:reference-line [reference-line (walls-from-slab-reference-line-default)]
-                         #:layer [layer (default-layer)])
+                         #:layer [layer "Structural - Bearing"])
   (internal-walls-from-slab slab-id height thickness material reference-line "BasicStructure" layer))
 
 #|
@@ -566,7 +635,7 @@ Example of usage:
                                    #:thickness [thickness 0.3]
                                    #:material [material (walls-from-slab-composite-material-default)]
                                    #:reference-line [reference-line (walls-from-slab-composite-reference-line-default)]
-                                   #:layer [layer (default-layer)])
+                                   #:layer [layer "Structural - Bearing"])
   (internal-walls-from-slab slab-id height thickness material reference-line "CompositeStructure" layer))
 
 #|HEIGHT NOT WORKING
@@ -600,6 +669,7 @@ Example of usage:
                 #:bottom-level [bottom-level (current-level)]
                 #:top-level [top-level (upper-level bottom-level)]
                 ;;ArchiCAD ONLY --------------------------------------------------------------
+                ;#:top-linked? [top-linked? (default-top-link)]
                 #:circle-based? [circle-based? #f]
                 #:angle [angle 0]
                 #:depth [depth 0.15]
@@ -609,7 +679,7 @@ Example of usage:
                 #:height [height null]
                 #:profile-name [profile-name ""]
                 #:bottom-offset [bottom-offset 0]
-                #:layer [layer (default-layer)])
+                #:layer [layer "Structural - Bearing"])
   (let ((msg (if (null? height)
                  (columnmsg*  #:posx (cx orig-pos)
                               #:posy (cy orig-pos)
@@ -623,7 +693,9 @@ Example of usage:
                               #:bottomindex (storyinfo-index bottom-level)
                               #:upperindex (storyinfo-index top-level)
                               #:profilename profile-name
-                              #:layer layer)
+                              #:layer layer
+                              ;#:toplinked top-linked?
+                              )
                  (columnmsg*  #:posx (cx orig-pos)
                               #:posy (cy orig-pos)
                               #:bottom (cz orig-pos)
@@ -637,7 +709,9 @@ Example of usage:
                               #:bottomindex (storyinfo-index bottom-level)
                               #:upperindex (storyinfo-index top-level)
                               #:profilename profile-name
-                              #:layer layer))))
+                              #:layer layer
+                              ;#:toplinked top-linked?
+                              ))))
     (write-msg "NewColumn" msg)
     ;(read-guid)
     (read-material-guid)))
@@ -649,7 +723,7 @@ Example of usage:
                 #:depth [depth 0.15]
                 #:width [width 0.15]
                 #:profile-name [profile-name ""]
-                #:layer [layer (default-layer)])
+                #:layer [layer "Structural - Bearing"])
   (let ((msg (columnmsg*  #:posx (cx p1)
                           #:posy (cy p1)
                           #:bottom (cz p1)
@@ -676,7 +750,7 @@ Example of usage:
                            #:width [width 0.15]
                            #:circle-based? [circle-based? #t]
                            #:material [material (columns-from-slab-material-default)]
-                           #:layer [layer (default-layer)])
+                           #:layer [layer "Structural - Bearing"])
   (let ((msg (columnsfromslab*  #:guid slab
                                 #:height height
                                 #:circlebased circle-based?
@@ -695,7 +769,7 @@ Example of usage:
               #:bottom-level [bottom-level (current-level)]
               #:material [material "GENERIC - STRUCTURAL"]
               #:profile [profile (default-beam-profile)]
-              #:layer [layer (default-layer)])
+              #:layer [layer "Structural - Bearing"])
   (let* ((new-p0 (loc-in-world p0))
          (new-p1 (loc-in-world p1))
          (msg (beammsg* #:x0 (cx new-p0)
@@ -851,7 +925,7 @@ Example of usage:
                 #:angle [angle 0]
                 #:height [height 0]
                 #:properties [properties (list)]
-                #:layer [layer (default-layer)])
+                #:layer [layer "Interior - Furniture"])
   (let* ((splitted-list (split-params-list properties))
          (msg (if (string? index/name)
                   (objectmsg* #:index 0
@@ -926,8 +1000,11 @@ Function to create stairs
                 #:top-level [top-level (upper-level bottom-level)]
                 #:use-xy-fix-size [use-xy-fix-size #f]
                 #:properties [properties (list)]
-                #:layer [layer (default-layer)]
-                #:height [height 0])
+                #:layer [layer "Structural - Combined"]
+                #:height [height 0]
+                ;Does NOT work because API does not support it
+                ;#:top-linked? [top-linked? (default-top-link)]
+                )
   (let* ((splitted-list (split-params-list properties))
          (msg (stairsmsg* #:name name
                           #:posx (cx orig-pos)
@@ -951,7 +1028,9 @@ Function to create stairs
                                                       #:paramtype (list-ref splitted-list 9)
                                                       #:isarray (list-ref splitted-list 10))
                           #:layer layer
-                          #:height height)))
+                          #:height height
+                          ;#:toplink top-linked?
+                          )))
     ;(list names int-values double-values string-values bool-values lst-int-values lst-double-values lst-string-values lst-bool-values param-types is-array?)
     (write-msg "Stairs" msg)
     ;(read-guid)
@@ -1021,9 +1100,9 @@ Example of usage:
               #:thickness [thickness 0.3]
               #:height [height 0]
               #:type-of-material [type-of-material (default-roof-type-of-material)]
-              #:material [material (cond [(eq? type-of-material "Basic") "GENERIC - STRUCTURAL"]
+              #:material [material (cond [(eq? type-of-material "Basic") "GENERIC - EXTERNAL FILLER"]
                                          [(eq? type-of-material "Composite") "Generic Roof/Shell"])]
-              #:layer [layer (default-layer)])
+              #:layer [layer "Shell - Roof"])
   (let ((roof-info (prepare-points guide))
         (roof-msg (roofmsg* #:height height
                             #:material material
@@ -1060,7 +1139,7 @@ Function to create a poly roof
     (read-material-guid)
     ))
 
-(define poly-roof-material-default (make-parameter "GENERIC - STRUCTURAL"))
+(define poly-roof-material-default (make-parameter "GENERIC - EXTERNAL FILLER"))
 (define roof-material-default (make-parameter "GENERIC - STRUCTURAL"))
 (define (poly-roof listpoints
                    #:bottom-level [bottom-level (current-level)]
@@ -1070,7 +1149,7 @@ Function to create a poly roof
                    #:levels-angle [levels-angle (list)]
                    #:levels-height [levels-height (list)]
                    #:material [material (roof-material-default)]
-                   #:layer [layer (default-layer)])
+                   #:layer [layer "Shell - Roof"])
   (internal-poly-roof listpoints bottom-level height listarcs thickness levels-angle levels-height material "BasicStructure") layer)
 
 (define poly-roof-composite-material-default (make-parameter "Generic Roof/Shell"))
@@ -1083,7 +1162,7 @@ Function to create a poly roof
                              #:levels-angle [levels-angle (list)]
                              #:levels-height [levels-height (list)]
                              #:material [material (roof-composite-material-default)]
-                             #:layer [layer (default-layer)])
+                             #:layer [layer "Shell - Roof"])
   (internal-poly-roof listpoints bottom-level height listarcs thickness levels-angle levels-height material "CompositeStructure") layer)
 
 ;(send (poly-roof (list (list (xy 10 10)(xy 10 -10)(xy -10 -10)(xy -10 10)(xy 10 10))(list (xy 5 0)(xy -5 0)(xy 5 0))) 0 (list 0 0 0 0 0 pi pi)))
@@ -1105,7 +1184,7 @@ Function to create a poly roof
               #:material [material (default-mesh-material)]
               #:level-lines [level-lines (list)]
               #:override-material [override-material null]
-              #:layer [layer (default-layer)])
+              #:layer [layer "Site & Landscape - Terrain"])
   (let ((msg (if (null? override-material)
                       (meshmessage* #:level bottom
                                     #:material material
