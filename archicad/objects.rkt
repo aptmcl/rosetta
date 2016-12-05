@@ -67,7 +67,7 @@ Make the wall always double slanted whatever the angles?
               
               #:type-of-material [type-of-material (default-wall-type-of-material)]
               #:material [material
-                          (cond [(eq? type-of-material "Basic") "GENERIC - STRUCTURAL" #;"GENERIC - INTERNAL FILLER"]
+                          (cond [(eq? type-of-material "Basic") #;"GENERIC - STRUCTURAL" "GENERIC - INTERNAL FILLER"]
                                 [(eq? type-of-material "Composite") "Generic Wall/Shell"])]
               #:alpha-angle [alpha-angle (/ pi 2)]
               #:beta-angle [beta-angle (/ pi 2)]
@@ -179,7 +179,7 @@ Make the wall always double slanted whatever the angles?
               
               #:type-of-material [type-of-material (default-wall-type-of-material)]
               #:material [material
-                          (cond [(eq? type-of-material "Basic") "GENERIC - STRUCTURAL" #;"GENERIC - INTERNAL FILLER"]
+                          (cond [(eq? type-of-material "Basic") #;"GENERIC - STRUCTURAL" "GENERIC - INTERNAL FILLER"]
                                 [(eq? type-of-material "Composite") "Generic Wall/Shell"])]
               #:alpha-angle [alpha-angle (/ pi 2)]
               #:beta-angle [beta-angle (/ pi 2)]
