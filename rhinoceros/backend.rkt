@@ -486,9 +486,9 @@
 (define (sweep-borders [profile : Ref] [path : Ref] [out? : Boolean]) : Refs
   (map (lambda ([border : Ref])
          (begin0
-           (%capped-planar-holes
-            (singleton-ref
-             (%add-sweep1 path (list border))))
+           (single-ref-or-union
+            (map %capped-planar-holes
+                 (%add-sweep1 path (list border))))
            (%delete-object border)))
        (%duplicate-surface-border profile (if out? 1 2))))
 
@@ -502,7 +502,7 @@
       (let* ((plane (%curve-perp-frame %path (%curve-parameter %path 0.0))))
         (%transform-object %profile plane #f)
         (cond ((%is-curve %profile)
-               (singleton-ref (%add-sweep1 %path (list %profile))))
+               (single-ref-or-union (%add-sweep1 %path (list %profile))))
               ((%is-surface %profile)
                ;;This cannot be done using extrude-surface because it does not continuously
                ;;align the profile with the path 
@@ -518,15 +518,16 @@
 
 (def-shape (thicken [surf : (Extrudable-Shape RefOp)] [h : Real 1])
   (let ((s (%offset-surface (shape-ref surf) h %com-omit #t #t)))
-    (begin0
-      (if (void? s)
-          (begin ;Failed! Let's try the command approach
-            (%unselect-all-objects)
-            (%select-objects (shape-refs surf))
-            (%command (format "OffsetSrf BothSides=Yes Solid=Yes ~A _Enter" h))
-            (single-ref-or-union (%last-created-objects)))
-          s)
-      (mark-deleted! surf))))
+    (if (void? s)
+        (begin ;Failed! Let's try the command approach
+          (%unselect-all-objects)
+          (%select-objects (shape-refs surf))
+          (%command (format "OffsetSrf BothSides=Yes Solid=Yes ~A _Enter" h))
+          (mark-deleted! surf)
+          (single-ref-or-union (%last-created-objects)))
+        (begin
+          (delete-shape surf)
+          s))))
 
 (def-shape (slice [shape : Shape] [p : Loc (u0)] [n : Vec (vz 1 p)])
   (let ([p (loc-from-o-vz p n)])
