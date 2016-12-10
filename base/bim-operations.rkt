@@ -169,14 +169,15 @@
                             [bottom-level : Level (current-level)]
                             [top-level : Level (upper-level bottom-level)]
                             [family : Wall-Family (default-wall-family)])
-  (let ((height (- (level-height top-level) (level-height bottom-level))))
-    (let ((h/2 (/ height 2)))
-      (let ((s (right-cuboid (+z p0 h/2)
-                             (wall-family-thickness family)
-                             height
-                             (+z p1 h/2))))
-        (shape-layer s (bim-family-layer family))
-        (shape-reference s)))))
+  (let* ((base-height (level-height bottom-level))
+         (h (- (level-height top-level) base-height))
+         (z (+ base-height (/ h 2)))
+         (s (right-cuboid (+z p0 z)
+                          (wall-family-thickness family)
+                          h
+                          (+z p1 z))))
+    (shape-layer s (bim-family-layer family))
+    (shape-reference s)))
   
 (def-shape/no-provide (walls [vertices : Locs]
                              [bottom-level : Level (current-level)]
@@ -206,11 +207,11 @@
   (let ((p0 (second vertices))
         (p1 (first vertices))
         (p2 (third vertices)))
-    (let ((n (vz (panel-family-thickness family)
+    (let ((n (vz (/ (panel-family-thickness family) 2)
                  (cs-from-o-vx-vy p0 (p-p p1 p0) (p-p p2 p0)))))
-      (let ((s (cuboid (map loc-in-world
-                            (append (map (lambda (v) (p+v v n)) vertices)
-                                    (map (lambda (v) (p-v v n)) vertices))))))
+      (let ((s (irregular-prism
+                (map (lambda (v) (loc-in-world (p-v v n))) vertices)
+                (vec-in-world (v*r n 2)))))
         (shape-layer s (bim-family-layer family))
         (shape-reference s)))))
 )
