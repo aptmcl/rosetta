@@ -17,7 +17,7 @@
          (rename-out [%disconnect disconnect]
                      [%send send]))
 ;;This needs to be fixed to only provide what is relevant
-(require (except-in "objects.rkt" trim?))
+(require (except-in "objects.rkt"))
 (provide (all-from-out "objects.rkt"))
          ;;This needs to be fixed to only provide what is relevant
 (require "geometry.rkt")
@@ -869,7 +869,7 @@ The following example does not work as intended. Rotating the args to closed-spl
 ;;Added angle must propagate to other backends.
 (def-shape (beam [p0 : Loc] [p1 : Loc] [angle : Real 0] [family : Beam-Family (default-beam-family)])
   (if (or (trim?) (vertical? p0 p1))
-      (parameterize ((%trim? #t))
+      (parameterize ((trim? #t))
         (if (< (cz p0) (cz p1))
             (%column-two-points
              p0 p1
