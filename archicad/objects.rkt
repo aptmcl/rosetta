@@ -9,13 +9,14 @@
 (require "geometry.rkt")
 (require "../base/coord.rkt"
          "../base/connection.rkt")
+(require (only-in "../base/shapes.rkt" trim?))
 (require srfi/26)
 
 (define DEGRAD (/ pi 180.0))
 
 (define crash-on-no-material? (make-parameter #t))
 (define crash-on-no-name? (make-parameter #t))
-(define trim? (make-parameter #t))
+;(define trim? (make-parameter #t))
 (define non-trim-layer (make-parameter "Non Trim Layer"))
 (define trim-layer (make-parameter "Trim Layer"))
 (define (default-layer)

@@ -31,7 +31,7 @@
          virtual)
 
 ;This is used in some backends
-(define trim? (make-parameter #f))
+(define trim? (make-parameter #t))
 
 (define immediate-mode? : (Parameterof Boolean)
   (make-parameter #t))
