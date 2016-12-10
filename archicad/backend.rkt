@@ -17,7 +17,7 @@
          (rename-out [%disconnect disconnect]
                      [%send send]))
 ;;This needs to be fixed to only provide what is relevant
-(require "objects.rkt")
+(require (except-in "objects.rkt" trim?))
 (provide (all-from-out "objects.rkt"))
          ;;This needs to be fixed to only provide what is relevant
 (require "geometry.rkt")
@@ -869,21 +869,25 @@ The following example does not work as intended. Rotating the args to closed-spl
 ;;Added angle must propagate to other backends.
 (def-shape (beam [p0 : Loc] [p1 : Loc] [angle : Real 0] [family : Beam-Family (default-beam-family)])
   (if (or (trim?) (vertical? p0 p1))
-      (if (< (cz p0) (cz p1))
-          (%column-two-points
-           p0 p1
-           #:width (beam-family-width family)
-           #:depth (beam-family-height family)
-           #:angle angle)
-          (%column-two-points
-           p1 p0
-           #:width (beam-family-width family)
-           #:depth (beam-family-height family)
-           #:angle angle))
+      (parameterize ((%trim? #t))
+        (if (< (cz p0) (cz p1))
+            (%column-two-points
+             p0 p1
+             #:width (beam-family-width family)
+             #:depth (beam-family-height family)
+             #:angle angle
+             #:profile-name (beam-family-profile family))
+            (%column-two-points
+             p1 p0
+             #:width (beam-family-width family)
+             #:depth (beam-family-height family)
+             #:angle angle
+             #:profile-name (beam-family-profile family))))
       (%beam (loc-in-world p0) (loc-in-world p1)
              #:beam-width (beam-family-width family)
              #:beam-height (beam-family-height family)
-             #;#; #:angle angle)))
+             #;#; #:angle angle
+             #:profile-name (beam-family-profile family))))
 
 (def-shape (column [center : Loc]
                    [bottom-level : Level (current-level)]
