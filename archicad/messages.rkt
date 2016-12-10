@@ -207,7 +207,20 @@
   (required primitive:string framematerial 12)
   (required primitive:double panelsangle 13)
   (required primitive:double offset 14)
-  (optional primitive:string layer 15)))
+  (optional primitive:string layer 15)
+  (optional primitive:double height 16)
+  (optional primitive:bool toplinked 17)
+  (optional primitive:double mainpanelthickness 18)
+  (optional primitive:double secondarypanelthickness 19)
+  (optional primitive:double bframewidth 20)
+  (optional primitive:double bframedepth 21)
+  (optional primitive:double bframeoffset 22)
+  (optional primitive:double mframewidth 23)
+  (optional primitive:double mframedepth 24)
+  (optional primitive:double mframeoffset 25)
+  (optional primitive:double tframewidth 26)
+  (optional primitive:double tframedepth 27)
+  (optional primitive:double tframeoffset 28)))
 (define-message-type
  translatemsg
  ((required primitive:double tx 1)
@@ -261,7 +274,8 @@
   (required primitive:double slantdirection 12)
   (required primitive:string profilename 13)
   (optional primitive:double bottomoffset 14)
-  (optional primitive:string layer 15)))
+  (optional primitive:string layer 15)
+  (optional primitive:bool toplinked 16)))
 (define-message-type
  storymsg
  ((required primitive:double height 1) (required primitive:string name 2)))
@@ -306,7 +320,8 @@
   (required struct:additionalparams params 10)
   (optional primitive:string layer 11)
   (optional primitive:double height 12)
-  (optional primitive:int32 upperindex 13)))
+  (optional primitive:int32 upperindex 13)
+  (optional primitive:bool toplinked 14)))
 (define-message-type
  roofmsg
  ((required primitive:double height 1)
@@ -547,5 +562,16 @@
   (required primitive:string type 12)
   (required primitive:double thickness 13)))
 (define-message-type rendermsg ((required primitive:string file 1)))
+(define-message-type
+ cameramsg
+ ((required primitive:double cx 1)
+  (required primitive:double cy 2)
+  (required primitive:double cz 3)
+  (required primitive:double tx 4)
+  (required primitive:double ty 5)
+  (required primitive:double tz 6)
+  (required primitive:double lens 7)
+  (required primitive:double sunazimuth 8)
+  (required primitive:double sunaltitude 9)))
 
 (provide (all-defined-out))
