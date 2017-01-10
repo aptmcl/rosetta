@@ -29,6 +29,9 @@
          curve-frame-at-length
          curve-length
          curve-start-location
+         surface-domain
+         map-surface-division
+         map-inner-surface-division
          enable-update
          disable-update
          hide-shape
@@ -50,6 +53,11 @@
          view-top
          zoom-extents
          )
+
+(define (surface-domain s) (error "Unimplemented"))
+(define (map-inner-surface-division . args) (error "Unimplemented"))
+(define (map-surface-division . args) (error "Unimplemented"))
+
 
 (require racket/include)
 (include "../base/common.rkc")
@@ -772,6 +780,9 @@ The following example does not work as intended. Rotating the args to closed-spl
           (loop (combine bb (%bounding-box (car rs)))
                 (cdr rs))))))
 
+(require racket/trace)
+(trace bounding-box)
+
 ;;Color
 (define shape-color
   (case-lambda
@@ -912,6 +923,12 @@ The following example does not work as intended. Rotating the args to closed-spl
 (define (show-shape [s : Shape]) : Void
   (for ([r (shape-refs s)])
     (%visible r #t)))
+
+
+(provide document-path)
+(define (document-path)
+  (build-path (string->path (%dwgprefix)) (string->path (%dwgname))))
+
 
 
 (require racket/unit)
