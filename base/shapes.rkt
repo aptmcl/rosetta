@@ -185,7 +185,8 @@
    [id : Integer]
    [realizer : (-> R)]
    [deleter : (-> Void)]
-   [realized? : (-> Boolean)])
+   [realized? : (-> Boolean)]
+   [properties : (HashTable Symbol Any)])
   #:property prop:custom-write (lambda (s port mode)
                                  (fprintf port "#<~A~A ~A>" 
                                           (if ((shape-realized? s)) "" "virtual ")
@@ -282,6 +283,7 @@
                               realizer
                               deleter
                               realized?
+                              (make-hasheq)
                               param-name ...)))
                  (if (immediate-mode?)
                    (realizer)
@@ -544,7 +546,7 @@
 (struct (R) BIM-shape 3D-shape
   ([family : Any]))
 
-(def-base-shape 3D-shape (beam [p0 : Loc] [p1 : Loc] [angle : Real] [family : Any]))
+(def-base-shape 3D-shape (beam [p0 : Loc] [p1 : Loc] [family : Any]))
 (def-base-shape 3D-shape (column [center : Loc] [bottom-level : Any] [top-level : Any] [family : Any]))
 (def-base-shape 3D-shape (slab [vertices : Locs] [level : Any] [family : Any]))
 (def-base-shape 3D-shape (slab-path [path : Any] [level : Level] [family : Any]))
@@ -554,6 +556,23 @@
 (def-base-shape 3D-shape (walls [vertices : Locs] [bottom-level : Any] [top-level : Any] [family : Any]))
 (def-base-shape 3D-shape (door [wall : Any] [loc : Loc] [family : Any]))
 (def-base-shape 3D-shape (panel [vertices : Locs] [level : Any] [family : Any]))
+
+;;Properties
+
+(define-syntax-rule
+  (def-shape-property shape-property property)
+  (begin
+    (provide shape-property)
+    (define shape-property
+      (case-lambda
+        [([shape : Shape])
+         (hash-ref (shape-properties shape) 'property)]
+        [([shape : Shape] value)
+         (hash-set! (shape-properties shape) 'property value)
+         shape]))))
+
+(def-shape-property shape-material material)
+
 
 ;;Turtle-like operations
 
