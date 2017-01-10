@@ -2244,6 +2244,8 @@
 (def-autocad-variable viewsize Real)
 (def-autocad-variable viewctr VarDouble3)
 (def-autocad-variable undoctl Integer)
+(def-autocad-variable dwgprefix String)
+(def-autocad-variable dwgname String)
 
 (define-syntax (with-autocad-variable stx)
   (syntax-case stx ()
