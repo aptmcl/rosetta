@@ -333,7 +333,7 @@
   ;;Rhino requires at least 3 points in each dimension
   (if (and (null? (cddr ptss))
            (null? (cddr (car ptss))))
-      (%add-srf-pt (append (car ptss) (cadr ptss)))
+      (%add-srf-pt (append (car ptss) (reverse (cadr ptss))))
       (let ((ptss
               (cond ((null? (cddr ptss))
                      (list (car ptss)
@@ -812,6 +812,30 @@
                           #f)))
                   start-u end-u nu lastu?
                   start-v end-v nv lastv?)))
+
+(provide map-inner-surface-division)
+(: map-inner-surface-division (All (A) (->* ((-> Loc A) Shape Integer Integer) () (Listof (Option A)))))
+(define (map-inner-surface-division [f : (-> Loc A)]
+                                     [surface : Shape]
+                                     [nu : Integer]
+                                     [nv : Integer]) : (Listof A)
+  (let* ((r (shape-ref surface))
+         (u (%surface-domain r 0))
+         (v (%surface-domain r 1))
+         (start-u (vector-ref u 0))
+         (end-u (vector-ref u 1))
+         (start-v (vector-ref v 0))
+         (end-v (vector-ref v 1))
+         (du (/ (- end-u start-u) nu 2))
+         (dv (/ (- end-v start-v) nv 2)))
+    (map-division (lambda ([u : Real] [v : Real])
+                    (let ((pt (%surface-frame r (vector u v))))
+                      (if (%is-point-on-surface r pt)
+                          (f pt)
+                          #f)))
+                  (+ start-u du) (- end-u du) (- nu 1) #t
+                  (+ start-v dv) (- end-v dv) (- nv 1) #t)))
+
 
 (define (delete-all-shapes) : Void
   (%delete-objects (%all-objects #f #f #f))
