@@ -1,8 +1,11 @@
 #lang typed/racket/no-check
 (require "../base/coord.rkt")
+(require "../base/utils.rkt")
 (provide circle-from-three-points-2d
          circle-from-three-points
-         nearest-point-from-lines)
+         nearest-point-from-lines
+         xy-segments-intersection
+         xy-segment-parametric-curve-intersection)
 (provide epsilon)
 (define epsilon (make-parameter 1e-8))
 
@@ -26,6 +29,25 @@
       (let ((p0 (p+v l0p0 (v*r u sc)))
             (p1 (p+v l1p0 (v*r v tc))))
         (intermediate-point p0 p1)))))
+
+(define (xy-segments-intersection p0 p1 p2 p3)
+  (let ((x0 (cx p0)) (x1 (cx p1)) (x2 (cx p2)) (x3 (cx p3))
+        (y0 (cy p0)) (y1 (cy p1)) (y2 (cy p2)) (y3 (cy p3)))
+    (let ((denominator (- (* (- y3 y2) (- x1 x0))
+                          (* (- x3 x2) (- y1 y0)))))
+      (and (> (abs denominator) 0) ;;not parallel
+           (let ((u (/ (- (* (- x3 x2) (- y0 y2))
+                          (* (- y3 y2) (- x0 x2)))
+                       denominator))
+                 (v (/ (- (* (- x1 x0) (- y0 y2))
+                          (* (- y1 y0) (- x0 x2)))
+                       denominator))
+                 (e (epsilon)))
+             (and (<= 0 u 1)
+                  (<= 0 v 1)
+                  (xy (+ x0 (* u (- x1 x0)))
+                      (+ y0 (* u (- y1 y0))))))))))
+
 
 (define (circle-from-three-points-2d [v0 : Loc] [v1 : Loc] [v2 : Loc]) : (Values Loc Real)
   (let* ((v1-v0 (-c v1 v0))
@@ -69,6 +91,28 @@
                      (loc-in-cs p1 cs)
                      (loc-in-cs p2 cs))])
         (values c r)))))
+
+(define (xy-segment-parametric-curve-intersection f t0 t1 p0 p1 n epsilon)
+  ;First sample the curve into different segments
+  (let ((ts (division t0 t1 n #t)))
+    ;Second, identify the segment
+    (let ((t0-t1 (for/or ((t0 (in-list ts))
+                          (t1 (in-list (append (cdr ts) (list (car ts))))))
+                   (and (xy-segments-intersection p0 p1 (f t0) (f t1))
+                        (list t0 t1)))))
+      ;Third, fine tune
+      (let loop ((t0 (first t0-t1))
+                 (fp0 (f (first t0-t1)))
+                 (t1 (second t0-t1))
+                 (fp1 (f (second t0-t1))))
+        (let ((tm (/ (+ t0 t1) 2)))
+          (if (< (- t1 t0) epsilon)
+              (f tm)
+              (let ((fpm (f tm)))
+                (if (xy-segments-intersection p0 p1 fp0 fpm)
+                    (loop t0 fp0 tm fpm)
+                    (loop tm fpm t1 fp1)))))))))
+
 
 #|
 (define (circle-from-sphere-intersection [p0 : Loc] [r0 : Real] [p1 : Loc] [r1: Real])
