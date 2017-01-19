@@ -110,7 +110,7 @@
 
 |#
 (define (current-backend-name) "Revit")
-(define (delete-all-shapes) "Do nothing")
+(define (delete-all-shapes) (%DeleteAllElements))
 (define (view-top) "Do nothing")
 (define (view camera target lens) "Do nothing")
 #|
@@ -270,12 +270,10 @@
   (let ((com (%add-3d-poly (append pts (list (car pts))))))
     (%closed com #t)
     com))
-
+|#
 (def-shape* (polygon [pts : Loc *])
-  (let ((com (%add-3d-poly (append pts (list (car pts))))))
-    (%closed com #t)
-    com))
-
+  #t)
+#|
 (def-shape* (spline [pts : Loc *]); (list (u0) (ux) (uy))] [v0 : (U #f Vec) #f] [v1 : (U #f Vec) #f])
   ;;HACK: apparently, there's no difference
   ;(ac:spline-command cs v0 v1)
@@ -843,12 +841,14 @@ The following example does not work as intended. Rotating the args to closed-spl
 
 (provide ;;BIM extensions
  level
+ level-elevation
  beam
  column
  #;door
  roof
  slab
  #;wall
+ create-slab-hole
  current-level
  default-level-to-level-height
  upper-level
@@ -861,6 +861,9 @@ The following example does not work as intended. Rotating the args to closed-spl
 (define (upper-level [lvl : Level (current-level)]
                      [height : Real (default-level-to-level-height)])
   (%UpperLevel lvl height))
+
+(define (level-elevation [lvl : Level (current-level)])
+  (%GetLevelElevation lvl))
 
 (struct bim-family
   ([path : String]
@@ -960,27 +963,26 @@ The following example does not work as intended. Rotating the args to closed-spl
 (def-shape (roof [vertices : Locs] [level : Any (current-level)] [family : Any (default-roof-family)])
   (%CreatePolygonalRoof (map loc-in-world vertices) level (bim-family-id family)))
 
-#;#;#;
 (def-shape (wall [p0 : Loc] [p1 : Loc]
                  [bottom-level : Level (current-level)]
                  [top-level : Level (upper-level bottom-level)]
                  [family : Any (default-wall-family)])
-  (car (%create-wall (list p1 p0)
-                     #:bottom-level bottom-level
-                     #:top-level top-level
-                     #:family (bim-family-id family))))
+  (car (%CreateLineWall (list p1 p0)
+                        bottom-level
+                        top-level
+                        (bim-family-id family))))
 
 (def-shape (walls [vertices : Locs]
                   [bottom-level : Level (current-level)]
                   [top-level : Level (upper-level bottom-level)]
                   [family : Any (default-wall-family)])
-  (%create-wall vertices
-                #:bottom-level bottom-level
-                #:top-level top-level
-                #:family (bim-family-id family)))
+  (%CreateLineWall vertices
+                   bottom-level
+                   top-level
+                   (bim-family-id family)))
 
 (def-shape (door [wall : Any] [loc : Loc] [family : Any (default-door-family)])
-  (%insert-door-relative (shape-reference wall) (cx loc) (cy loc) #:family (bim-family-id family)))
+  (%InsertDoor (cx loc) (cy loc) (shape-reference wall) (bim-family-id family)))
 
 ;This should be moved to a different place (probably, a unit)
 (provide slab-rectangle roof-rectangle)
@@ -993,3 +995,24 @@ The following example does not work as intended. Rotating the args to closed-spl
   (roof (list p (+x p length) (+xy p length width) (+y p width))
         level
         family))
+
+(define (create-slab-hole [slab : Shape] [pts : (Listof Loc)])
+  (%CreatePolygonalHole pts (shape-reference slab)))
+
+
+(provide default-railing-family railing)
+
+(define default-railing-family (make-parameter 0))
+
+(define (railing [path : Any]
+                 [bottom-level : Level (current-level)]
+                 [family : Any (default-railing-family)])
+  (cond ((list? path)
+         (%CreateLineRailing path bottom-level family))
+        ((closed-spline? path)
+         (%CreatePolygonRailing (closed-spline-pts path) bottom-level family))
+        ((polygon? path)
+         (%CreatePolygonRailing (polygon-vertices path) bottom-level family))
+        (else
+         (error "Can't handle the object:" path))))
+  
