@@ -932,13 +932,17 @@ The following example does not work as intended. Rotating the args to closed-spl
           #:thickness (or (wall-family-thickness family)
                           (%default-wall-thickness))))
 
-(def-shape (door [wall : Any] [loc : Loc] [family : Any (default-door-family)])
+(def-shape (door [wall : Any] [loc : Loc]
+                 [flip-x : Boolean #f] [flip-y : Boolean #f]
+                 [family : Any (default-door-family)])
   (%door (shape-reference wall)
          (loc-in-world loc)
          #:width (or (door-family-width family)
                      -10000)
          #:height (or (door-family-height family)
-                      -10000)))
+                      -10000)
+         #:flip-x flip-x
+         #:flip-y flip-y))
 
 (def-shape (panel [vertices : Locs] [level : Any (current-level)] [family : Panel-Family (default-panel-family)])
   (let ((p0 (second vertices))
