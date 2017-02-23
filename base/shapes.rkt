@@ -548,9 +548,8 @@
 
 (def-base-shape 3D-shape (beam [p0 : Loc] [p1 : Loc] [angle : Real 0] [family : Any]))
 (def-base-shape 3D-shape (column [center : Loc] [bottom-level : Any] [top-level : Any] [family : Any]))
-(def-base-shape 3D-shape (slab [vertices : Locs] [level : Any] [family : Any]))
-(def-base-shape 3D-shape (slab-path [path : Any] [level : Level] [family : Any]))
-(def-base-shape 3D-shape (slab-opening-path [slab : Any] [path : Any]))
+(def-base-shape 3D-shape (slab [path : Any] [level : Level] [family : Any]))
+(def-base-shape 3D-shape (slab-opening [slab : Any] [path : Any]))
 (def-base-shape 3D-shape (roof [vertices : Locs] [level : Any] [family : Any]))
 (def-base-shape 3D-shape (wall [p0 : Loc] [p1 : Loc] [bottom-level : Any] [top-level : Any] [family : Any]))
 (def-base-shape 3D-shape (walls [vertices : Locs] [bottom-level : Any] [top-level : Any] [family : Any]))
