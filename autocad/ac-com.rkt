@@ -1639,8 +1639,8 @@
 (def-com (NumCustomInfo SummaryInfo) () Long)
 (def-com (ObjectIDToObject Document) ((ID Long_ptr)) Object)
 (def-com (ObjectIDToObject32 Document) ((ID Long)) Object)
-(def-com (Offset Arc) ((Distance Double)) Variant)
 |#
+(def-com (offset All) ((Distance Double)) Variant)
 (def-com (open All) ((name String)) Void)
 #|
 (def-com (OverwritePropChanged MLeaderStyle) () Boolean)

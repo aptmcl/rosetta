@@ -716,6 +716,11 @@ The following example does not work as intended. Rotating the args to closed-spl
           (%delete s))))
     (mark-deleted! surf)))
 
+(provide offset) ;;AML Fix this
+(define (offset [curve : Shape] [d : Real])
+  (map-ref ([r curve])
+           (%offset r d)))
+
 (def-shape (slice [shape : Shape] [p : Loc (u0)] [n : Vec (vz 1 p)])
   (begin0
     (map-ref ([r shape])
