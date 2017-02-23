@@ -114,7 +114,7 @@
 (define (request-operation name)
   (let ((conn (current-connection)))
     (let ((out (connection-out conn)))
-      (write-byte 0 out)
+      (write-int32 0 out)
       (write-c-sharp-string name out)
       (flush-output out)
       (let ((in (connection-in conn)))
@@ -258,8 +258,11 @@ can be simplified to
            (: name (Connection ts ... -> t))
            (provide name)
            (define (name ps ...)
+#;#;
+             (writeln (list 'name ps ...))
+             (flush-output)
              (let ((out (connection-out conn)))
-               (write-byte code out)
+               (write-int32 code out)
                ((encode ts) ps out)
                ...
                (flush-output out)
