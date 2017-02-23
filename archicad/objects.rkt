@@ -780,7 +780,7 @@ Example of usage:
                         #:bottomlevel (storyinfo-index bottom-level)
                         #:angle (- pi/2 (sph-psi (p-p p1 p0)))
                         #:material material
-                        #:profilename profile
+                        #:profile-name profile
                         #:layer layer)))
     (write-msg "Beam" msg)
     ;(read-guid)
