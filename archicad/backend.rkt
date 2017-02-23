@@ -969,31 +969,6 @@ The following example does not work as intended. Rotating the args to closed-spl
         level
         family))
 
-(define (locs-and-arcs path)
-  (let loop ((p path) (vs (list)) (arcs (list)))
-    (if (null? p)
-        (values vs arcs)
-        (let ((e (car p)))
-          (cond ((line? e)
-                 (let ((line-vs (line-vertices e)))
-                   (loop (cdr p)
-                         (append vs (drop-right line-vs 1))
-                         (append arcs (make-list (length (cdr line-vs)) 0)))))
-                ((arc? e)
-                 (loop (cdr p)
-                       (append vs (list (+pol (arc-center e) (arc-radius e) (arc-start-angle e))))
-                       (append arcs (list (arc-amplitude e)))))
-                ((circle? e)
-                 (loop
-                  (virtual
-                   (cons (arc (circle-center e) (circle-radius e) 0 pi)
-                         (cons (arc (circle-center e) (circle-radius e) pi pi)
-                               (cdr p))))
-                  vs
-                  arcs))
-                (else
-                 (error "Unknown path component" e)))))))
-
 #|
 
 Slabs should be updated to support paths instead of vertices. Vertices are just a particular case that can trivially generate a path
@@ -1020,3 +995,28 @@ Slabs should be updated to support paths instead of vertices. Vertices are just 
                 arcs)
     slab))
 
+(provide locs-and-arcs)
+(define (locs-and-arcs path)
+  (let loop ((p path) (vs (list)) (arcs (list)))
+    (if (null? p)
+        (values vs arcs)
+        (let ((e (car p)))
+          (cond ((line? e)
+                 (let ((line-vs (line-vertices e)))
+                   (loop (cdr p)
+                         (append vs (drop-right line-vs 1))
+                         (append arcs (make-list (length (cdr line-vs)) 0)))))
+                ((arc? e)
+                 (loop (cdr p)
+                       (append vs (list (+pol (arc-center e) (arc-radius e) (arc-start-angle e))))
+                       (append arcs (list (arc-amplitude e)))))
+                ((circle? e)
+                 (loop
+                  (virtual
+                   (cons (arc (circle-center e) (circle-radius e) 0 pi)
+                         (cons (arc (circle-center e) (circle-radius e) pi pi)
+                               (cdr p))))
+                  vs
+                  arcs))
+                (else
+                 (error "Unknown path component" e)))))))
