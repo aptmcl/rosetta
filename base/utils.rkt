@@ -247,7 +247,16 @@
    [green : Byte]
    [blue : Byte]))
 
-(provide Color (struct-out rgb))
+(define (radiance<-color c)
+  (+ (* 0.265 (rgb-red c)) (* 0.670 (rgb-green c)) (* 0.065 (rgb-blue c))))
+
+(define (read-color [port : Input-Port])
+  (let* ((r (inexact->exact (round (read port))))
+         (g (inexact->exact (round (read port))))
+         (b (inexact->exact (round (read port)))))
+    (rgb r g b)))
+
+(provide Color (struct-out rgb) radiance<-color read-color)
 
 ;;Renders and Films
 (provide render-dir
