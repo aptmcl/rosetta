@@ -112,7 +112,8 @@
 (define (current-backend-name) "Revit")
 (define (delete-all-shapes) (%DeleteAllElements))
 (define (view-top) "Do nothing")
-(define (view camera target lens) "Do nothing")
+(define (view camera target lens)
+  (%SetView camera target lens))
 #|
 ;;Start now
 (%start)
@@ -200,29 +201,13 @@
 
 (def-shape (point [position : Loc (u0)])
   (%add-point position))
-
+|#
 (def-shape (circle [center : Loc (u0)] [radius : Real 1])
-  (%transform
-   (%add-circle (u0 world-cs) radius)
-   center))
+  (error "This should not be realized"))
 
 (def-shape (arc [center : Loc (u0)] [radius : Real 1] [start-angle : Real 0] [amplitude : Real pi])
-  (cond ((= radius 0)
-         (%add-point center))
-        ((= amplitude 0)
-         (%add-point (+pol center radius start-angle)))
-        ((>= (abs amplitude) 2pi)
-         (%transform
-          (%add-circle (u0 world-cs) radius)
-          center))
-        (else
-         (let ((end-angle (+ start-angle amplitude)))
-           (%transform
-            (if (> end-angle start-angle)
-                (%add-arc (u0 world-cs) radius start-angle end-angle)
-                (%add-arc (u0 world-cs) radius end-angle start-angle))
-            center)))))
-
+  (error "This should not be realized"))
+#|
 (def-shape (ellipse [center : Loc (u0)] [radius-x : Real 1] [radius-y : Real 1])
   (%transform
    (if (> radius-x radius-y)
@@ -814,10 +799,6 @@ The following example does not work as intended. Rotating the args to closed-spl
 (define (ft measure)
   measure)
 
-(define current-level (make-parameter #f))
-
-(define default-level-to-level-height (make-parameter (mt 3)))
-
 (define short-curve-tolerance : Float 0.0025602455729167)
 
 #;
@@ -848,7 +829,6 @@ The following example does not work as intended. Rotating the args to closed-spl
  roof
  slab
  #;wall
- create-slab-hole
  current-level
  default-level-to-level-height
  upper-level
@@ -857,6 +837,11 @@ The following example does not work as intended. Rotating the args to closed-spl
 
 (define (level height)
   (%FindOrCreateLevelAtElevation height))
+
+(define current-level (make-parameter (level 0)))
+
+(define default-level-to-level-height (make-parameter (mt 3)))
+
 
 (define (upper-level [lvl : Level (current-level)]
                      [height : Real (default-level-to-level-height)])
@@ -945,8 +930,11 @@ The following example does not work as intended. Rotating the args to closed-spl
 (def-bim-family wall
   ([thickness : Real 1]))
 
-(def-shape (beam [p0 : Loc] [p1 : Loc] [family : Beam-Family (default-beam-family)])
-  (%CreateBeam (loc-in-world p0) (loc-in-world p1) (bim-family-id family)))
+(def-shape (beam [p0 : Loc] [p1 : Loc] [rotation-angle : Real 0] [family : Beam-Family (default-beam-family)])
+  (%CreateBeam (loc-in-world p0)
+               (loc-in-world p1)
+               (coterminal rotation-angle)
+               (bim-family-id family)))
 
 (def-shape (column [center : Loc]
                    [bottom-level : Level (current-level)]
@@ -958,10 +946,10 @@ The following example does not work as intended. Rotating the args to closed-spl
                  (bim-family-id family)))
 
 (def-shape (slab [vertices : Locs] [level : Any (current-level)] [family : Any (default-slab-family)])
-  (%CreatePolygonalFloor (map loc-in-world vertices) level #;(bim-family-id family)))
+  (%CreatePolygonalFloor vertices level #;(bim-family-id family)))
 
 (def-shape (roof [vertices : Locs] [level : Any (current-level)] [family : Any (default-roof-family)])
-  (%CreatePolygonalRoof (map loc-in-world vertices) level (bim-family-id family)))
+  (%CreatePolygonalRoof vertices level (bim-family-id family)))
 
 (def-shape (wall [p0 : Loc] [p1 : Loc]
                  [bottom-level : Level (current-level)]
@@ -985,7 +973,7 @@ The following example does not work as intended. Rotating the args to closed-spl
   (%InsertDoor (cx loc) (cy loc) (shape-reference wall) (bim-family-id family)))
 
 ;This should be moved to a different place (probably, a unit)
-(provide slab-rectangle roof-rectangle)
+(provide slab-rectangle roof-rectangle slab-path slab-opening slab-opening-path)
 (define (slab-rectangle [p : Loc] [length : Real] [width : Real] [level : Level (current-level)] [family : Slab-Family (default-slab-family)])
   (slab (list p (+x p length) (+xy p length width) (+y p width))
         level
@@ -996,8 +984,21 @@ The following example does not work as intended. Rotating the args to closed-spl
         level
         family))
 
-(define (create-slab-hole [slab : Shape] [pts : (Listof Loc)])
-  (%CreatePolygonalHole pts (shape-reference slab)))
+(define (slab-path [path : path] [level : Level (current-level)] [family : Slab-Family (default-slab-family)])
+  (let-values ([(locs arcs) (locs-and-arcs path)])
+    (new-slab
+     (lambda ()
+       (%CreatePathFloor locs arcs level))
+     locs level family)))
+
+(define (slab-opening [slab : Shape] [pts : (Listof Loc)])
+  (%CreatePolygonalOpening pts (shape-reference slab)))
+
+
+(define (slab-opening-path [slab : Any] [path : path])
+  (let-values ([(locs arcs) (locs-and-arcs path)])
+    (%CreatePathOpening locs arcs (shape-reference slab))
+    slab))
 
 
 (provide default-railing-family railing)
@@ -1016,3 +1017,28 @@ The following example does not work as intended. Rotating the args to closed-spl
         (else
          (error "Can't handle the object:" path))))
   
+(provide locs-and-arcs)
+(define (locs-and-arcs path)
+  (let loop ((p path) (vs (list)) (arcs (list)))
+    (if (null? p)
+        (values vs arcs)
+        (let ((e (car p)))
+          (cond ((line? e)
+                 (let ((line-vs (line-vertices e)))
+                   (loop (cdr p)
+                         (append vs (drop-right line-vs 1))
+                         (append arcs (make-list (length (cdr line-vs)) 0)))))
+                ((arc? e)
+                 (loop (cdr p)
+                       (append vs (list (+pol (arc-center e) (arc-radius e) (arc-start-angle e))))
+                       (append arcs (list (arc-amplitude e)))))
+                ((circle? e)
+                 (loop
+                  (virtual
+                   (cons (arc (circle-center e) (circle-radius e) 0 pi)
+                         (cons (arc (circle-center e) (circle-radius e) pi pi)
+                               (cdr p))))
+                  vs
+                  arcs))
+                (else
+                 (error "Unknown path component" e)))))))
