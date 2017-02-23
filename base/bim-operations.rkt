@@ -37,7 +37,8 @@
 (define-signature bim-levels^
   ([current-level : (->)]
    [default-level-to-level-height : (ParameterOf Real)]
-   [upper-level : (->)]))
+   [upper-level : (->)]
+   [level-elevation : (->)]))
    
 (define-unit bim-levels@
   (import bim-levels-dependencies^)
@@ -50,6 +51,8 @@
   (define (upper-level [lvl : Level (current-level)]
                        [height : Real (default-level-to-level-height)])
     (level (+ (level-height lvl) height)))
+
+  (define level-elevation level-height)
   )
   
 
@@ -59,8 +62,7 @@
    [beam : (->)]
    [column : (->)]
    [slab : (->)]
-   [slab-path : (->)]
-   [slab-opening-path : (->)]
+   [slab-opening : (->)]
    [roof : (->)]
    [wall : (->)]
    [walls : (->)]
@@ -110,50 +112,60 @@
       (shape-reference s))))
 
 (def-shape/no-provide (slab [vertices : Locs] [level : Level (current-level)] [family : Slab-Family (default-slab-family)])
-  (let ((s (irregular-prism
-            (map (lambda ([p : Loc])
-                   (+z p (+ (level-height level)
-                            (- (slab-family-thickness family))
-                            (slab-family-coating-thickness family))))
-                 vertices)
-            (slab-family-thickness family))))
-    (shape-layer s (bim-family-layer family))
-    (shape-reference s)))
+  (if (and (list? vertices) (loc? (car vertices)))
+      (let ((s (irregular-prism
+                (map (lambda ([p : Loc])
+                       (+z p (+ (level-height level)
+                                (- (slab-family-thickness family))
+                                (slab-family-coating-thickness family))))
+                     vertices)
+                (slab-family-thickness family))))
+        (shape-layer s (bim-family-layer family))
+        (shape-reference s))
+      (let ((path (if (list? vertices) vertices (list vertices))))
+        (let loop ((p path))
+          (if (null? p)
+              (list)
+              (let ((e (car p)))
+                (unless (null? (cdr p)) (error "Unfinished"))
+                (cond ((line? e)
+                       (error "Unfinished"))
+                      ((polygon? e)
+                       (let ((vertices (polygon-vertices e)))
+                         (let ((s (irregular-prism
+                                   (map (lambda ([p : Loc])
+                                          (+z p (+ (level-height level)
+                                                   (- (slab-family-thickness family))
+                                                   (slab-family-coating-thickness family))))
+                                        vertices)
+                                   (slab-family-thickness family))))
+                           (shape-layer s (bim-family-layer family))
+                           (shape-reference s))))
+                      ((arc? e)
+                       (error "Unfinished"))
+                      ((circle? e)
+                       (let ((s
+                              (extrusion
+                               (surface-circle (+z (+z (circle-center e) (- (cz (circle-center e))))
+                                                   (level-height level))
+                                               (circle-radius e))
+                               (vz (- (slab-family-coating-thickness family)
+                                      (slab-family-thickness family))))))
+                         (shape-layer s (bim-family-layer family))
+                         (shape-reference s)))
+                      (else
+                       (error "Unknown path component" e)))))))))
 
-(def-shape/no-provide (slab-path [path : Any] [level : Level (current-level)] [family : Slab-Family (default-slab-family)])
-  (let loop ((p path))
-    (if (null? p)
-        (list)
-        (let ((e (car p)))
-          (unless (null? (cdr p)) (error "Unfinished"))
-          (cond ((line? e)
-                 (error "Unfinished"))
-                ((arc? e)
-                 (error "Unfinished"))
-                ((circle? e)
-                 (let ((s
-                        (extrusion
-                         (surface-circle (+z (+z (circle-center e) (- (cz (circle-center e))))
-                                             (level-height level))
-                                         (circle-radius e))
-                         (vz (- (slab-family-coating-thickness family)
-                                (slab-family-thickness family))))))
-                   (shape-layer s (bim-family-layer family))
-                   (shape-reference s)))
-                (else
-                 (error "Unknown path component" e)))))))
 
-
-(def-shape/no-provide (slab-opening-path [slab : Any] [path : Any])
-  (let ((layer (shape-layer slab)))
+(def-shape/no-provide (slab-opening [slab-id : Any] [path : Any])
+  (let ((layer (shape-layer slab-id)))
     (let ((s
            (subtraction
-            slab
-            (slab-path path (slab-path-level slab) (slab-path-family slab)))))
+            slab-id
+            (slab path (slab-level slab-id) (slab-family slab-id)))))
       (shape-layer s layer)
       (shape-reference s))))
-
-        
+ 
 (def-shape/no-provide (roof [vertices : Locs] [level : Level (current-level)] [family : Roof-Family (default-roof-family)])
   (let ((s (irregular-prism
             (map (lambda ([p : Loc])
