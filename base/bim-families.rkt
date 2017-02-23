@@ -77,8 +77,8 @@
                             param-name ...))))))]))
 
 (def-bim-family beam
-  ([width : Real 10]
-   [height : Real 10]
+  ([width : Real 0.1]
+   [height : Real 0.1]
    [profile : String ""]))
 
 (def-bim-family slab
@@ -97,7 +97,7 @@
    [height : (Option Real) #f]))
 
 (def-bim-family column
-  ([width : Real 10]
+  ([width : Real 0.1]
    [depth : (Option Real) #f]
    [circular-section? : Boolean #f]))
 
