@@ -75,8 +75,7 @@
   (required primitive:double refoffset 19)
   (required primitive:string refmat 20)
   (required primitive:string oppmat 21)
-  (required primitive:string sidmat 22)
-  (optional primitive:bool toplinked 23)))
+  (required primitive:string sidmat 22)))
 (define-message-type
  getwallmsg
  ((repeated struct:wallmsg walls 1) (repeated primitive:string guid 2)))
@@ -108,7 +107,8 @@
   (required primitive:bool flipy 9)
   (required struct:additionalparams params 10)
   (required primitive:double depthoffset 11)
-  (optional primitive:string layer 12)))
+  (optional primitive:string layer 12)
+  (optional primitive:int32 fixpoint 13)))
 (define-message-type
  windowmessage
  ((optional primitive:string guid 1)
@@ -465,7 +465,8 @@
   (required primitive:double angle 9)
   (required primitive:string material 10)
   (required primitive:string profilename 11)
-  (optional primitive:string layer 12)))
+  (optional primitive:string layer 12)
+  (optional primitive:double profileangle 13)))
 (define-message-type intarray ((repeated primitive:int32 lst 1)))
 (define-message-type doublearray ((repeated primitive:double lst 1)))
 (define-message-type boolarray ((repeated primitive:bool lst 1)))

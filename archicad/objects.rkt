@@ -62,14 +62,12 @@ Make the wall always double slanted whatever the angles?
               #:bottom-level [bottom-level (current-level)]
               #:top-level [top-level (upper-level bottom-level)]
               ;;ArchiCAD ONLY --------------------------------------------------------------
-              ;#:top-linked? [top-linked? (default-top-link)]
               #:thickness [thickness (default-wall-thickness)]
               #:arcs [arcs (list)]
               
               #:type-of-material [type-of-material (default-wall-type-of-material)]
               #:material [material
-                          #;(default-wall-material) 
-                          (cond [(eq? type-of-material "Basic") "GENERIC - INTERNAL FILLER"]
+                          (cond [(eq? type-of-material "Basic") #;"GENERIC - STRUCTURAL" "GENERIC - INTERNAL FILLER"]
                                 [(eq? type-of-material "Composite") "Generic Wall/Shell"])]
               #:alpha-angle [alpha-angle (/ pi 2)]
               #:beta-angle [beta-angle (/ pi 2)]
@@ -78,7 +76,7 @@ Make the wall always double slanted whatever the angles?
               #:profile-name [profile-name ""]
               #:flipped? [flipped? #f]
               #:bottom-offset [bottom-offset 0]
-              #:layer [layer "Structural Bearing"]
+              #:layer [layer "Structural - Bearing"]
               #:windows [windows (list)]
               #:window-order [window-order (list)]
               #:reference-offset [reference-offset 0]
@@ -181,8 +179,7 @@ Make the wall always double slanted whatever the angles?
               
               #:type-of-material [type-of-material (default-wall-type-of-material)]
               #:material [material
-                          #;(default-wall-material) 
-                          (cond [(eq? type-of-material "Basic") "GENERIC - INTERNAL FILLER"]
+                          (cond [(eq? type-of-material "Basic") #;"GENERIC - STRUCTURAL" "GENERIC - INTERNAL FILLER"]
                                 [(eq? type-of-material "Composite") "Generic Wall/Shell"])]
               #:alpha-angle [alpha-angle (/ pi 2)]
               #:beta-angle [beta-angle (/ pi 2)]
@@ -240,6 +237,9 @@ Example of usage:
 (send (door wallId 1.0 0.0))
 |#
 (define default-door-type (make-parameter "Door 18"))
+(define anchor-beg-fix -1)
+(define anchor-center-fix 0)
+(define anchor-end-fix 1)
 
 (define (door guid
               p
@@ -249,7 +249,8 @@ Example of usage:
               #:flip-x [flip-x #f]
               #:flip-y [flip-y #f]
               #:properties [properties (list)]
-              #:layer [layer "Default Layer"])
+              #:layer [layer "Default Layer"]
+              #:fix-point [fix-point anchor-center-fix])
   (let ((splitted-list (split-params-list properties)))
         (send/rcv-id "Door" (doormessage* #:guid guid
                                           #:objloc (cx p)
@@ -272,7 +273,8 @@ Example of usage:
                                                                       #:boolarrays (list-ref splitted-list 8)
                                                                       #:paramtype (list-ref splitted-list 9)
                                                                       #:isarray (list-ref splitted-list 10))
-                                          #:layer layer))))
+                                          #:layer layer
+                                          #:fixpoint fix-point))))
 
 ;;TODO Review this function
 (define (hole-in-wall guid
@@ -769,7 +771,8 @@ Example of usage:
               #:bottom-level [bottom-level (current-level)]
               #:material [material "GENERIC - STRUCTURAL"]
               #:profile [profile (default-beam-profile)]
-              #:layer [layer "Structural - Bearing"])
+              #:layer [layer "Structural - Bearing"]
+              #:profile-angle [profile-angle 0])
   (let* ((new-p0 (loc-in-world p0))
          (new-p1 (loc-in-world p1))
          (msg (beammsg* #:x0 (cx new-p0)
@@ -783,7 +786,8 @@ Example of usage:
                         #:angle (- pi/2 (sph-psi (p-p p1 p0)))
                         #:material material
                         #:profilename profile
-                        #:layer layer)))
+                        #:layer layer
+                        #:profileangle profile-angle)))
     (write-msg "Beam" msg)
     ;(read-guid)
     (read-material-guid)))
@@ -925,7 +929,7 @@ Example of usage:
                 #:angle [angle 0]
                 #:height [height 0]
                 #:properties [properties (list)]
-                #:layer [layer "Interior - Furniture"])
+                #:layer [layer "Interior - Furniture "])
   (let* ((splitted-list (split-params-list properties))
          (msg (if (string? index/name)
                   (objectmsg* #:index 0
