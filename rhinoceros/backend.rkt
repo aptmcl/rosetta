@@ -522,7 +522,7 @@
         (begin ;Failed! Let's try the command approach
           (%unselect-all-objects)
           (%select-objects (shape-refs surf))
-          (%command (format "OffsetSrf BothSides=Yes Solid=Yes ~A _Enter" h))
+          (%command (format "OffsetSrf Solid=Yes BothSides=Yes ~A _Enter" h))
           (mark-deleted! surf)
           (single-ref-or-union (%last-created-objects)))
         (begin
