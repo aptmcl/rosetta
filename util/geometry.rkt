@@ -113,6 +113,15 @@
                     (loop t0 fp0 tm fpm)
                     (loop tm fpm t1 fp1)))))))))
 
+(define (arc-from-two-points-angle p0 p1 angle)
+  (let* ((v (p-p p1 p0))
+         (d2 (+ (sqr (cx v)) (sqr (cy v))))
+         (r2 (/ d2 (* 2 (- 1 (cos angle)))))
+         (l (sqrt (- r2 (/ d2 4))))
+         (m (p+v p0 (v*r v 0.5)))
+         (phi (pol-phi v)))
+    (values (p+v m (vpol l (+ phi pi/2))) (sqrt r2)))) 
+
 
 #|
 (define (circle-from-sphere-intersection [p0 : Loc] [r0 : Real] [p1 : Loc] [r1: Real])
