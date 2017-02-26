@@ -771,7 +771,7 @@ Example of usage:
               #:beam-width [beam-width 0.15]
               #:bottom-level [bottom-level (current-level)]
               #:material [material "GENERIC - STRUCTURAL"]
-              #:profile [profile (default-beam-profile)]
+              #:profile-name [profile (default-beam-profile)]
               #:layer [layer "Structural - Bearing"]
               #:profile-angle [profile-angle 0])
   (let* ((new-p0 (loc-in-world p0))
