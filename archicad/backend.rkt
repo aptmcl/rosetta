@@ -886,7 +886,7 @@ The following example does not work as intended. Rotating the args to closed-spl
       (%beam (loc-in-world p0) (loc-in-world p1)
              #:beam-width (beam-family-width family)
              #:beam-height (beam-family-height family)
-             #:angle angle
+             #:profile-angle angle
              #:profile-name (beam-family-profile family))))
 
 (def-shape (column [center : Loc]
