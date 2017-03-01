@@ -2937,9 +2937,12 @@
 
 (def-cmd (render-command [width : Integer] [height : Integer] [filename : Path-String])
   ;;Rendering changed a lot in AutoCAD 2016
-  (if (regexp-match? #rx"^20" (version (application)))
-      (format "._-render ~A _R ~A ~A _yes ~A\n" "H" width height filename)
-      (format "._-render ~A _R ~A ~A _yes ~A\n" "P" width height filename)))
+  (let ((ver (version (application))))
+    (cond ((or (regexp-match? #rx"^20" ver)
+               (regexp-match? #rx"^21" ver))
+           (format "._-render ~A _R ~A ~A _yes ~A\n" "H" width height filename))
+          (else
+           (format "._-render ~A _R ~A ~A _yes ~A\n" "P" width height filename)))))
 
 (provide save-screen-png)
 (define (save-screen-png [filename : String]) : Void
