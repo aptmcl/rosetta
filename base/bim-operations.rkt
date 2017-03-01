@@ -67,12 +67,24 @@
    [wall : (->)]
    [walls : (->)]
    [door : (->)]
-   [panel : (->)]))
+   [panel : (->)]
+   [create-bim-layers? : Boolean]))
 
 (define-unit bim-ops@
   (import bim-ops-dependencies^ bim-levels^)
   (export bim-ops^)
-  
+
+(define create-bim-layers? (make-parameter #t))
+
+(define bim-shape-layer
+  (case-lambda
+    ((shape layer)
+     (when (create-bim-layers?)
+      (shape-layer shape layer))
+     shape)
+    ((shape)
+     (shape-layer shape))))
+
 (def-shape/no-provide (polygonal-mass [pts : Locs] [height : Real])
   (irregular-prism pts height))
 
@@ -96,7 +108,7 @@
                                  (beam-family-width family) h
                                  (loc-in-world (+yz cb (/ h -2) dz))
                                  angle)))))
-      (shape-layer s (bim-family-layer family))
+      (bim-shape-layer s (bim-family-layer family))
       (shape-reference s))))
 
 (def-shape/no-provide (column [center : Loc]
@@ -108,7 +120,7 @@
                   width
                   width
                   (- (level-height top-level) (level-height bottom-level)))))
-      (shape-layer s (bim-family-layer family))
+      (bim-shape-layer s (bim-family-layer family))
       (shape-reference s))))
 
 (def-shape/no-provide (slab [vertices : Locs] [level : Level (current-level)] [family : Slab-Family (default-slab-family)])
@@ -120,7 +132,7 @@
                                 (slab-family-coating-thickness family))))
                      vertices)
                 (slab-family-thickness family))))
-        (shape-layer s (bim-family-layer family))
+        (bim-shape-layer s (bim-family-layer family))
         (shape-reference s))
       (let ((path (if (list? vertices) vertices (list vertices))))
         (let loop ((p path))
@@ -139,7 +151,7 @@
                                                    (slab-family-coating-thickness family))))
                                         vertices)
                                    (slab-family-thickness family))))
-                           (shape-layer s (bim-family-layer family))
+                           (bim-shape-layer s (bim-family-layer family))
                            (shape-reference s))))
                       ((arc? e)
                        (error "Unfinished"))
@@ -151,19 +163,19 @@
                                                (circle-radius e))
                                (vz (- (slab-family-coating-thickness family)
                                       (slab-family-thickness family))))))
-                         (shape-layer s (bim-family-layer family))
+                         (bim-shape-layer s (bim-family-layer family))
                          (shape-reference s)))
                       (else
                        (error "Unknown path component" e)))))))))
 
 
 (def-shape/no-provide (slab-opening [slab-id : Any] [path : Any])
-  (let ((layer (shape-layer slab-id)))
+  (let ((layer (bim-shape-layer slab-id)))
     (let ((s
            (subtraction
             slab-id
             (slab path (slab-level slab-id) (slab-family slab-id)))))
-      (shape-layer s layer)
+      (bim-shape-layer s layer)
       (shape-reference s))))
  
 (def-shape/no-provide (roof [vertices : Locs] [level : Level (current-level)] [family : Roof-Family (default-roof-family)])
@@ -174,7 +186,7 @@
                             (roof-family-coating-thickness family))))
                  vertices)
             (roof-family-thickness family))))
-    (shape-layer s (bim-family-layer family))
+    (bim-shape-layer s (bim-family-layer family))
     (shape-reference s)))
 
 (def-shape/no-provide (wall [p0 : Loc] [p1 : Loc]
@@ -188,7 +200,7 @@
                           (wall-family-thickness family)
                           h
                           (+z p1 z))))
-    (shape-layer s (bim-family-layer family))
+    (bim-shape-layer s (bim-family-layer family))
     (shape-reference s)))
   
 (def-shape/no-provide (walls [vertices : Locs]
@@ -201,7 +213,7 @@
                                         vertices))
                              (- (level-height top-level) (level-height bottom-level)))
                   (wall-family-thickness family))))
-    (shape-layer s (bim-family-layer family))
+    (bim-shape-layer s (bim-family-layer family))
     (shape-reference s)))
 
 (def-shape/no-provide (door [wall : Any] [loc : Loc] [family : Any (default-door-family)])
@@ -224,7 +236,7 @@
       (let ((s (irregular-prism
                 (map (lambda (v) (loc-in-world (p-v v n))) vertices)
                 (vec-in-world (v*r n 2)))))
-        (shape-layer s (bim-family-layer family))
+        (bim-shape-layer s (bim-family-layer family))
         (shape-reference s)))))
 )
 
