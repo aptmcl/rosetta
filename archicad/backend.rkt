@@ -755,26 +755,35 @@ The following example does not work as intended. Rotating the args to closed-spl
   (view-top)
   (void))
 
+|#
 (provide view)
 (define (view [camera : (Option Loc) #f] [target : (Option Loc) #f] [lens : (Option Real) #f]) : (Values Loc Loc Real)
   (cond ((and camera target lens)
-         ;;(%set-view camera target lens)
-         (%view-conceptual)
-         (%perspective 1)
-         (%dview-zoom-command camera target lens (distance camera target))
+         (let ((angle (* 2
+                         (/ 180 pi)
+                         (atan (/ 36 (* 2 lens))))))
+           (%camera camera target angle))
          (values camera target lens))
         (else
-         (%get-view))))
+         (error "Finish this"))))
 
+(provide render-view)
+(define (render-view name) : Void
+  (%render (prepare-for-saving-file (render-pathname name)))
+  (void))
+
+(provide save-film-frame)
+(define (save-film-frame [obj : Any (void)]) : Any
+  (parameterize ((render-kind-dir "Film"))
+    (render-view (frame-filename (film-filename) (film-frame)))
+  (film-frame (+ (film-frame) 1))
+  obj))
+
+#|
 (provide view-top)
 (define (view-top) : Void
   (%view-top)
   (%view-wireframe)
-  (void))
-
-(provide render-view)
-(define (render-view name) : Void
-  ;(%renderView (prepare-for-file (render-pathname name)) (render-width) (render-height))
   (void))
 
 (provide render-stereo-view)
