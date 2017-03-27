@@ -130,6 +130,10 @@
     ;;Don't read anything, just increment the counter
     #;(incr-id-counter)))
 
+
+(defencoder Material write-int32)
+(defdecoder Material verified-read-id)
+
 ;Revit
 (use-port-number! 11001)
 
@@ -164,6 +168,8 @@
 (defop "public void CreateFamilyExtrusionTest(XYZ[] pts, double height)")
 (defop "public void InsertFamily(string familyName, XYZ p)")
 
+(defop "public Material GetMaterial(string name)")
+(defop "public void ChangeElementMaterial(Element element, Material material)")
 
 (defop "public void HighlightElement(ElementId id)")
 (defop "public ElementId[] GetSelectedElements()")
