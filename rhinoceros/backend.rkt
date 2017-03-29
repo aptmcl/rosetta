@@ -950,7 +950,7 @@ Command: _viewcapturetofile
 
 ;;This will be the same on all backends. Can we improve this?
 (provide save-film-frame)
-(define #:forall (T) (save-film-frame [obj : T]) : T
+(define #:forall (T) (save-film-frame [obj : T (void)]) : T
   (parameterize ((render-kind-dir "Film"))
     (render-view (frame-filename (film-filename) (film-frame)))
   (film-frame (+ (film-frame) 1))
