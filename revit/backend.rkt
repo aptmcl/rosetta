@@ -933,7 +933,7 @@ The following example does not work as intended. Rotating the args to closed-spl
 (def-bim-family wall
   ([thickness : Real 1]))
 
-(def-shape (beam [p0 : Loc] [p1 : Loc] [family : Beam-Family (default-beam-family)])
+(def-shape (beam [p0 : Loc] [p1 : Loc] [angle : Real 0] [family : Beam-Family (default-beam-family)])
   (%create-beam (loc-in-world p0) (loc-in-world p1) (bim-family-id family)))
 
 (def-shape (column [center : Loc]
