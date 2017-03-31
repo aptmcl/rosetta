@@ -874,8 +874,6 @@ The following example does not work as intended. Rotating the args to closed-spl
 (define (vertical? p0 p1)
   (< (cyl-rho (p-p p0 p1)) 0.1))
 
-
-;;Added angle must propagate to other backends.
 (def-shape (beam [p0 : Loc] [p1 : Loc] [angle : Real 0] [family : Beam-Family (default-beam-family)])
   (if (or (trim?) (vertical? p0 p1))
       (parameterize ((trim? #t))
@@ -885,16 +883,19 @@ The following example does not work as intended. Rotating the args to closed-spl
              #:width (beam-family-width family)
              #:depth (beam-family-height family)
              #:angle angle
+;             #:material (or (beam-family-material family) "GENERIC - STRUCTURAL")
              #:profile-name (beam-family-profile family))
             (%column-two-points
              p1 p0
              #:width (beam-family-width family)
              #:depth (beam-family-height family)
              #:angle angle
+;             #:material (or (beam-family-material family) "GENERIC - STRUCTURAL")
              #:profile-name (beam-family-profile family))))
       (%beam (loc-in-world p0) (loc-in-world p1)
              #:beam-width (beam-family-width family)
              #:beam-height (beam-family-height family)
+             #:material (or (beam-family-material family) "GENERIC - STRUCTURAL")
              #:profile-angle angle
              #:profile-name (beam-family-profile family))))
 

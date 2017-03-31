@@ -79,7 +79,8 @@
 (def-bim-family beam
   ([width : Real 0.1]
    [height : Real 0.1]
-   [profile : String ""]))
+   [profile : String ""]
+   [material : (Option String) #f]))
 
 (def-bim-family slab
   ([thickness : Real 0.3]
