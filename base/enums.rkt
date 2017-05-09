@@ -25,6 +25,11 @@
                           [(name value)
                            (set! i (syntax-e #'value))
                            const]
+                          [(name)
+                           (set! i (+ i 1))
+                           (with-syntax ([i (datum->syntax const i)])
+                             (syntax/loc const
+                               (name i)))]
                           [name
                            (set! i (+ i 1))
                            (with-syntax ([i (datum->syntax const i)])
