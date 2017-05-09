@@ -101,9 +101,11 @@
 (require "robot-enums.rkt")
 (provide (all-from-out "robot-enums.rkt"))
 (provide evaluate-node-load-case)
+(define case-counter 0)
 (define (evaluate-node-load-case v)
-  (%new-case 1
-             "Test"
+  (set! case-counter (+ case-counter 1))
+  (%new-case case-counter
+             (format "Test-~A" case-counter)
              I_CN_PERMANENT ; I_CN_EXPLOATATION I_CN_WIND I_CN_SNOW I_CN_TEMPERATURE I_CN_ACCIDENTAL I_CN_SEISMIC
              I_CAT_STATIC_LINEAR ;I_CAT_STATIC_NONLINEAR I_CAT_STATIC_FLAMBEMENT
              (lambda (records)
