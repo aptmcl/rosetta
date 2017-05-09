@@ -19,6 +19,8 @@
    [surface-circle : (->)]
    [right-cuboid : (->)]
    [cuboid : (->)]
+   [sphere : (->)]
+   [cylinder : (->)]
    [irregular-prism : (->)]
    [create-layer : (-> String Any)]
    [shape-layer : (->)]
@@ -68,6 +70,8 @@
    [walls : (->)]
    [door : (->)]
    [panel : (->)]
+   [truss-node : (->)]
+   [truss-bar : (->)]
    [create-bim-layers? : Boolean]))
 
 (define-unit bim-ops@
@@ -238,6 +242,14 @@
                 (vec-in-world (v*r n 2)))))
         (bim-shape-layer s (bim-family-layer family))
         (shape-reference s)))))
+
+(def-shape/no-provide (truss-node [p : Loc] [family : Truss-Node-Family (default-truss-node-family)])
+  (bim-shape-layer (sphere p (truss-node-family-radius family))
+                   (bim-family-layer family)))
+  
+(def-shape/no-provide (truss-bar [p0 : Loc] [p1 : Loc] [family : Truss-Bar-Family (default-truss-bar-family)])
+  (bim-shape-layer (cylinder p0 (truss-bar-family-radius family) p1)
+                   (bim-family-layer family)))
 )
 
 (define-signature bim-extra-ops^

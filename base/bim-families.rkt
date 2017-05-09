@@ -103,5 +103,37 @@
    [circular-section? : Boolean #f]))
 
 (def-bim-family panel
-  ((thickness : Real 0.01)
-   (material : String "Glass")))
+  ([thickness : Real 0.01]
+   [material : String "Glass"]))
+
+(provide (struct-out node-support))
+(struct node-support
+  ([name : String]
+   [ux : Boolean]
+   [uy : Boolean]
+   [uz : Boolean]
+   [rx : Boolean]
+   [ry : Boolean]
+   [rz : Boolean]
+   [created? : Boolean])
+  #:mutable)
+
+(provide create-node-support)
+(define (create-node-support [name : String]
+                             #:ux [ux : Boolean #f]
+                             #:uy [uy : Boolean #f]
+                             #:uz [uz : Boolean #f]
+                             #:rx [rx : Boolean #f]
+                             #:ry [ry : Boolean #f]
+                             #:rz [rz : Boolean #f])
+  (node-support name ux uy uz rx ry rz #f))
+
+(def-bim-family truss-node
+  ([radius : Real 0.1]
+   [support : (Option node-support) #f]))
+
+(def-bim-family truss-bar
+  ([created? : (Box Boolean) (rk:box #f)]
+   [radius : Real 0.03]
+   [section : (Option Any) #f]
+   [material : (Option Any) #f]))
