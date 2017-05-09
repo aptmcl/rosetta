@@ -891,9 +891,12 @@ Command: _viewcapturetofile
 
 - Escolher  a pasta, dar um nome ao ficheiro, mudar o tipo de ficheiro para '.png' e assinalar 'Transparent background'
 |#
-  ;(sleep 10) ;;Should we wait?
-  ;(%command (string-append "_-SaveRenderWindowAs \n\"" (cast (prepare-for-saving-file (render-pathname name)) String) "\"\n") #f)
-  ;(%command "_-CloseRenderWindow" #f)
+  (sleep 10) ;;Should we wait?
+  (let ((path (cast (prepare-for-saving-file (render-pathname name)) String)))
+    (let ((cmd (string-append "_-SaveRenderWindowAs \"" path "\"")))
+      (displayln cmd)
+      (%command cmd #f)))
+  (%command "_-CloseRenderWindow" #f)
   (void))
 
 (provide render-stereo-view)
