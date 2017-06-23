@@ -179,7 +179,9 @@
 (def-rw-property (Steel_Thermal IRobotMaterialData) Boolean)
 (def-rw-property (Timber_Type IRobotMaterialData) IRobotMaterialTimberType)
 (def-rw-property (Type IRobotMaterialData) IRobotMaterialType)
-
+(def-ro-property (Nodes IRobotResultsServer) IRobotNodeResultServer)
+(def-ro-property (Bars IRobotResultsServer) IRobotBarResultServer)
+(def-ro-property (Displacements IRobotNodeResultServer) IRobotNodeDisplacementServer)
 
 ;;COM METHODS
 (define-syntax (def-com stx)
@@ -223,6 +225,8 @@
 (def-com (SaveToDBase IRobotMaterialData) () Void)
 (def-com (LoadFromDBase IRobotMaterialData) ((name String)) Boolean)
 (def-com (add-one IRobotSelection) ((id Integer)) Void)
+(def-com ((node-displacement Value) IRobotNodeDisplacementServer) ((node Integer) (case Integer)) IRobotDisplacementData)
+(def-com ((bar-displacement Value) IRobotBarDisplacementServer) ((node Integer) (pos Double) (case Integer)) IRobotDisplacementData)
 
 (define (new-project! type) ;I_PT_FRAME_2D, I_PT_SHELL, etc
   (close (project (application)))
@@ -253,45 +257,104 @@
      (UZ support-data (if uz 1 0))
      (RX support-data (if rx 1 0))
      (RY support-data (if ry 1 0))
-     (RZ support-data (if rz 1 0)))))
-
-(define (set-node-support! node label)
-  (set-label (get (nodes (structure (project (application)))) node) I_LT_NODE_SUPPORT label))
-
-(define (add-support-node! p label)
-  (let* ((node (add-node! p)))
-    (set-node-support! node label)
-    node))
+     (RZ support-data (if rz 1 0)))))  
 
 ;;Nodes
-(define node-counter 0)
-(define added-nodes (make-hasheq))
+(struct truss-node-data
+  ([id : Integer]
+   [loc : Loc]
+   [family : Any]))
 
-(define (add-node! p)
-  (set! node-counter (+ node-counter 1))
-  (create-node (nodes (structure (project (application)))) node-counter (cx p) (cy p) (cz p))
-  (hash-set! added-nodes p node-counter)
-  node-counter)
+(define node-counter (make-parameter 0))
+(define added-nodes (make-parameter (make-hasheq)))
+(define case-counter (make-parameter 0))
+(define bar-counter (make-parameter 0))
+(define added-bars (make-parameter (make-hasheq)))
 
-(define (current-nodes)
-  (range (+ node-counter 1)))
+(define (add-node! p family)
+  (node-counter (+ (node-counter) 1))
+  (let ((data (truss-node-data (node-counter) p family)))
+    (hash-set! (added-nodes) p data)
+    data))
+
+(define (current-nodes-ids)
+  (range (+ (node-counter) 1)))
 
 ;;Bars
-(define bar-counter 0)
+(struct truss-bar-data
+  ([id : Integer]
+   [node0 : truss-node-data]
+   [node1 : truss-node-data]
+   [rotation : Double]
+   [family : Any]))
 
-(define (add-bar! p0 p1)
-  (set! bar-counter (+ bar-counter 1))
-  (create-bar (bars (structure (project (application))))
-              bar-counter
-              (hash-ref added-nodes p0)
-              (hash-ref added-nodes p1))
-  bar-counter)
+(define (add-bar! p0 p1 rotation family)
+  (bar-counter (+ (bar-counter) 1))
+  (let ((data (truss-bar-data (bar-counter)
+                              (hash-ref (added-nodes) p0)
+                              (hash-ref (added-nodes) p1)
+                              rotation
+                              family)))
+    (hash-set! (added-bars) (bar-counter) data)
+    data))
 
-(define (current-bars)
-  (range (+ bar-counter 1)))
+(define (current-bars-ids)
+  (range (+ (bar-counter) 1)))
 
-(define (set-bar-rotation! bar angle)
-  (Gamma (get (bars (structure (project (application)))) bar) angle))
+
+(require "../base/bim-families.rkt")
+
+(define (call-with-new-robot-analysis create-truss v process-results)
+  (parameterize ((node-counter 0)
+                 (added-nodes (make-hasheq))
+                 (added-bars (make-hasheq))
+                 (case-counter 0))
+    (create-truss)
+    (for ((data (in-hash-values (added-nodes))))
+      (let ((node-id (truss-node-data-id data))
+            (p (truss-node-data-loc data))
+            (node-family (truss-node-data-family data)))
+        (create-node (nodes (structure (project (application)))) node-id (cx p) (cy p) (cz p))
+        (let ((support (truss-node-family-support node-family)))
+          (when support
+            (match support
+              ((node-support name ux uy uz rx ry rz created?)
+               (unless created?
+                 (create-node-support-label name ux uy uz rx ry rz)
+                 (set-node-support-created?! support #t))
+               (set-label (get (nodes (structure (project (application)))) node-id)
+                          I_LT_NODE_SUPPORT
+                          name)))))))
+    (for ((data (in-hash-values (added-bars))))
+      (let ((bar-id (truss-bar-data-id data))
+            (node-id0 (truss-node-data-id (truss-bar-data-node0 data)))
+            (node-id1 (truss-node-data-id (truss-bar-data-node1 data)))
+            (rotation (truss-bar-data-rotation data))
+            (bar-family (truss-bar-data-family data)))
+        (create-bar (bars (structure (project (application)))) bar-id node-id0 node-id1)
+        (when rotation
+          (Gamma (get (bars (structure (project (application)))) bar-id) rotation))
+        (when bar-family
+          (let ((b (truss-bar-family-created? bar-family)))
+            (unless (unbox b)
+              (match (truss-bar-family-material bar-family)
+                ((list name _type _Name _Nuance _E _NU _Kirchoff _RO _LX _DumpCoef _RE _RT)
+                 (create-bar-material-label name _type _Name _Nuance _E _NU _Kirchoff _RO _LX _DumpCoef _RE _RT)))
+              (match (truss-bar-family-section bar-family)
+                ((list name material-name wood? specs)
+                 (create-bar-tube-section-label name material-name wood? specs)))
+              (set-box! b #t)))
+          (match (truss-bar-family-section bar-family)
+            ((list name material-name wood? specs)      
+             (set-bar-section! bar-id name))))))
+    (case-counter (+ (case-counter) 1))
+    (new-case (case-counter)
+              (format "Test-~A" (case-counter))
+              I_CN_PERMANENT ; I_CN_EXPLOATATION I_CN_WIND I_CN_SNOW I_CN_TEMPERATURE I_CN_ACCIDENTAL I_CN_SEISMIC
+              I_CAT_STATIC_LINEAR ;I_CAT_STATIC_NONLINEAR I_CAT_STATIC_FLAMBEMENT
+              (lambda (records)
+                (new-node-loads records (current-nodes-ids) v))
+              process-results)))
 
 ;;Bar release
 
@@ -418,7 +481,6 @@
     (time (calculate (calc-engine (project (application)))))
     (process-results (results (structure (project (application)))))))
 
-
 (define (new-node-loads records nodes vec)
   (let* ((idx (new records I_LRT_NODE_FORCE))
          (record (get records idx))
@@ -428,3 +490,11 @@
     (set-value record I_NFRV_FX (cx vec))
     (set-value record I_NFRV_FY (cy vec))
     (set-value record I_NFRV_FZ (cz vec))))
+
+(define (node-displacement-vector results id case-id)
+  (let ((d (node-displacement (Displacements (nodes results)) id case-id)))
+    (vxyz (UX d)
+          (UY d)
+          (UZ d))))
+
+

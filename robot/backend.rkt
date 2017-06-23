@@ -69,53 +69,23 @@
 (provide (all-from-out "../base/bim-families.rkt"))
 
 (def-shape (truss-node [p : Loc] [family : Truss-Node-Family (default-truss-node-family)])
-  (let ((support (truss-node-family-support family)))
-    (if support
-        (match support
-          ((node-support name ux uy uz rx ry rz created?)
-           (unless created?
-             (%create-node-support-label name ux uy uz rx ry rz)
-             (set-node-support-created?! support #t))
-           (%add-support-node! p name)))
-        (%add-node! p))))
+  (%add-node! p family))
 
 (def-shape (truss-bar [p0 : Loc] [p1 : Loc] [angle : Real #f] [family : Truss-Bar-Family (default-truss-bar-family)])
-  (let ((bar (%add-bar! p0 p1)))
-    (when angle
-      (%set-bar-rotation! bar angle))
-    (when (truss-bar-family-section family)
-      (let ((b (truss-bar-family-created? family)))
-        (unless (unbox b)
-          (match (truss-bar-family-material family)
-            ((list name _type _Name _Nuance _E _NU _Kirchoff _RO _LX _DumpCoef _RE _RT)
-             (%create-bar-material-label name _type _Name _Nuance _E _NU _Kirchoff _RO _LX _DumpCoef _RE _RT)))
-          (match (truss-bar-family-section family)
-            ((list name material-name wood? specs)
-             (%create-bar-tube-section-label name material-name wood? specs)))
-          (set-box! b #t)))
-      (match (truss-bar-family-section family)
-        ((list name material-name wood? specs)      
-         (%set-bar-section! bar name))))
-    bar))
+  (%add-bar! p0 p1 angle family))
 
 (require "robot-enums.rkt")
 (provide (all-from-out "robot-enums.rkt"))
-(provide evaluate-node-load-case)
-(define case-counter 0)
-(define (evaluate-node-load-case v)
-  (set! case-counter (+ case-counter 1))
-  (%new-case case-counter
-             (format "Test-~A" case-counter)
-             I_CN_PERMANENT ; I_CN_EXPLOATATION I_CN_WIND I_CN_SNOW I_CN_TEMPERATURE I_CN_ACCIDENTAL I_CN_SEISMIC
-             I_CAT_STATIC_LINEAR ;I_CAT_STATIC_NONLINEAR I_CAT_STATIC_FLAMBEMENT
-             (lambda (records)
-               (%new-node-loads records (%current-nodes) v))
-             (lambda (results)
-               (displayln results))))
-            
-            
 
-
+(provide with-robot-analysis)
+(define-syntax-rule
+  (with-robot-analysis (results) truss-expr vector
+    analysis)
+  (%call-with-new-robot-analysis
+   (lambda () truss-expr)
+   vector
+   (lambda (results)
+     analysis)))
 
 (define (surface-domain s) (error "Unimplemented"))
 (define (map-inner-surface-division . args) (error "Unimplemented"))
