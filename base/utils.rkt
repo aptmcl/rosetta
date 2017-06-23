@@ -23,7 +23,10 @@
       [[(v) (clause from to elems)]
        #'[(v)
           (clause from to elems #t)]]
-      [[(v) (_ from to elems last?)]
+      [[(v) (clause from to elems last?)]
+       #'[(v)
+          (clause from to elems last? #f)]]
+      [[(v) (_ from to elems last? ft)]
        #`[(v)
           (:do-in
            ([(a) (cast from Real)] [(b) (cast to Real)] [(n) (cast elems Integer)]
@@ -38,16 +41,23 @@
                ((#f) #'<)
                (else #'pred))
             i n)
-           ([(v) (if (= i n) b (+ a (/ (* i (- b a)) n)))]) ;Extra test to avoid rounding errors
+           ([(v) (if (= i n)
+                     b
+                     #,(case (syntax->datum #'ft)
+                         ((#f) #'(+ a (/ (* i (- b a)) n)))
+                         (else #'(+ a (* (ft (/ i n)) (- b a))))))]) ;Extra test to avoid rounding errors
            #true
            #true
            ((+ i 1)))]])))
 
-(define (division/proc [a : Real] [b : Real] [n : Integer] [last? : Boolean #t]) : (Listof Real)
+(define (division/proc [a : Real] [b : Real] [n : Integer] [last? : Boolean #t] [ft : Any #f]) : (Listof Real)
   (if last?
-      (for/list : (Listof Real) ([t (division a b n #t)])
-        t)
-      (for/list : (Listof Real) ([t (division a b n #f)])
+      (if ft
+          (for/list : (Listof Real) ([t (division a b n #t ft)])
+            t)
+          (for/list : (Listof Real) ([t (division a b n #t #f)])
+            t))
+      (for/list : (Listof Real) ([t (division a b n #f #f)])
         t)))
 
 (provide map-division)
@@ -60,6 +70,10 @@
     [([f : (Real -> R)] [t0 : Real] [t1 : Real] [n : Integer] [last? : Boolean])
      (for/list : (Listof R)
        ((t (division t0 t1 n last?)))
+       (f t))]
+    [([f : (Real -> R)] [t0 : Real] [t1 : Real] [n : Integer] [last? : Boolean] [ft : (Real -> Real)])
+     (for/list : (Listof R)
+       ((t (division t0 t1 n last? ft)))
        (f t))]
     [([f : (Real Real -> R)] [u0 : Real] [u1 : Real] [nu : Integer] [v0 : Real] [v1 : Real] [nv : Integer])
      (for/list : (Listof (Listof R)) 

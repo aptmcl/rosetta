@@ -14,7 +14,10 @@
       [[(v) (clause from to elems)]
        #'[(v)
           (clause from to elems #t)]]
-      [[(v) (_ from to elems last?)]
+      [[(v) (clause from to elems last?)]
+       #'[(v)
+          (clause from to elems last? #f)]]
+      [[(v) (_ from to elems last? ft)]
        #`[(v)
           (:do-in
            ([(a) (cast from Real)] [(b) (cast to Real)] [(n) (cast elems Integer)]
@@ -29,16 +32,23 @@
                ((#f) #'<)
                (else #'pred))
             i n)
-           ([(v) (+ a (/ (* i (- b a)) n))])
+           ([(v) (if (= i n)
+                     b
+                     #,(case (syntax->datum #'ft)
+                         ((#f) #'(+ a (/ (* i (- b a)) n)))
+                         (else #'(+ a (* (ft (/ i n)) (- b a))))))]) ;Extra test to avoid rounding errors
            #true
            #true
            ((+ i 1)))]])))
 
-(define (division/proc [a : Real] [b : Real] [n : Integer] [last? : Boolean #t]) : (Listof Real)
+(define (division/proc [a : Real] [b : Real] [n : Integer] [last? : Boolean #t] [ft : Any #f]) : (Listof Real)
   (if last?
-      (for/list : (Listof Real) ([t (division a b n #t)])
-        t)
-      (for/list : (Listof Real) ([t (division a b n #f)])
+      (if ft
+          (for/list : (Listof Real) ([t (division a b n #t ft)])
+            t)
+          (for/list : (Listof Real) ([t (division a b n #t #f)])
+            t))
+      (for/list : (Listof Real) ([t (division a b n #f #f)])
         t)))
 
 (provide in-interval)
