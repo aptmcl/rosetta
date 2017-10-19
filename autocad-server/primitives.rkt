@@ -201,6 +201,8 @@
 (defop "public double CurveLength(Entity ent)")
 (defop "public Frame3d CurveFrameAt(Entity ent, double t)")
 (defop "public Frame3d CurveFrameAtLength(Entity ent, double l)")
+(defop "public Frame3d CurveClosestFrameTo(Entity ent, Point3d p)")
+(defop "public ObjectId JoinCurves(ObjectId[] ids)")
 (defop "public ObjectId NurbSurfaceFrom(ObjectId id)")
 (defop "public double[] SurfaceDomain(Entity ent)")
 (defop "public Frame3d SurfaceFrameAt(Entity ent, double u, double v)")

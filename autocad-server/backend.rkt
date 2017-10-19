@@ -23,7 +23,7 @@
          create-layer
          current-layer
          curve-start-location
-         #;curve-closest-location
+         curve-closest-location
          curve-domain
          curve-end-location
          curve-frame-at
@@ -224,9 +224,8 @@
 (define (curve-end-location [curve : Shape]) : Loc
   (%CurveFrameAt (shape-ref curve) (second (%CurveDomain (shape-ref curve)))))
 
-#;
 (define (curve-closest-location [curve : Shape] [p : Loc]) : Loc
-  (%curve-closest-point (shape-ref curve) p))
+  (%CurveClosestFrameTo (shape-ref curve) p))
 
 (define (curve-domain [curve : Shape]) : (Values Real Real)
   (let ((d (%CurveDomain (shape-ref curve))))
@@ -277,7 +276,7 @@
   (let ((pts (regular-polygon-vertices edges center radius angle inscribed?)))
     (%SurfaceClosedPolyLine pts)))
 
-#;#;#;#;#;#;#;#;#;
+#;
 (define (surface-boundary [shape : Shape]) : Shape
   (let ((refs (shape-refs shape)))
     (let ((rs (append* (map %explode refs))))
@@ -294,17 +293,16 @@
             (else
              (delete-shape shape)
              (new-unknown (thunk (%join-curves rs))))))))
-
+#;
 (define (loft-curve-point [curve : Shape] [point : (Point-Shape Ref)])
-  (let ((boundary (surface-boundary curve)))
+  (let ((p (point-position point)))
     (begin0
-      (%loft-command
-       (%loft-to-point-string (shape-ref boundary) (point-position point) #f)
-       #t
-       #f)
-      (delete-shape boundary)
+      (map-ref ([c curve])
+        (%ExtrudeCurvePoint c p))
+      (delete-shape curve)
       (delete-shape point))))
 
+#;#;#;#;#;#;#;#;
 (define (loft-surface-point [surface : Shape] [point : (Point-Shape Ref)])
   (begin0
     (%loft-command
@@ -500,16 +498,15 @@
   (%Subtract r0 r1)
   r0)
 
-#;
 (def-shape (join-curves [shapes : Shapes])
   (begin0
-    (%join-curves (shapes-refs shapes))
+    (%JoinCurves (shapes-refs shapes))
     (for-each (inst mark-deleted! RefOp) shapes)))
 
 (def-shape (revolve [shape : Shape] [p : Loc (u0)] [n : Vec (vz 1)] [start-angle : Real 0] [amplitude : Real 2pi])
   (begin0
     (map-ref ([r shape])
-      (%Revolve r p (+z p 1) start-angle (+ start-angle amplitude)))
+      (%Revolve r p n start-angle (+ start-angle amplitude)))
     (delete-shape shape)))
 
 #;#;
