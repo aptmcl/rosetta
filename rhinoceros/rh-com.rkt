@@ -362,6 +362,7 @@
 (def-com boolean-intersection ([ids0 Ids] [ids1 Ids] #:opt [delete? Boolean]) IdsOrVoid)
 (def-com boolean-union ([ids Ids] #:opt [delete? Boolean]) IdsOrVoid)
 (def-com bounding-box ([ids Ids]) Points)
+(def-com box-points ([id Id]) Points)
 (def-com brep-closest-point ([shape Id] [p Point] #:opt [faces? Boolean])
   (U Void
      (Vector (Vector Double Double Double)
@@ -510,7 +511,7 @@ DivideCurveEquidistant
 (define (intersects? [id0 : Id] [id1 : Id]) : Boolean
   (primitive-intersects? id0 id1 1e-20 #t))
 
-
+(def-com is-box ([shape Id]) BoolOrVoid)
 (def-com is-circle ([shape Id]) BoolOrVoid)
 (def-com is-curve ([shape Id] #:opt [index Integer]) BoolOrVoid)
 (def-com is-curve-closable ([shape Id] #:opt [tolerance Number]) BoolOrVoid)
