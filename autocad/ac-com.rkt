@@ -2196,7 +2196,7 @@
            vbCr))
 
 (def-cmd (join-command [objects : (Listof Com-Object)])
-   "._join " (handents objects) vbCr)
+   "_.join " (handents objects) vbCr)
 
 (define-syntax (def-autocad-variable stx)
   (syntax-case stx ()
@@ -2462,6 +2462,7 @@
   (if (erased-object? (car curves))
       (item (active-modelspace) (- (count (active-modelspace)) 1))
       (car curves)))
+
 #|
 ;; spline (to avoid tangents)
 
