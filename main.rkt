@@ -16,6 +16,9 @@
 (provide (all-from-out "base/utils.rkt"))
 (provide (all-from-out "base/shapes.rkt"))
 
+(require "util/geometry.rkt")
+(provide (all-from-out "util/geometry.rkt"))
+
 (provide current-out-backend)
 (provide current-in-backend)
 (provide current-in-out-backend)
@@ -224,6 +227,7 @@
 (def-backend* (spline [pts : Loc *])); (list (u0) (ux) (uy))] [v0 : (U #f Vec) #f] [v1 : (U #f Vec) #f]))
 (def-backend (spline* [pts : Locs] [v0 : (U #f Vec) #f] [v1 : (U #f Vec) #f]))
 (def-backend* (closed-spline [pts : Loc *]))
+(def-backend (curve-closest-location [curve : Shape] [pt : Loc]))
 (def-backend (curve-start-location [curve : Shape]))
 (def-backend (curve-end-location [curve : Shape]))
 (def-backend (curve-domain [curve : Shape]))
@@ -308,6 +312,19 @@
      (delegate-backend (current-out-backend) (current-layer))]
     [([new-layer : Layer])
      (delegate-backend (current-out-backend) (current-layer [new-layer : Layer]))]))
+
+
+(provide with-current-layer)
+(define-syntax (with-current-layer stx)
+  (syntax-case stx ()
+    ((_ new-layer body ...)
+     (syntax/loc stx
+       (let ((old-layer (current-layer)))
+         (dynamic-wind
+           (lambda () (current-layer new-layer))
+           (lambda () body ...)
+           (lambda () (current-layer old-layer))))))))
+
 #;
 (def-backend shape-layer
   (case-lambda
