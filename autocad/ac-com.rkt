@@ -2337,6 +2337,7 @@
 (define-object-predicate mtext? "AcDbMText" text)
 (define-object-predicate surface-grid? "AcDbPolygonMesh" surface)
 (define-object-predicate block-reference? "AcDbBlockReference" block-reference)
+(define-object-predicate light? "AcDbLight" light)
 
 (provide object-geometry)
 (define (object-geometry [obj : Com-Object])
