@@ -15,7 +15,7 @@
 (provide (all-from-out "../util/geometry.rkt"))
 (provide immediate-mode?
          current-backend-name
-         #;all-shapes
+         all-shapes
          bounding-box
          delete-shape
          delete-shapes
@@ -33,7 +33,7 @@
          enable-update
          disable-update
          #;hide-shape
-         #;loft
+         loft
          #;loft-ruled
          map-curve-division
          map-curve-length-division
@@ -86,50 +86,34 @@
 (define (delete-all-shapes) : Void
   (%DeleteAll)
   (void))
-
-#;
+  
 (define (shape<-ref [r : Ref]) ;HACK Bug in typed/racket : Shape
-  (define (coordinates [r : Ref])
-    (if (%line? r)
-        (list (%start-point r) (%end-point r))
-        (let ((pts
-               (cond ((%lightweight-polyline? r) ;;This is not right, we need to convert coordinates
-                      (let ((h (%elevation r)))
-                        (map (lambda ([p : Loc]) (+z p h)) (%2d-coordinates r))))
-                     ((or (%2d-polyline? r) (%3d-polyline? r))
-                      (%coordinates r))
-                     (else
-                      (error 'coordinates "Can't compute vertices of ~A" (%object-name r))))))
-          (if (or (%closed r)
-                  (< (distance (car pts) (last pts)) 1.0e-015)) ;AutoCAD tolerance
-              (drop-right pts 1)
-              pts))))
-  (let ((geometry (%object-geometry r)))
+  (let ((geometry (%ShapeCode r)))
     (case geometry
-      ((line)
+      ((3 4 5 6)
        (new-line (thunk r)
-                 (coordinates r)))
-      ((closed-line)
+                 (%LineVertices r)))
+      ((103 106)
        (new-closed-line (thunk r)
-                        (coordinates r)))
-      ((point)
+                        (%LineVertices r)))
+      ((1)
        (new-point (thunk r)
-                  (%point-coordinates r)))
-      ((text)
+                  (%PointPosition r)))
+      #;((text)
        (new-text (thunk r)
                  (%text-string r)
                  (%insertion-point r)
                  (%height r)))
-      ((circle)
+      ((2)
        (new-circle (thunk r)
-                   (%center r)
-                   (%radius r)))
+                   (%CircleCenter r)
+                   (%CircleRadius r)))
       (else
        (new-unknown (thunk r))))))
 
-#;
+
 (define (all-shapes)
-  (map shape<-ref (%all-objects)))
+  (map shape<-ref (%GetAllShapes)))
 
 
 (define #:forall (T) (singleton? [l : (Listof T)]) : Boolean
@@ -275,112 +259,6 @@
 (def-shape (surface-regular-polygon [edges : Integer 3] [center : Loc (u0)] [radius : Real 1] [angle : Real 0] [inscribed? : Boolean #f])
   (let ((pts (regular-polygon-vertices edges center radius angle inscribed?)))
     (%SurfaceClosedPolyLine pts)))
-
-#;
-(define (surface-boundary [shape : Shape]) : Shape
-  (let ((refs (shape-refs shape)))
-    (let ((rs (append* (map %explode refs))))
-      (cond ((null? rs)
-             (error 'surface-boundary "Can't compute boundary of ~A" shape))
-            ((null? (cdr rs))
-             (delete-shape shape)
-             (new-unknown (thunk (car rs))))
-            ((andmap %line? rs)
-             (let ((poly (%add-3d-poly (%closed-lines-points rs))))
-               (%closed poly #t)
-               (for ((s (in-list rs))) (%delete s))
-               (new-unknown (thunk poly))))
-            (else
-             (delete-shape shape)
-             (new-unknown (thunk (%join-curves rs))))))))
-#;
-(define (loft-curve-point [curve : Shape] [point : (Point-Shape Ref)])
-  (let ((p (point-position point)))
-    (begin0
-      (map-ref ([c curve])
-        (%ExtrudeCurvePoint c p))
-      (delete-shape curve)
-      (delete-shape point))))
-
-#;#;#;#;#;#;#;#;
-(define (loft-surface-point [surface : Shape] [point : (Point-Shape Ref)])
-  (begin0
-    (%loft-command
-     (%loft-to-point-string (shape-ref (surface-boundary surface)) (point-position point) #t)
-     #t
-     #f)
-    (delete-shape surface)
-    (delete-shape point)))
-
-(define (loft-profiles [profiles : Shapes] [rails : (Listof (Curve-Shape RefOp))]
-                       [solid? : Boolean] [ruled? : Boolean] [closed? : Boolean])
-  (begin0
-    (%loft-command (cond ((null? rails)
-                          (%loft-objects-string (map shape-ref profiles) solid?))
-                         ((null? (cdr rails))
-                          (%loft-objects-path-string (map shape-ref profiles) (shape-ref (car rails)) solid?))
-                         (else
-                          (%loft-objects-guides-string (map shape-ref profiles) (map shape-ref rails) solid?)))
-                   ruled?
-                   closed?)
-    (delete-shapes profiles)
-    (delete-shapes rails)))
-
-
-(define (loft-curves [shapes : Shapes] [rails : (Listof (Curve-Shape RefOp))]
-                     [ruled? : Boolean #f] [closed? : Boolean #f])
-  (loft-profiles shapes rails #f ruled? closed?))
-
-(define (loft-surfaces [shapes : Shapes] [rails : (Listof (Curve-Shape RefOp))]
-                       [ruled? : Boolean #f] [closed? : Boolean #f])
-  (loft-profiles (map surface-boundary shapes) rails #t ruled? closed?))
-
-;;HACK> Bug in Typed Racket. Using (inst curve? Ref) in andmap
-(define (curve?? [s : Shape]) : Boolean
-  (curve? s))
-
-(define (loft [profiles : (Listof (Extrudable-Shape Ref))] [rails : (Listof (Curve-Shape Ref)) (list)]
-              [ruled? : Boolean #f] [closed? : Boolean #f]) : Shape
-  (cond ((null? (cdr profiles))
-         (error 'loft "just one cross section"))
-        ((andmap point? profiles)
-         (assert (null? rails))
-         (begin0
-           ((if ruled?
-                (if closed? polygon line)
-                (if closed? closed-spline spline))
-            (map point-position profiles))
-           (delete-shapes profiles)))
-        (else
-         (new-loft
-          (thunk
-           (cond 
-             ((andmap curve?? profiles) ;;HACK This is probably bogus due to TypedRacket optimizer
-              (loft-curves profiles rails ruled? closed?))
-             ((andmap surface-region? profiles)
-              (loft-surfaces profiles rails ruled? closed?))
-             ((null? (cddr profiles))
-              (assert (null? rails))
-              (let-values ([([p : (Point-Shape Ref)]
-                             [s : Shape])
-                            (cond ((point? (car profiles))
-                                   (values (car profiles) (cadr profiles)))
-                                  ((point? (cadr profiles))
-                                   (values (cadr profiles) (car profiles)))
-                                  (else
-                                   (error 'loft-shapes "cross sections are not either points or curves or surfaces ~A" profiles)))])
-                (cond ((curve? s)
-                       (loft-curve-point s p))
-                      ((surface-region? s)
-                       (loft-surface-point s p))
-                      (else
-                       (error 'loft-shapes "can't loft the shapes ~A" profiles)))))
-             (else
-              (error 'loft-shapes "cross sections are neither points nor curves nor surfaces  ~A" profiles))))
-          profiles rails ruled? closed?))))
-
-(define (loft-ruled [profiles : (Listof (Extrudable-Shape Ref))])
-  (loft profiles (list) #t))
 
 (def-shape (irregular-pyramid [cbs : Locs (list (ux) (uxy) (uy))] [ct : Loc (uz)])
   (%IrregularPyramid cbs ct))
@@ -540,6 +418,58 @@
       (map-ref ([path path])
         (%Sweep path profile rotation scale)))
     (delete-shapes (list profile path))))
+
+
+(define (loft-curve-point [curve : Shape] [point : (Point-Shape Ref)])
+  (begin0
+    (%Loft (list (shape-ref curve) (shape-ref point)) (list) #t #f)
+    (delete-shape curve)
+    (delete-shape point)))
+
+(define (loft-surface-point [surface : Shape] [point : (Point-Shape Ref)])
+  (loft-curve-point surface point))
+
+(define (loft-profiles [profiles : Shapes] [rails : (Listof (Curve-Shape RefOp))]
+                       [ruled? : Boolean] [closed? : Boolean])
+  (begin0
+    (%Loft (map shape-ref profiles)
+           (map shape-ref rails)
+           ruled?
+           closed?)
+    (delete-shapes profiles)
+    (delete-shapes rails)))
+
+;;HACK> Bug in Typed Racket. Using (inst curve? Ref) in andmap
+(define (curve?? [s : Shape]) : Boolean
+  (or (curve? s)
+      (1D-shape? s)))
+
+(define (surface?? [s : Shape]) : Boolean
+  (or (surface? s)
+      (2D-shape? s)))
+
+(define (loft [profiles : (Listof (Extrudable-Shape Ref))] [rails : (Listof (Curve-Shape Ref)) (list)]
+              [ruled? : Boolean #f] [closed? : Boolean #f]) : Shape
+  (cond ((null? (cdr profiles))
+         (error 'loft "just one cross section"))
+        ((andmap point? profiles)
+         (assert (null? rails))
+         (begin0
+           ((if ruled?
+                (if closed? polygon line)
+                (if closed? closed-spline spline))
+            (map point-position profiles))
+           (delete-shapes profiles)))
+        (else
+         (new-loft
+          (thunk
+           (loft-profiles profiles rails ruled? closed?))
+          profiles rails ruled? closed?))))
+
+(define (loft-ruled [profiles : (Listof (Extrudable-Shape Ref))])
+  (loft profiles (list) #t))
+
+
 
 (def-shape (thicken [surf : (Extrudable-Shape RefOp)] [h : Real 1])
   (begin0
@@ -706,6 +636,7 @@
 
 (define (prompt-point [str : String "Select position"]) : Loc
   (%GetPoint str))
+
 
 #;#;#;#;#;#;#;
 (define (prompt-integer [str : String "Integer?"]) : Integer

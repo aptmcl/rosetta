@@ -164,7 +164,11 @@
 (defop "public void DeleteMany(ObjectId[] ids)")
 (defop "public ObjectId Copy(ObjectId id)")
 (defop "public Entity Point(Point3d p)")
+(defop "public Point3d PointPosition(Entity ent)")
+
 (defop "public Entity PolyLine(Point3d[] pts)")
+(defop "public Point3d[] LineVertices(ObjectId id)")
+
 (defop "public Entity Spline(Point3d[] pts)")
 (defop "public Entity InterpSpline(Point3d[] pts, Vector3d tan0, Vector3d tan1)")
 (defop "public Entity ClosedPolyLine(Point3d[] pts)")
@@ -219,6 +223,7 @@
 (defop "public ObjectId Mirror(ObjectId id, Point3d p, Vector3d n, bool copy)")
 (defop "public Point3d[] GetPoint(string prompt)")
 (defop "public ObjectId[] GetAllShapes()")
+(defop "public ObjectId[] GetAllShapesInLayer(ObjectId layerId)")
 (defop "public Point3d[] BoundingBox(ObjectId[] ids)")
 (defop "public void ZoomExtents()")
 (defop "public ObjectId CreateLayer(string name)")
@@ -233,3 +238,6 @@
 (defop "public int Command(string cmd)")
 (defop "public void DisableUpdate()")
 (defop "public void EnableUpdate()")
+
+(defop "public byte ShapeCode(ObjectId id)")
+
