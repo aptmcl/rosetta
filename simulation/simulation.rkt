@@ -375,7 +375,49 @@ number of points - 1 (array bound)         > 3
                            surfaces))
                         (else
                          (error "Unknown path component" e)))))))))
+
   
+  (def-shape/no-provide (slab-with-openings [vertices : Any] [paths : Any] [level : Level (current-level)] [family : Slab-Family (default-slab-family)])
+    (define (create-surface-layer-with-openings vertices paths height layer material)
+      (let ((s (create-surface-layer vertices height layer material)))
+        (for ((path (in-list paths)))
+          (set! s (subtraction s (create-surface-layer path height layer material))))
+        s))
+    (if (and (list? vertices) (loc? (car vertices)))
+        (let ((surfaces
+               (for/list ((height (in-list (list (- (slab-family-thickness family)) 0)))
+                          (layer (in-list (list slab-ceiling-layer slab-floor-layer)))
+                          (material (in-list (list (material/slab-ceiling) (material/slab-floor)))))
+                 (create-surface-layer-with-openings vertices paths (+ (level-height level) height) layer material))))
+          (radiance-surfaces (cons (second surfaces) (radiance-surfaces)))
+          surfaces)
+        (let ((path (if (list? vertices) vertices (list vertices))))
+          (let loop ((p path))
+            (if (null? p)
+                (list)
+                (let ((e (car p)))
+                  (unless (null? (cdr p)) (error "Unfinished"))
+                  (cond ((line? e)
+                         (error "Unfinished"))
+                        ((arc? e)
+                         (error "Unfinished"))
+                        ((circle? e)
+                         (let ((surfaces
+                                (for/list ((height (in-list (list (- (slab-family-thickness family)) 0)))
+                                           (layer (in-list (list slab-ceiling-layer slab-floor-layer)))
+                                           (material (in-list (list (material/slab-ceiling) (material/slab-floor)))))
+                                  (create-surface-layer-with-openings
+                                   (regular-polygon-vertices 32
+                                                             (+z (circle-center e) (- (cz (circle-center e))))
+                                                             (circle-radius e))
+                                   (+ (level-height level) height)
+                                   layer
+                                   material))))
+                           (radiance-surfaces (cons (second surfaces) (radiance-surfaces)))
+                           surfaces))
+                        (else
+                         (error "Unknown path component" e)))))))))
+
   (def-shape/no-provide (slab-opening [slab : Any] [path : Any])
     (let ((level (slab-level slab))
           (family (slab-family slab))
