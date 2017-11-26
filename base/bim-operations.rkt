@@ -64,7 +64,7 @@
    [beam : (->)]
    [column : (->)]
    [slab : (->)]
-   [slab-opening : (->)]
+   [slab-with-openings : (->)]
    [roof : (->)]
    [wall : (->)]
    [walls : (->)]
@@ -173,12 +173,14 @@
                        (error "Unknown path component" e)))))))))
 
 
-(def-shape/no-provide (slab-opening [slab-id : Any] [path : Any])
-  (let ((layer (bim-shape-layer slab-id)))
-    (let ((s
-           (subtraction
-            slab-id
-            (slab path (slab-level slab-id) (slab-family slab-id)))))
+(def-shape/no-provide (slab-with-openings [path : Any] [paths : Any] [level : Level (current-level)] [family : Slab-Family (default-slab-family)])
+  (let* ((slab-id (slab path level family))
+         (layer (bim-shape-layer slab-id)))
+    (let ((s slab-id))
+      (for ((path (in-list paths)))
+        (set! s (subtraction
+                 s
+                 (slab path (slab-level slab-id) (slab-family slab-id)))))
       (bim-shape-layer s layer)
       (shape-reference s))))
  
