@@ -182,6 +182,7 @@
 (def-ro-property (Nodes IRobotResultsServer) IRobotNodeResultServer)
 (def-ro-property (Bars IRobotResultsServer) IRobotBarResultServer)
 (def-ro-property (Displacements IRobotNodeResultServer) IRobotNodeDisplacementServer)
+(def-ro-property (Stresses IRobotBarResultServer) IRobotBarStressServer)
 
 ;;COM METHODS
 (define-syntax (def-com stx)
@@ -226,7 +227,14 @@
 (def-com (LoadFromDBase IRobotMaterialData) ((name String)) Boolean)
 (def-com (add-one IRobotSelection) ((id Integer)) Void)
 (def-com ((node-displacement Value) IRobotNodeDisplacementServer) ((node Integer) (case Integer)) IRobotDisplacementData)
-(def-com ((bar-displacement Value) IRobotBarDisplacementServer) ((node Integer) (pos Double) (case Integer)) IRobotDisplacementData)
+(def-com ((bar-displacement Value) IRobotBarDisplacementServer) ((bar Integer) (pos Double) (case Integer)) IRobotDisplacementData)
+(def-com ((bar-stress Value) IRobotBarStressServer) ((bar Integer) (case Integer) (pos Double)) IRobotBarStressData)
+
+;;Stress
+(def-rw-property (Smax IRobotBarStressData) Double)
+(def-rw-property (Smin IRobotBarStressData) Double)
+(def-rw-property (Torsion IRobotBarStressData) Double)
+
 
 (define (new-project! type) ;I_PT_FRAME_2D, I_PT_SHELL, etc
   (close (project (application)))
@@ -498,3 +506,12 @@
           (UZ d))))
 
 
+(define (bar-displacement-vector results id case-id)
+  (let ((d (node-displacement (Displacements (nodes results)) id case-id)))
+    (vxyz (UX d)
+          (UY d)
+          (UZ d))))
+
+(define (bar-max-stress results id case-id)
+  (Smax (bar-stress (Stresses (bars results)) id case-id 0.0))) ;;The position should be changeable
+  
