@@ -464,10 +464,10 @@ number of points - 1 (array bound)         > 3
                               [family : Wall-Family (default-wall-family)])
     (let ((height (- (level-height top-level) (level-height bottom-level))))
       (let ((h/2 (/ height 2)))
-        (let ((s (right-cuboid (+z p0 (+ (level-height bottom-level h/2)))
+        (let ((s (right-cuboid (+z p0 (+ (level-height bottom-level) h/2))
                                (wall-family-thickness family)
                                height
-                               (+z p1 (+ (level-height bottom-level h/2))))))
+                               (+z p1 (+ (level-height bottom-level) h/2)))))
           (bim-shape-layer s (bim-family-layer family))
           (shape-material s (material/wall))
           (add-radiance-shape! s)
