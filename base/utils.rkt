@@ -270,7 +270,39 @@
          (b (inexact->exact (round (read port)))))
     (rgb r g b)))
 
-(provide Color (struct-out rgb) radiance<-color read-color)
+(define blue-red-color-scheme (list (rgb 74 103 161) (rgb 253 239 80) (rgb 234 47 0)))
+(define funny-color-scheme (list (rgb 118 10 140) (rgb 10 22 183) (rgb 48 172 66) (rgb 223 24 15) (rgb 254 245 44)))
+(define blue-red-color-scheme2 (list (rgb 74 103 161) (rgb 74 103 161) (rgb 253 239 80) (rgb 234 47 0) (rgb 234 47 0)))
+
+(define (combine-rgb op c0 c1)
+  (rgb (op (rgb-red c0) (rgb-red c1))
+       (op (rgb-green c0) (rgb-green c1))
+       (op (rgb-blue c0) (rgb-blue c1))))
+
+(define (max-rgb c0 c1) (combine-rgb max c0 c1))
+(define (min-rgb c0 c1) (combine-rgb min c0 c1))
+
+(define (color-in-range value min max [scheme blue-red-color-scheme])
+  (let* ((scheme-radiances (map radiance<-color scheme))
+         (range (- max min))
+         (norm (/ (- value min) range)))
+    (remap-color norm scheme)))
+
+(define (remap-color norm scheme)
+  (let* ((steps (- (length scheme) 1))
+         (idx (inexact->exact (floor (* (min norm 0.99) steps))))
+         (subscheme (drop scheme idx))
+         (subnorm (* (- norm (* (floor (* (min norm 0.99) steps)) (/ 1 steps))) steps)))
+    (combine-rgb (lambda (v0 v1)
+                   (inexact->exact (round (+ v0 (* subnorm (- v1 v0))))))
+                 (first subscheme)
+                 (second subscheme))))
+
+(provide Color (struct-out rgb) radiance<-color read-color
+         blue-red-color-scheme
+         funny-color-scheme
+         blue-red-color-scheme2
+         color-in-range)
 
 ;;Renders and Films
 (provide render-dir
