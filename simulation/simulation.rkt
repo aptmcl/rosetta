@@ -492,6 +492,9 @@ number of points - 1 (array bound)         > 3
   (def-shape/no-provide (door [wall : Any] [loc : Loc] [family : Any (default-door-family)])
     "To be continued")
 
+  (def-shape/no-provide (window [wall : Any] [loc : Loc] [family : Any (default-window-family)])
+    "To be continued")
+
   (def-shape/no-provide (panel [vertices : Locs] [level : Any (current-level)] [family : Panel-Family (default-panel-family)])
     (let ((p0 (second vertices))
           (p1 (first vertices))
