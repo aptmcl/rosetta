@@ -97,6 +97,10 @@
   ([width : (Option Real) #f]
    [height : (Option Real) #f]))
 
+(def-bim-family window
+  ([width : (Option Real) #f]
+   [height : (Option Real) #f]))
+
 (def-bim-family column
   ([width : Real 0.1]
    [depth : (Option Real) #f]

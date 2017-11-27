@@ -70,6 +70,7 @@
    [wall : (->)]
    [walls : (->)]
    [door : (->)]
+   [window : (->)]
    [panel : (->)]
    [truss-node : (->)]
    [truss-bar : (->)]
@@ -241,6 +242,18 @@
            (door-family-width family)
            wall-e
            (door-family-height family))))))
+
+(def-shape/no-provide (window [wall : Any] [loc : Loc] [family : Any (default-door-family)])
+  (let ((wall-e (wall-family-thickness (walls-family wall)))
+        (wall-level (walls-bottom-level wall)))
+    (shape-reference
+     (subtraction
+      wall
+      (box (+z loc (level-height wall-level))
+           (window-family-width family)
+           wall-e
+           (window-family-height family))))))
+
 
 (def-shape/no-provide (panel [vertices : Locs] [level : Level (current-level)] [family : Panel-Family (default-panel-family)])
   (let ((p0 (second vertices))
