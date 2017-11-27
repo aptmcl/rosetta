@@ -1010,7 +1010,7 @@ END
           directory
           "C:\\DIVA\\DaysimBinaries\\"
           directory
-          "C:\\DIVA\\DIVATemplate.htm"))
+          "C:\\DIVA\\Scripts\\DIVATemplate.htm"))
 
 (define (write-daysim-site-for-location
          port
