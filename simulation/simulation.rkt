@@ -453,7 +453,7 @@ number of points - 1 (array bound)         > 3
                      (error "Unknown path component" e))))))))
 
   (def-shape/no-provide (roof [vertices : Locs] [level : Level (current-level)] [family : Roof-Family (default-roof-family)])
-    (for/list ((height (in-list (list 0 (roof-family-thickness family))))
+    (for/list ((height (in-list (list (- (roof-family-thickness family)) 0)))
                (layer (in-list (list roof-ceiling-layer roof-floor-layer)))
                (material (in-list (list (material/roof-ceiling) (material/roof-floor)))))
       (create-surface-layer vertices (+ (level-height level) height) layer material)))
