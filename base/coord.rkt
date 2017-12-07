@@ -655,7 +655,7 @@
     (let*
         #;((v (perpendicular-vector n))
            (vx (unitize (v*v n v))))
-      ((vx (vpol 1 (+ (sph-phi n) pi/2))))
+      ((vx (vpol 1 (+ (sph-phi n) pi/2) world-cs)))
       (let ((vy (unitize (v*v n vx))))
         (let ((vz (unitize n)))
           (cs-from-o-vx-vy-vz o vx vy vz))))))
