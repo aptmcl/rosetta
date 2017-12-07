@@ -32,7 +32,17 @@
       (make-temporary-file)))
 
 (define analysis-nodes-height : (Parameterof Real) (make-parameter 0.5))
+(define analysis-nodes-separation-u : (Parameterof (Option Real)) (make-parameter 4.0))
+(define analysis-nodes-separation-v : (Parameterof (Option Real)) (make-parameter 4.0))
 (define analysis-nodes-separation : (Parameterof Real) (make-parameter 4.0))
+
+(define (analysis-nodes-u-separation)
+  (or (analysis-nodes-separation-u)
+      (analysis-nodes-separation)))
+
+(define (analysis-nodes-v-separation)
+  (or (analysis-nodes-separation-v)
+      (analysis-nodes-separation)))
 
 ;;Export materials file
 
@@ -70,6 +80,8 @@
          current-location
          analysis-nodes-height
          analysis-nodes-separation
+         analysis-nodes-separation-u
+         analysis-nodes-separation-v
          sensors
          material/default
          material/ground
@@ -528,12 +540,12 @@ number of points - 1 (array bound)         > 3
 (provide-signature-elements bim-extra-ops^)
 
 (define cmd-raypath #<<END
-SET RAYPATH=.;C:\DIVA\Radiance\lib;C:\DIVA\Radiance\bin;C:\DIVA\DaysimBinaries;
+SET RAYPATH=.;C:\DIVA\Radiance\lib;C:\DIVA\Radiance\bin_64;C:\DIVA\Radiance\bin;C:\DIVA\DaysimBinaries;
 END
   )
 
 (define cmd-path #<<END
-SET PATH=.;C:\DIVA\Radiance\lib;C:\DIVA\Radiance\bin;C:\DIVA\DaysimBinaries;
+SET PATH=.;C:\DIVA\Radiance\lib;C:\DIVA\Radiance\bin_64;C:\DIVA\Radiance\bin;C:\DIVA\DaysimBinaries;
 END
   )
 
@@ -542,10 +554,10 @@ END
     (displayln str)
     (assert (system cmd))))
 
-(define (surface-nu-nv surface sep)
+(define (surface-nu-nv surface sep-u sep-v)
   (let-values ([(u0 u1 v0 v1) (surface-domain surface)])
-    (let ((nu (inexact->exact (round (/ (- u1 u0) sep))))
-          (nv (inexact->exact (round (/ (- v1 v0) sep)))))
+    (let ((nu (inexact->exact (round (/ (- u1 u0) sep-u))))
+          (nv (inexact->exact (round (/ (- v1 v0) sep-v)))))
       (values nu nv))))
 
 ;;Two options: surfaces or grids (lists of lists of locations)
@@ -566,10 +578,11 @@ END
 (define (sensors-from-surfaces
          [surfaces (radiance-surfaces)]
          [height : Real (analysis-nodes-height)]
-         [sep : Real (analysis-nodes-separation)])
+         [sep-u : Real (analysis-nodes-u-separation)]
+         [sep-v : Real (analysis-nodes-v-separation)])
   (append*
    (for/list ([surface (in-list surfaces)])
-     (let-values ([(nu nv) (surface-nu-nv surface sep)])
+     (let-values ([(nu nv) (surface-nu-nv surface sep-u sep-v)])
        (let ((nodes
               (map-inner-surface-division
                (lambda (pt) (and pt (+z pt height)))
@@ -631,19 +644,20 @@ END
          [surfaces (radiance-surfaces)]
          [grids (radiance-grids)]
          [height : Real (analysis-nodes-height)]
-         [sep : Real (analysis-nodes-separation)])
+         [sep-u : Real (analysis-nodes-u-separation)]
+         [sep-v : Real (analysis-nodes-v-separation)])
   (for/list ((polygon (in-list polygons)))
     (let ((n (v*r (apply points-normal polygon) (colored-panels-height))))
       (shape-color (surface-polygon (map (lambda (p) (p+v p n)) polygon)) (pop! colors))))
   (for/list ([surface (in-list surfaces)])
-    (let-values ([(nu nv) (surface-nu-nv surface sep)])
+    (let-values ([(nu nv) (surface-nu-nv surface sep-u sep-v)])
       (map-inner-surface-division
        (lambda (p)
          (when p
            (shape-color
             (surface-rectangle
-             (+xyz p (/ sep -2) (/ sep -2) height)
-             sep sep)
+             (+xyz p (/ sep-u -2) (/ sep-v -2) height)
+             sep-u sep-v)
             (pop! colors))))
        surface nu nv)
       #;
@@ -716,14 +730,15 @@ END
          [polygons (radiance-polygons)]
          [surfaces (radiance-surfaces)]
          [grids (radiance-grids)]
-         [sep : Real (analysis-nodes-separation)])
+         [sep-u : Real (analysis-nodes-u-separation)]
+         [sep-v : Real (analysis-nodes-v-separation)])
   (call-with-input-file datpath #:mode 'text
     (lambda (port)
       (append
        (read-n-sensors-node-color port (length polygons))
        (append*
         (for/list ([surface (in-list surfaces)])
-          (let-values ([(nu nv) (surface-nu-nv surface sep)])
+          (let-values ([(nu nv) (surface-nu-nv surface sep-u sep-v)])
             (filter
              identity
              (append*
@@ -854,7 +869,8 @@ END
     "_ExportMaterialDefinitions=_No "
     "_YUp=_No "
     "_WrapLongLines=Yes "
-    "_VertexWelding=_Welded "
+    ;"_VertexWelding=_Welded "
+    "_VertexWelding=_Unmodified "
     (format "_WritePrecision=~A " write-precision)
     "Enter "
     (format "_PolygonDensity=~A " polygon-density)
@@ -1091,6 +1107,7 @@ END
           ambient-divisions
           ambient-super-samples))
 
+#;
 (define (write-daysim-daylighting-results port path ellpath)
   (let ((name (path-replace-suffix path "")))
     (fprintf port
@@ -1107,13 +1124,27 @@ DDS_file ~A.sen~%
 END
              name name name ellpath name name name name)))
 
+;;Daylight autonomy
+(define (write-daysim-daylighting-results port path ellpath)
+  (let ((name (path-replace-suffix path "")))
+    (fprintf port
+             #<<END
+# Daylighting Results
+daylight_autonomy_active_RGB ~A_autonomy.DA
+electric_lighting ~A
+direct_sunlight_file ~A.dir
+thermal_simulation ~A_intgain.csv
+DDS_sensor_file ~A.dds
+DDS_file ~A.sen~%
+END
+             name name name ellpath name name name name)))
 
 
 (define (write-daysim-dynamic-simulation
          port
          name
          occupancy
-         [illuminance 500]
+         [illuminance 300 #;3000 #;500] ;By Luis' recommendation
          [dgp-schedule? #f])
   (fprintf port
            #<<END
