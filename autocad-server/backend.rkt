@@ -410,14 +410,15 @@
 (def-shape (extrusion [profile : (Extrudable-Shape RefOp)] [dir : VecOrZ 1])
   (begin0
     (%Extrude (shape-ref profile) (if (number? dir) (vz dir) dir))
-    (delete-shape profile)))
+    (mark-deleted! profile)))
 
 (def-shape (sweep [path : (Curve-Shape RefOp)] [profile : (Extrudable-Shape RefOp)] [rotation : Real 0] [scale : Real 1])
   (begin0
     (map-ref ([profile profile])
       (map-ref ([path path])
         (%Sweep path profile rotation scale)))
-    (delete-shapes (list profile path))))
+    (mark-deleted! profile)
+    (mark-deleted! path)))
 
 
 (define (loft-curve-point [curve : Shape] [point : (Point-Shape Ref)])
@@ -475,7 +476,7 @@
   (begin0
     (map-ref ([surf surf])
       (%Thicken surf h))
-    (delete-shape surf)))
+    (mark-deleted! surf)))
 
 (def-shape (slice [shape : Shape] [p : Loc (u0)] [n : Vec (vz 1 p)])
   (do-ref ([r shape])
