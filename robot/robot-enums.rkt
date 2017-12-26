@@ -27,6 +27,17 @@
   (I_PT_CONCRETE_DEEP_BEAM 18)
   I_PT_BUILDING)
 
+(define-incr-enum IRobotObjectType
+  (I_OT_NODE 0)
+  I_OT_BAR
+  I_OT_CASE
+  I_OT_FAMILY
+  I_OT_PANEL
+  I_OT_FINITE_ELEMENT
+  I_OT_GEOMETRY
+  I_OT_VOLUME
+  (I_OT_OBJECT -2)
+  (I_OT_UNDEFINED -1))
 
 (define-incr-enum IRobotLabelType
   (I_LT_NODE_SUPPORT 0)
