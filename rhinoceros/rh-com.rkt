@@ -312,6 +312,7 @@
   Id)
 |#
 
+(def-com add-network-srf ([objects Ids] #:opt [continuity Integer] ) Id)
 (def-com add-patch ([objects Ids] [u-spans Int] [v-spans Int] #:opt [tolerance Double] [trim Boolean] [point-spacing Double] [flexibility Double] [surface-pull Double] [fix-edges Boolean]) Id)
 (def-com add-planar-srf ([objects Ids]) IdsOrVoid)
 
@@ -625,6 +626,7 @@ DivideCurveEquidistant
       (select-existing-objects objects)))
 (def-com selected-objects (#:opt [include-lights? Boolean] [include-grips? Boolean]) IdsOrVoid)
 (def-com show-objects ([objs Ids]) Boolean)
+(def-com split-curve ([curve Id] [t double] #:opt [delete? Boolean]) IdsOrVoid)
 (def-com split-brep ([brep Id] [cutter Id] #:opt [delete? Boolean]) IdsOrVoid)
 #|
 (provide split-brep-sloppy-n)

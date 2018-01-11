@@ -756,6 +756,21 @@
   (let ((r (shape-ref curve)))
     (%curve-perp-frame r (%curve-closest-point r (%curve-arc-length-point r l)))))
 
+;;Just for Ines Pereira
+
+(provide split-curve network-surface)
+
+(define (split-curve c t)
+  (let-values (((t0 t1) (curve-domain c)))
+    (let ((refs (%split-curve (shape-ref c) (+ t0 (* t (- t1 t0))))))
+      (map (lambda (ref) (new-unknown (lambda () ref))) refs))))
+
+(define (network-surface shapes [continuity : Integer 1])
+  (let ((ref (%add-network-srf (map shape-ref shapes) continuity)))
+    (delete-shapes shapes)
+    (new-unknown (lambda () ref))))
+
+
 ;;HACK These two functions require the default initialization on last? but Typed Racket has a bug and prevents the use of #:forall (A)
 (: map-curve-division (All (A) (->* ((-> Loc A) Shape Integer) (Boolean) (Listof A))))
 (: map-curve-length-division (All (A) (->* ((-> Loc A) Shape Integer) (Boolean) (Listof A))))
