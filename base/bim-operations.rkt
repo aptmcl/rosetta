@@ -271,7 +271,7 @@
   (bim-shape-layer (sphere p (truss-node-family-radius family))
                    (bim-family-layer family)))
   
-(def-shape/no-provide (truss-bar [p0 : Loc] [p1 : Loc] [family : Truss-Bar-Family (default-truss-bar-family)])
+(def-shape/no-provide (truss-bar [p0 : Loc] [p1 : Loc] [angle : Real 0] [family : Truss-Bar-Family (default-truss-bar-family)])
   (bim-shape-layer (cylinder p0 (truss-bar-family-radius family) p1)
                    (bim-family-layer family)))
 )
