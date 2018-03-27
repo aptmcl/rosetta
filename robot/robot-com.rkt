@@ -274,7 +274,8 @@
 (struct truss-node-data
   ([id : Integer]
    [loc : Loc]
-   [family : Any]))
+   [family : Any]
+   [load : Any]))
 
 (define node-counter (make-parameter 0))
 (define added-nodes (make-parameter (make-hasheq)))
@@ -282,10 +283,10 @@
 (define bar-counter (make-parameter 0))
 (define added-bars (make-parameter (make-hasheq)))
 
-(define (add-node! p family)
+(define (add-node! p family [load #f])
   (node-counter (+ (node-counter) 1))
-  (let ((data (truss-node-data (node-counter) p family)))
-    (hash-set! (added-nodes) p data)
+  (let ((data (truss-node-data (node-counter) p family load)))
+    (hash-set! (added-nodes) p data) ; Should we check for collisions here? (nodes at the same location)
     data))
 
 (define (current-nodes-ids)
@@ -379,11 +380,16 @@
     (create-truss)
     (let* ((structure (structure (project (application))))
            (nodes (nodes structure))
-           (bars (bars structure)))
+           (bars (bars structure))
+           (node-loads (make-hasheq
+                        (if v
+                            (list (cons v (map truss-node-data-id (hash-values (added-nodes)))))
+                            (list)))))
       (for ((data (in-hash-values (added-nodes))))
         (let ((node-id (truss-node-data-id data))
               (p (truss-node-data-loc data))
-              (node-family (truss-node-data-family data)))
+              (node-family (truss-node-data-family data))
+              (node-load (truss-node-data-load data)))
           (create-node nodes node-id (cx p) (cy p) (cz p))
           (let ((support (truss-node-family-support node-family)))
             (when support
@@ -392,7 +398,9 @@
                  (unless created?
                    (create-node-support-label name ux uy uz rx ry rz)
                    (set-node-support-created?! support #t))
-                 (set-label (get nodes node-id) I_LT_NODE_SUPPORT name)))))))
+                 (set-label (get nodes node-id) I_LT_NODE_SUPPORT name)))))
+          (when node-load
+            (hash-update! node-loads node-load (lambda (ids) (cons node-id ids)) (list)))))
       (let ((family-bars (make-hasheq)))
         (for ((data (in-hash-values (added-bars))))
           (let ((bar-id (truss-bar-data-id data))
@@ -429,7 +437,7 @@
                 I_CN_PERMANENT ; I_CN_EXPLOATATION I_CN_WIND I_CN_SNOW I_CN_TEMPERATURE I_CN_ACCIDENTAL I_CN_SEISMIC
                 I_CAT_STATIC_LINEAR ;I_CAT_STATIC_NONLINEAR I_CAT_STATIC_FLAMBEMENT
                 (lambda (records)
-                  (new-node-loads records (current-nodes-ids) v))
+                  (new-node-loads records node-loads))
                 process-results))))
 
 ;;Bar release
@@ -557,16 +565,17 @@
     (time (calculate (calc-engine (project (application)))))
     (process-results (results (structure (project (application)))))))
 
-(define (new-node-loads records nodes vec)
-  (let* ((idx (new records I_LRT_NODE_FORCE))
-         (record (get records idx))
-         (objects (objects record)))
-    (for ((node (in-list nodes)))
-      (add-one objects node))
-    (set-value record I_NFRV_FX (cx vec))
-    (set-value record I_NFRV_FY (cy vec))
-    (set-value record I_NFRV_FZ (cz vec))))
-
+(define (new-node-loads records loads)
+  (for (((vec ids) (in-hash loads)))
+    (let* ((idx (new records I_LRT_NODE_FORCE))
+           (record (get records idx))
+           (objects (objects record)))
+      (for ((node-id (in-list ids)))
+        (add-one objects node-id))
+      (set-value record I_NFRV_FX (cx vec))
+      (set-value record I_NFRV_FY (cy vec))
+      (set-value record I_NFRV_FZ (cz vec)))))
+  
 (define (node-displacement-vector results id case-id)
   (let ((d (node-displacement (Displacements (nodes results)) id case-id)))
     (vxyz (UX d)
