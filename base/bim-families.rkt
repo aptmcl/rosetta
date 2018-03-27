@@ -91,15 +91,15 @@
    [coating-thickness : Real 0]))
 
 (def-bim-family wall
-  ([thickness : Real 0.3]))
+  ([thickness : Real 0.2]))
 
 (def-bim-family door
-  ([width : (Option Real) #f]
-   [height : (Option Real) #f]))
+  ([width : (Option Real) 0.8]
+   [height : (Option Real) 2.0]))
 
 (def-bim-family window
-  ([width : (Option Real) #f]
-   [height : (Option Real) #f]))
+  ([width : (Option Real) 1.0]
+   [height : (Option Real) 1.0]))
 
 (def-bim-family column
   ([width : Real 0.1]
