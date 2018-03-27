@@ -232,28 +232,66 @@
     (bim-shape-layer s (bim-family-layer family))
     (shape-reference s)))
 
-(def-shape/no-provide (door [wall : Any] [loc : Loc] [family : Any (default-door-family)])
-  (let ((wall-e (wall-family-thickness (walls-family wall)))
-        (wall-level (walls-bottom-level wall)))
-    (shape-reference
-     (subtraction
-      wall
-      (box (+z loc (level-height wall-level))
-           (door-family-width family)
-           wall-e
-           (door-family-height family))))))
+(define (wall*-family w)
+  (if (wall? w)
+      (wall-family w)
+      (walls-family w)))
 
-(def-shape/no-provide (window [wall : Any] [loc : Loc] [family : Any (default-door-family)])
-  (let ((wall-e (wall-family-thickness (walls-family wall)))
-        (wall-level (walls-bottom-level wall)))
-    (shape-reference
-     (subtraction
-      wall
-      (box (+z loc (level-height wall-level))
-           (window-family-width family)
-           wall-e
-           (window-family-height family))))))
+(define (wall*-bottom-level w)
+  (if (wall? w)
+      (wall-bottom-level w)
+      (walls-bottom-level w)))
 
+(define (wall*-top-level w)
+  (if (wall? w)
+      (wall-top-level w)
+      (walls-top-level w)))
+
+(define (wall*-vertices w)
+  (if (wall? w)
+      (list (wall-p0 w) (wall-p1 w))
+      (walls-vertices w)))
+  
+(define (wall-loc w)
+  (+z (if (wall? w)
+          (wall-p0 w)
+          (car (walls-vertices w)))
+      (level-height (wall*-bottom-level w))))
+
+  
+(define (door [wall : Any] [loc : Loc] [flip-x : Boolean #f] [flip-y : Boolean #f] [family : Any (default-door-family)])
+  (let ((wall-e (wall-family-thickness (wall*-family wall))))
+    (let ((ref
+           (shape-reference
+            (subtraction
+             wall
+             (box (+xyz (wall-loc wall) (cx loc) (- wall-e) (cy loc))
+                  (door-family-width family)
+                  (* 2 wall-e)
+                  (door-family-height family))))))
+      (new-walls (lambda () ref)
+                 (wall*-vertices wall)
+                 (wall*-bottom-level wall)
+                 (wall*-top-level wall)
+                 (wall*-family wall)))))
+
+(define (window [wall : Any] [loc : Loc] [family : Any (default-window-family)])
+  (let ((wall-e (wall-family-thickness (wall*-family wall))))
+    (let ((ref
+           (shape-reference
+            (subtraction
+             wall
+             (box (+xyz (wall-loc wall) (cx loc) (- wall-e) (cy loc))
+                  (window-family-width family)
+                  (* 2 wall-e)
+                  (window-family-height family))))))
+      (new-walls (lambda () ref)
+                 (wall*-vertices wall)
+                 (wall*-bottom-level wall)
+                 (wall*-top-level wall)
+                 (wall*-family wall)))))
+
+      
 
 (def-shape/no-provide (panel [vertices : Locs] [level : Level (current-level)] [family : Panel-Family (default-panel-family)])
   (let ((p0 (second vertices))
