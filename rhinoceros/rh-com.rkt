@@ -70,7 +70,7 @@
 (define-cached (rhino) : Com-Object
   (load-rhino-com
    #;'("Rhino5x64.Application" "Rhino5.Application" "Rhino4.Application")
-   '("Rhino5x64.Interface" "Rhino5.Interface" "Rhino4.Interface")))
+   '("Rhino.Interface.6" "Rhino5x64.Interface" "Rhino5.Interface" "Rhino4.Interface")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;We need to convert from the basic types expected by Rhino's COM interface and the types used in Rosetta
