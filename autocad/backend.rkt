@@ -15,10 +15,12 @@
 (provide immediate-mode?
          current-backend-name
          all-shapes
+         all-shapes-in-layer
          bounding-box
          delete-shape
          delete-shapes
          delete-all-shapes
+         delete-all-shapes-in-layer
          create-layer
          current-layer
          curve-start-location
@@ -94,6 +96,11 @@
   (%erase-all)
   (void))
 
+(define (delete-all-shapes-in-layer layer)
+  (for-each %safe-delete (filter (lambda (ref) (string=? (%layer ref) layer)) (%all-objects)))
+  (void))
+
+
 (define (shape<-ref [r : Ref]) ;HACK Bug in typed/racket : Shape
   (define (coordinates [r : Ref])
     (if (%line? r)
@@ -137,6 +144,8 @@
 (define (all-shapes)
   (map shape<-ref (%all-objects)))
 
+(define (all-shapes-in-layer layer)
+  (map shape<-ref (filter (lambda (ref) (string=? (%layer ref) layer)) (%all-objects))))
 
 (define #:forall (T) (singleton? [l : (Listof T)]) : Boolean
   (and (not (null? l))

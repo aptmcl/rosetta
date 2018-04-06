@@ -15,10 +15,12 @@
          realize!
          current-backend-name
          all-shapes
+         all-shapes-in-layer
          bounding-box
          delete-shape
          delete-shapes
          delete-all-shapes
+         delete-all-shapes-in-layer
          create-layer
          current-layer
          curve-start-location
@@ -125,7 +127,8 @@
 (define (all-shapes)
   (map shape<-ref (%all-objects)))
 
-
+(define (all-shapes-in-layer layer)
+  (map shape<-ref (filter (lambda (ref) (string=? (%object-layer ref) layer)) (%all-objects))))
 
 (def-shape (point [position : Loc (u0)])
   (%add-point position))
@@ -864,6 +867,11 @@
 (define (delete-all-shapes) : Void
   (%delete-objects (%all-objects #f #f #f))
   (void))
+
+(define (delete-all-shapes-in-layer layer)
+  (%delete-objects (filter (lambda (ref) (string=? (%object-layer ref) layer)) (%all-objects)))
+  (void))
+
 
 (provide fast-view)
 (define (fast-view) : Void
