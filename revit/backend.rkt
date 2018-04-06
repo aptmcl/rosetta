@@ -973,6 +973,13 @@ The following example does not work as intended. Rotating the args to closed-spl
 (def-shape (door [wall : Any] [loc : Loc] [family : Any (default-door-family)])
   (%insert-door-relative (shape-reference wall) (cx loc) (cy loc) #:family (bim-family-id family)))
 
+#;#;
+(provide door)
+(define (door [wall : Any] [loc : Loc] [family : Any (default-door-family)])
+  (%insert-door-relative (shape-reference wall) (cx loc) (cy loc) #:family (bim-family-id family))
+  wall)
+
+
 ;This should be moved to a different place (probably, a unit)
 (provide slab-rectangle roof-rectangle)
 (define (slab-rectangle [p : Loc] [length : Real] [width : Real] [level : Level (current-level)] [family : Slab-Family (default-slab-family)])

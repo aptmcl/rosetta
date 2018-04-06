@@ -1,7 +1,7 @@
 #lang typed/racket/base/no-check
 (require typed/racket/unit)
 (require "coord.rkt")
-(require "shapes.rkt")
+(require (except-in "shapes.rkt" new-door new-window))
 (require "bim-families.rkt")
 (provide (all-from-out "bim-families.rkt"))
 (provide bim-ops^
@@ -251,11 +251,15 @@
   (if (wall? w)
       (list (wall-p0 w) (wall-p1 w))
       (walls-vertices w)))
+
+(define (loc-from-p0-p1 p0 p1)
+  (let ((v (p-p p1 p0)))
+    (loc-from-o-vx-vy p0 v (vpol (pol-rho v) (+ (pol-phi v) pi/2)))))
   
 (define (wall-loc w)
   (+z (if (wall? w)
-          (wall-p0 w)
-          (car (walls-vertices w)))
+          (loc-from-p0-p1 (wall-p0 w) (wall-p1 w))
+          (loc-from-p0-p1 (car (walls-vertices w)) (cadr (walls-vertices w))))
       (level-height (wall*-bottom-level w))))
 
   
