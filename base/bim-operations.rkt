@@ -121,10 +121,11 @@
                    [bottom-level : Level (current-level)]
                    [top-level : Level (upper-level bottom-level)]
                    [family : Column-Family (default-column-family)])
-  (let ((width (column-family-width family)))
+  (let ((width (column-family-width family))
+        (depth (column-family-depth family)))
     (let ((s (box (+xyz center (/ width -2) (/ width -2) (level-height bottom-level))
                   width
-                  width
+                  depth
                   (- (level-height top-level) (level-height bottom-level)))))
       (bim-shape-layer s (bim-family-layer family))
       (shape-reference s))))
