@@ -107,7 +107,7 @@
           ((or (%is-line r)
                (%is-polyline r))
            (if (%is-curve-closed r)
-               (new-closed-line f (%curve-points r))
+               (new-closed-line f (drop-right (%curve-points r) 1))
                (new-line f (%curve-points r))))
           ((%is-curve r)
            (if (%is-curve-closed r)
