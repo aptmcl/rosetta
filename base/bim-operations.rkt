@@ -122,11 +122,17 @@
                    [top-level : Level (upper-level bottom-level)]
                    [family : Column-Family (default-column-family)])
   (let ((width (column-family-width family))
+        (circular-section? (column-family-circular-section? family))
         (depth (column-family-depth family)))
-    (let ((s (box (+xyz center (/ width -2) (/ width -2) (level-height bottom-level))
+    (let ((s (if circular-section?
+                 (cylinder
+                  (+z center (level-height bottom-level))
+                  width
+                  (- (level-height top-level) (level-height bottom-level)))
+                 (box (+xyz center (/ width -2) (/ width -2) (level-height bottom-level))
                   width
                   depth
-                  (- (level-height top-level) (level-height bottom-level)))))
+                  (- (level-height top-level) (level-height bottom-level))))))
       (bim-shape-layer s (bim-family-layer family))
       (shape-reference s))))
 
