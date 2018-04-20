@@ -501,11 +501,68 @@ number of points - 1 (array bound)         > 3
       (shape-reference s)))
 
   
-  (def-shape/no-provide (door [wall : Any] [loc : Loc] [family : Any (default-door-family)])
-    "To be continued")
+(define (wall*-family w)
+  (if (wall? w)
+      (wall-family w)
+      (walls-family w)))
 
-  (def-shape/no-provide (window [wall : Any] [loc : Loc] [family : Any (default-window-family)])
-    "To be continued")
+(define (wall*-bottom-level w)
+  (if (wall? w)
+      (wall-bottom-level w)
+      (walls-bottom-level w)))
+
+(define (wall*-top-level w)
+  (if (wall? w)
+      (wall-top-level w)
+      (walls-top-level w)))
+
+(define (wall*-vertices w)
+  (if (wall? w)
+      (list (wall-p0 w) (wall-p1 w))
+      (walls-vertices w)))
+
+(define (loc-from-p0-p1 p0 p1)
+  (let ((v (p-p p1 p0)))
+    (loc-from-o-vx-vy p0 v (vpol (pol-rho v) (+ (pol-phi v) pi/2)))))
+  
+(define (wall-loc w)
+  (+z (if (wall? w)
+          (loc-from-p0-p1 (wall-p0 w) (wall-p1 w))
+          (loc-from-p0-p1 (car (walls-vertices w)) (cadr (walls-vertices w))))
+      (level-height (wall*-bottom-level w))))
+
+  
+(define (door [wall : Any] [loc : Loc] [flip-x : Boolean #f] [flip-y : Boolean #f] [family : Any (default-door-family)])
+  (let ((wall-e (wall-family-thickness (wall*-family wall))))
+    (let ((ref
+           (shape-reference
+            (subtraction
+             wall
+             (box (+xyz (wall-loc wall) (cx loc) (- wall-e) (cy loc))
+                  (door-family-width family)
+                  (* 2 wall-e)
+                  (door-family-height family))))))
+      (new-walls (lambda () ref)
+                 (wall*-vertices wall)
+                 (wall*-bottom-level wall)
+                 (wall*-top-level wall)
+                 (wall*-family wall)))))
+
+(define (window [wall : Any] [loc : Loc] [family : Any (default-window-family)])
+  (let ((wall-e (wall-family-thickness (wall*-family wall))))
+    (let ((ref
+           (shape-reference
+            (subtraction
+             wall
+             (box (+xyz (wall-loc wall) (cx loc) (- wall-e) (cy loc))
+                  (window-family-width family)
+                  (* 2 wall-e)
+                  (window-family-height family))))))
+      (new-walls (lambda () ref)
+                 (wall*-vertices wall)
+                 (wall*-bottom-level wall)
+                 (wall*-top-level wall)
+                 (wall*-family wall)))))
 
   (def-shape/no-provide (panel [vertices : Locs] [level : Any (current-level)] [family : Panel-Family (default-panel-family)])
     (let ((p0 (second vertices))
