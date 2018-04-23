@@ -57,6 +57,7 @@
 (define material/roof-floor (make-parameter generic-floor-20))
 (define material/roof-ceiling (make-parameter generic-ceiling-70))
 (define material/column (make-parameter generic-interior-wall-50))
+(define material/window (make-parameter generic-glass-80))
 
 (define (all-materials)
   (remove-duplicates
@@ -69,7 +70,8 @@
          (material/slab-ceiling)
          (material/roof-floor)
          (material/roof-ceiling)
-         (material/column))))
+         (material/column)
+         (material/window))))
 
 (define (all-materials-names)
   (remove-duplicates
@@ -93,6 +95,14 @@
          material/roof-floor
          material/roof-ceiling
          material/column
+         material/window
+         slab-floor-layer
+         slab-ceiling-layer
+         roof-floor-layer
+         roof-ceiling-layer
+         window-layer
+         ground-layer
+         sensor-layer
          create-plastic-material
          read-sensors
          show-colors-of-sensors
@@ -279,15 +289,17 @@ number of points - 1 (array bound)         > 3
 
 (define-values/invoke-unit/infer bim-levels@)
 
-(define slab-floor-layer (create-layer "SlabFloor"))
-(define slab-ceiling-layer (create-layer "SlabCeiling"))
+(define slab-floor-layer (make-parameter (create-layer "SlabFloor")))
+(define slab-ceiling-layer (make-parameter (create-layer "SlabCeiling")))
 
-(define roof-floor-layer (create-layer "RoofFloor"))
-(define roof-ceiling-layer (create-layer "RoofCeiling"))
+(define roof-floor-layer (make-parameter (create-layer "RoofFloor")))
+(define roof-ceiling-layer (make-parameter (create-layer "RoofCeiling")))
 
-(define ground-layer (create-layer "Ground"))
+(define window-layer (make-parameter (create-layer "Window")))
 
-(define sensor-layer (create-layer "Sensors"))
+(define ground-layer (make-parameter (create-layer "Ground")))
+
+(define sensor-layer (make-parameter (create-layer "Sensors")))
 
 (define (create-surface-layer [vertices : Locs] [height : Real] [layer : Layer] [material : Material])
   (let ((s (surface-polygon
@@ -356,7 +368,7 @@ number of points - 1 (array bound)         > 3
     (if (and (list? vertices) (loc? (car vertices)))
         (let ((surfaces
                (for/list ((height (in-list (list (- (slab-family-thickness family)) 0)))
-                          (layer (in-list (list slab-ceiling-layer slab-floor-layer)))
+                          (layer (in-list (list (slab-ceiling-layer) (slab-floor-layer))))
                           (material (in-list (list (material/slab-ceiling) (material/slab-floor)))))
                  (create-surface-layer vertices (+ (level-height level) height) layer material))))
           (radiance-surfaces (cons (second surfaces) (radiance-surfaces)))
@@ -374,7 +386,7 @@ number of points - 1 (array bound)         > 3
                         ((circle? e)
                          (let ((surfaces
                                 (for/list ((height (in-list (list (- (slab-family-thickness family)) 0)))
-                                           (layer (in-list (list slab-ceiling-layer slab-floor-layer)))
+                                           (layer (in-list (list (slab-ceiling-layer) (slab-floor-layer))))
                                            (material (in-list (list (material/slab-ceiling) (material/slab-floor)))))
                                   (create-surface-layer
                                    (regular-polygon-vertices 32
@@ -398,7 +410,7 @@ number of points - 1 (array bound)         > 3
     (if (and (list? vertices) (loc? (car vertices)))
         (let ((surfaces
                (for/list ((height (in-list (list (- (slab-family-thickness family)) 0)))
-                          (layer (in-list (list slab-ceiling-layer slab-floor-layer)))
+                          (layer (in-list (list (slab-ceiling-layer) (slab-floor-layer))))
                           (material (in-list (list (material/slab-ceiling) (material/slab-floor)))))
                  (create-surface-layer-with-openings vertices paths (+ (level-height level) height) layer material))))
           (radiance-surfaces (cons (second surfaces) (radiance-surfaces)))
@@ -416,7 +428,7 @@ number of points - 1 (array bound)         > 3
                         ((circle? e)
                          (let ((surfaces
                                 (for/list ((height (in-list (list (- (slab-family-thickness family)) 0)))
-                                           (layer (in-list (list slab-ceiling-layer slab-floor-layer)))
+                                           (layer (in-list (list (slab-ceiling-layer) (slab-floor-layer))))
                                            (material (in-list (list (material/slab-ceiling) (material/slab-floor)))))
                                   (create-surface-layer-with-openings
                                    (regular-polygon-vertices 32
@@ -448,7 +460,7 @@ number of points - 1 (array bound)         > 3
                      (let ((surfaces
                             (for/list ((surface (in-list surfaces))
                                        (height (in-list (list 0 (slab-family-thickness family))))
-                                       (layer (in-list (list slab-ceiling-layer slab-floor-layer)))
+                                       (layer (in-list (list (slab-ceiling-layer) (slab-floor-layer))))
                                        (material (in-list (list (material/slab-ceiling) (material/slab-floor)))))
                               (subtraction
                                surface
@@ -466,7 +478,7 @@ number of points - 1 (array bound)         > 3
 
   (def-shape/no-provide (roof [vertices : Locs] [level : Level (current-level)] [family : Roof-Family (default-roof-family)])
     (for/list ((height (in-list (list (- (roof-family-thickness family)) 0)))
-               (layer (in-list (list roof-ceiling-layer roof-floor-layer)))
+               (layer (in-list (list (roof-ceiling-layer) (roof-floor-layer))))
                (material (in-list (list (material/roof-ceiling) (material/roof-floor)))))
       (create-surface-layer vertices (+ (level-height level) height) layer material)))
   
@@ -558,6 +570,12 @@ number of points - 1 (array bound)         > 3
                   (window-family-width family)
                   (* 2 wall-e)
                   (window-family-height family))))))
+      (let ((corner (+xyz (wall-loc wall) (cx loc) 0 (cy loc))))
+        (let ((vertices (list corner
+                              (+x corner (window-family-width family))
+                              (+xz corner (window-family-width family) (window-family-height family))
+                              (+z corner  (window-family-height family)))))
+          (create-surface-layer vertices 0 (window-layer) (material/window))))
       (new-walls (lambda () ref)
                  (wall*-vertices wall)
                  (wall*-bottom-level wall)
@@ -745,7 +763,7 @@ END
   (let ((ptspath (path-replace-suffix path ".pts")))
     (call-with-output-file ptspath #:mode 'text #:exists 'replace
       (lambda (port)
-        (with-current-layer sensor-layer
+        (with-current-layer (sensor-layer)
           (for ([sensor (in-list sensors)])
             (write-sensor-node port sensor)))
         ptspath))))
@@ -872,7 +890,7 @@ END
                  (let ((pts (map (lambda (p)
                                    (intermediate-point center p (* ratio 10)))
                                  (list p0 p1 p2 p3))))
-                   (create-surface-layer pts 0 ground-layer material)))))))))
+                   (create-surface-layer pts 0 (ground-layer) material)))))))))
 
 (provide export-geometry)
 (define (export-geometry
