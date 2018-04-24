@@ -123,13 +123,13 @@
                    [family : Column-Family (default-column-family)])
   (let ((width (column-family-width family))
         (circular-section? (column-family-circular-section? family))
-        (depth (column-family-depth family)))
+        (depth (or (column-family-depth family) (column-family-width family))))
     (let ((s (if circular-section?
                  (cylinder
                   (+z center (level-height bottom-level))
                   width
                   (- (level-height top-level) (level-height bottom-level)))
-                 (box (+xyz center (/ width -2) (/ width -2) (level-height bottom-level))
+                 (box (+xyz center (/ width -2) (/ depth -2) (level-height bottom-level))
                   width
                   depth
                   (- (level-height top-level) (level-height bottom-level))))))
