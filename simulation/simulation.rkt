@@ -354,11 +354,18 @@ number of points - 1 (array bound)         > 3
                                 [bottom-level : Level (current-level)]
                                 [top-level : Level (upper-level bottom-level)]
                                 [family : Column-Family (default-column-family)])
-    (let ((width (column-family-width family)))
-      (let ((s (box (+xyz center (/ width -2) (/ width -2) (level-height bottom-level))
+    (let ((width (column-family-width family))
+          (circular-section? (column-family-circular-section? family))
+          (depth (or (column-family-depth family) (column-family-width family))))
+      (let ((s (if circular-section?
+                   (cylinder
+                    (+z center (level-height bottom-level))
                     width
-                    width
-                    (- (level-height top-level) (level-height bottom-level)))))
+                    (- (level-height top-level) (level-height bottom-level)))
+                   (box (+xyz center (/ width -2) (/ depth -2) (level-height bottom-level))
+                        width
+                        depth
+                        (- (level-height top-level) (level-height bottom-level))))))
         (bim-shape-layer s (bim-family-layer family))
         (shape-material s (material/column))
         (add-radiance-shape! s)
@@ -916,7 +923,7 @@ END
                 (fprintf port "~A (Object \"~A\");~%" (material-name material) (material-name material)))))
           ;;Now, convert the obj to rad
           (radiance-command
-           (format "obj2rad -f -m ~A ~A > ~A"
+           (format "obj2rad -f -m \"~A\" \"~A\" > \"~A\""
                    (path->string mappath)
                    (path->string objpath)
                    (path->string radpath)))))
@@ -1033,7 +1040,7 @@ https://www.energyplus.net/weather-download/north_and_central_america_wmo_region
     (call-with-output-file epwpath #:mode 'text #:exists 'replace
       (lambda (port) (write-bytes bytes port)))
     (radiance-command
-     (format "epw2wea ~A ~A" epwpath weapath))
+     (format "epw2wea \"~A\" \"~A\"" epwpath weapath))
     (call-with-input-file weapath #:mode 'text
       (lambda (port)
         (define (wea-line rx)
@@ -1298,13 +1305,13 @@ END
           (write-daysim-daylighting-results port path ellpath)
           (write-daysim-dynamic-simulation port emppath occpath)
           (write-daysim-sensors port sensors)))
-      (radiance-command (format "radfiles2daysim ~A -m -g" heapath))
-      (radiance-command (format "gen_dc ~A -dif" heapath))
-      (radiance-command (format "gen_dc ~A -dir" heapath))
-      (radiance-command (format "gen_dc ~A -paste" heapath))
-      (radiance-command (format "ds_illum ~A" heapath))
-      (radiance-command (format "gen_directsunlight ~A" heapath))
-      (radiance-command (format "ds_el_lighting ~A" heapath))
+      (radiance-command (format "radfiles2daysim \"~A\" -m -g" heapath))
+      (radiance-command (format "gen_dc \"~A\" -dif" heapath))
+      (radiance-command (format "gen_dc \"~A\" -dir" heapath))
+      (radiance-command (format "gen_dc \"~A\" -paste" heapath))
+      (radiance-command (format "ds_illum \"~A\"" heapath))
+      (radiance-command (format "gen_directsunlight \"~A\"" heapath))
+      (radiance-command (format "ds_el_lighting \"~A\"" heapath))
       (extract-daysim-results ellpath))))
 
 (define (extract-daysim-results path)
@@ -1334,9 +1341,9 @@ END
         (printf "AutoCAD can't make the computation (yet)~%")
         (begin
           (radiance-command
-           (format "oconv ~A ~A ~A > ~A" matpath skypath radpath octpath))
+           (format "oconv \"~A\" \"~A\" \"~A\" > \"~A\"" matpath skypath radpath octpath))
           (radiance-command
-           (format "rtrace -I -h -dp 2048 -ms 0.063 -ds .2 -dt .05 -dc .75 -dr 3 -st .01 -lr 12 -lw .0005 ~A ~A < ~A > ~A"
+           (format "rtrace -I -h -dp 2048 -ms 0.063 -ds .2 -dt .05 -dc .75 -dr 3 -st .01 -lr 12 -lw .0005 ~A \"~A\" < \"~A\" > \"~A\""
                    parameters octpath ptspath datpath))))
     (present-sensors-colors datpath)))
 
