@@ -32,8 +32,8 @@
       (make-temporary-file)))
 
 (define analysis-nodes-height : (Parameterof Real) (make-parameter 0.5))
-(define analysis-nodes-separation-u : (Parameterof (Option Real)) (make-parameter 4.0))
-(define analysis-nodes-separation-v : (Parameterof (Option Real)) (make-parameter 4.0))
+(define analysis-nodes-separation-u : (Parameterof (Option Real)) (make-parameter #f))
+(define analysis-nodes-separation-v : (Parameterof (Option Real)) (make-parameter #f))
 (define analysis-nodes-separation : (Parameterof Real) (make-parameter 4.0))
 
 (define (analysis-nodes-u-separation)
@@ -61,6 +61,7 @@
 
 (define (all-materials)
   (remove-duplicates
+   #;
    (list (material/default)
          (material/ground)
          (material/beam)
@@ -71,7 +72,8 @@
          (material/roof-floor)
          (material/roof-ceiling)
          (material/column)
-         (material/window))))
+         (material/window))
+   (map shape-material (append (radiance-shapes) (radiance-surfaces)))))
 
 (define (all-materials-names)
   (remove-duplicates
