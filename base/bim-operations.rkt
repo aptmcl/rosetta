@@ -280,11 +280,13 @@
                   (door-family-width family)
                   (* 2 wall-e)
                   (door-family-height family))))))
-      (new-walls (lambda () ref)
+      (shape-material
+       (new-walls (lambda () ref)
                  (wall*-vertices wall)
                  (wall*-bottom-level wall)
                  (wall*-top-level wall)
-                 (wall*-family wall)))))
+                 (wall*-family wall))
+       (shape-material wall)))))
 
 (define (window [wall : Any] [loc : Loc] [family : Any (default-window-family)])
   (let ((wall-e (wall-family-thickness (wall*-family wall))))
@@ -296,12 +298,13 @@
                   (window-family-width family)
                   (* 2 wall-e)
                   (window-family-height family))))))
-      (new-walls (lambda () ref)
-                 (wall*-vertices wall)
-                 (wall*-bottom-level wall)
-                 (wall*-top-level wall)
-                 (wall*-family wall)))))
-
+      (shape-material
+       (new-walls (lambda () ref)
+                  (wall*-vertices wall)
+                  (wall*-bottom-level wall)
+                  (wall*-top-level wall)
+                  (wall*-family wall))
+       (shape-material wall)))))
       
 
 (def-shape/no-provide (panel [vertices : Locs] [level : Level (current-level)] [family : Panel-Family (default-panel-family)])
