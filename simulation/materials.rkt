@@ -21,7 +21,7 @@
    blue)
   #:methods gen:radiance
   [(define (radiance-string mat)
-     (format "void ~A ~A~%0~%0~%5 ~A ~A ~A~%"
+     (format "void ~A ~A~%0~%0~%3 ~A ~A ~A~%"
              (material-type mat)
              (material-name mat)
              (material-red mat)
