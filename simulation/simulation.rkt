@@ -489,20 +489,26 @@ number of points - 1 (array bound)         > 3
                (material (in-list (list (material/roof-ceiling) (material/roof-floor)))))
       (create-surface-layer vertices (+ (level-height level) height) layer material)))
   
-  (def-shape/no-provide (wall [p0 : Loc] [p1 : Loc]
-                              [bottom-level : Level (current-level)]
-                              [top-level : Level (upper-level bottom-level)]
-                              [family : Wall-Family (default-wall-family)])
+  (define (wall [p0 : Loc] [p1 : Loc]
+                [bottom-level : Level (current-level)]
+                [top-level : Level (upper-level bottom-level)]
+                [family : Wall-Family (default-wall-family)])
     (let ((height (- (level-height top-level) (level-height bottom-level))))
       (let ((h/2 (/ height 2)))
-        (let ((s (right-cuboid (+z p0 (+ (level-height bottom-level) h/2))
-                               (wall-family-thickness family)
-                               height
-                               (+z p1 (+ (level-height bottom-level) h/2)))))
-          (bim-shape-layer s (bim-family-layer family))
-          (shape-material s (material/wall))
-          (add-radiance-shape! s)
-          (shape-reference s)))))
+        (let ((ref (shape-reference
+                    (right-cuboid (+z p0 (+ (level-height bottom-level) h/2))
+                                  (wall-family-thickness family)
+                                  height
+                                  (+z p1 (+ (level-height bottom-level) h/2))))))
+          (let ((s (new-wall (lambda () ref)
+                             p0 p1
+                             bottom-level
+                             top-level
+                             family)))
+            (bim-shape-layer s (bim-family-layer family))
+            (shape-material s (material/wall))
+            (add-radiance-shape! s)
+            s)))))
 
   (def-shape/no-provide (walls [vertices : Locs]
                                [bottom-level : Level (current-level)]
@@ -568,6 +574,7 @@ number of points - 1 (array bound)         > 3
                  (wall*-family wall)))))
 
 (define (window [wall : Any] [loc : Loc] [family : Any (default-window-family)])
+  (shape-material wall) 
   (let ((wall-e (wall-family-thickness (wall*-family wall))))
     (let ((ref
            (shape-reference
@@ -583,12 +590,17 @@ number of points - 1 (array bound)         > 3
                               (+xz corner (window-family-width family) (window-family-height family))
                               (+z corner  (window-family-height family)))))
           (create-surface-layer vertices 0 (window-layer) (material/window))))
-      (new-walls (lambda () ref)
-                 (wall*-vertices wall)
-                 (wall*-bottom-level wall)
-                 (wall*-top-level wall)
-                 (wall*-family wall)))))
-
+      (let ((w
+             (shape-material
+              (new-walls (lambda () ref)
+                         (wall*-vertices wall)
+                         (wall*-bottom-level wall)
+                         (wall*-top-level wall)
+                         (wall*-family wall))
+              (shape-material wall))))
+        (add-radiance-shape! w)
+        w))))
+  
   (def-shape/no-provide (panel [vertices : Locs] [level : Any (current-level)] [family : Panel-Family (default-panel-family)])
     (let ((p0 (second vertices))
           (p1 (first vertices))
