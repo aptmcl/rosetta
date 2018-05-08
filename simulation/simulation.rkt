@@ -155,8 +155,7 @@ number of points - 1 (array bound)         > 3
 (define radiance-shapes (make-parameter (list)))
 (provide radiance-shapes add-radiance-shape!)
 (define (add-radiance-shape! s)
-  (when (analyze-surfaces)
-    (radiance-shapes (cons s (radiance-shapes))))
+  (radiance-shapes (cons s (radiance-shapes)))
   s)
 
 (provide with-simulation)
@@ -383,7 +382,7 @@ number of points - 1 (array bound)         > 3
                           (layer (in-list (list (slab-ceiling-layer) (slab-floor-layer))))
                           (material (in-list (list (material/slab-ceiling) (material/slab-floor)))))
                  (create-surface-layer vertices (+ (level-height level) height) layer material))))
-          (radiance-surfaces (cons (second surfaces) (radiance-surfaces)))
+          (add-radiance-surface! (second surfaces))
           surfaces)
         (let ((path (if (list? vertices) vertices (list vertices))))
           (let loop ((p path))
@@ -407,7 +406,7 @@ number of points - 1 (array bound)         > 3
                                    (+ (level-height level) height)
                                    layer
                                    material))))
-                           (radiance-surfaces (cons (second surfaces) (radiance-surfaces)))
+                           (add-radiance-surface! (second surfaces))
                            surfaces))
                         (else
                          (error "Unknown path component" e)))))))))
@@ -425,7 +424,7 @@ number of points - 1 (array bound)         > 3
                           (layer (in-list (list (slab-ceiling-layer) (slab-floor-layer))))
                           (material (in-list (list (material/slab-ceiling) (material/slab-floor)))))
                  (create-surface-layer-with-openings vertices paths (+ (level-height level) height) layer material))))
-          (radiance-surfaces (cons (second surfaces) (radiance-surfaces)))
+          (add-radiance-surface! (second surfaces))
           surfaces)
         (let ((path (if (list? vertices) vertices (list vertices))))
           (let loop ((p path))
@@ -449,7 +448,7 @@ number of points - 1 (array bound)         > 3
                                    (+ (level-height level) height)
                                    layer
                                    material))))
-                           (radiance-surfaces (cons (second surfaces) (radiance-surfaces)))
+                           (add-radiance-surface! (second surfaces))
                            surfaces))
                         (else
                          (error "Unknown path component" e)))))))))
@@ -483,7 +482,7 @@ number of points - 1 (array bound)         > 3
                                 (+ (level-height level) height)
                                 layer
                                 material)))))
-                       (radiance-surfaces (cons (second surfaces) (radiance-surfaces)))
+                       (add-radiance-surface! (second surfaces))
                        surfaces))
                     (else
                      (error "Unknown path component" e))))))))
