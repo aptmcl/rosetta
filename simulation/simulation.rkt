@@ -139,9 +139,11 @@ number of points - 1 (array bound)         > 3
 
 
 (define radiance-surfaces (make-parameter (list)))
-(provide radiance-surfaces add-radiance-surface!)
+(define analyze-surfaces (make-parameter #t))
+(provide radiance-surfaces add-radiance-surface! analyze-surfaces)
 (define (add-radiance-surface! s)
-  (radiance-surfaces (cons s (radiance-surfaces)))
+  (when (analyze-surfaces)
+    (radiance-surfaces (cons s (radiance-surfaces))))
   s)
 
 (define radiance-grids (make-parameter (list)))
