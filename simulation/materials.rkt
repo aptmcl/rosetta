@@ -104,6 +104,37 @@
                    #:green green
                    #:blue blue))
 
+
+(struct trans-material extended-material
+  (transmissivity
+   transmitted-specular)
+  #:methods gen:radiance
+  [(define (radiance-string mat)
+     (format "void ~A ~A~%0~%0~%7 ~A ~A ~A ~A ~A ~A ~A~%"
+             (material-type mat)
+             (material-name mat)
+             (material-red mat)
+             (material-green mat)
+             (material-blue mat)
+             (extended-material-specularity mat)
+             (extended-material-roughness mat)
+             (trans-material-transmissivity mat)
+             (trans-material-transmitted-specular mat)))])
+
+(define (create-trans-material
+         name
+         type
+         #:gray [gray 0.3]
+         #:red [red gray]
+         #:green [green gray]
+         #:blue [blue gray]
+         #:specularity [specularity 0]
+         #:roughness [roughness 0]
+         #:transmissivity [transmissivity 0]
+         #:transmitted-specular [transmitted-specular 0])
+  (trans-material name type red green blue specularity roughness transmissivity transmitted-specular))
+
+
 ;;Some pre-defined materials
 (define material-white (create-plastic-material "white" #:gray 1.0))
 (define generic-ceiling-70 (create-plastic-material "GenericCeiling_70" #:gray 0.7))
