@@ -155,7 +155,8 @@ number of points - 1 (array bound)         > 3
 (define radiance-shapes (make-parameter (list)))
 (provide radiance-shapes add-radiance-shape!)
 (define (add-radiance-shape! s)
-  (radiance-shapes (cons s (radiance-shapes)))
+  (when (analyze-surfaces)
+    (radiance-shapes (cons s (radiance-shapes))))
   s)
 
 (provide with-simulation)
