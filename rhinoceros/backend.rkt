@@ -808,7 +808,7 @@
             (vector-ref v 0) (vector-ref v 1))))
 
 (define (surface-frame-at [surface : Shape] [u : Real] [v : Real]) : Loc
-  (%surface-frame (shape-ref surface) u v))
+  (%surface-frame (shape-ref surface) (vector u v)))
 
 
 (define map-surface-division
