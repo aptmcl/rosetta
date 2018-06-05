@@ -305,15 +305,25 @@ number of points - 1 (array bound)         > 3
 
 (define sensor-layer (make-parameter (create-layer "Sensors")))
 
-(define (create-surface-layer [vertices : Locs] [height : Real] [layer : Layer] [material : Material])
-  (let ((s (surface-polygon
-            (map (lambda ([p : Loc])
-                   (+z p (+ height)))
-                 vertices))))
-    (shape-layer s layer)
-    (shape-material s material)
-    (add-radiance-shape! s)
-    s))
+(define (create-surface-layer [e : Any] [height : Real] [layer : Layer] [material : Material] [add? : Boolean #t])
+  (let ((vertices
+         (if (list? e)
+             e
+             (if (circle? e)
+                 (regular-polygon-vertices
+                  32
+                  (+z (circle-center e) (- (cz (circle-center e))))
+                  (circle-radius e))
+                 (error "Unrecognized shape")))))
+    (let ((s (surface-polygon
+              (map (lambda ([p : Loc])
+                     (+z p (+ height)))
+                   vertices))))
+      (when add?
+        (shape-layer s layer)
+        (shape-material s material)
+        (add-radiance-shape! s))
+      s)))
 
 (define-unit bim-surface-ops@
   (import bim-ops-dependencies^ bim-levels^)
@@ -416,7 +426,7 @@ number of points - 1 (array bound)         > 3
     (define (create-surface-layer-with-openings vertices paths height layer material)
       (let ((s (create-surface-layer vertices height layer material)))
         (for ((path (in-list paths)))
-          (set! s (subtraction s (create-surface-layer path height layer material))))
+          (set! s (subtraction s (create-surface-layer path height layer material #f))))
         s))
     (if (and (list? vertices) (loc? (car vertices)))
         (let ((surfaces
