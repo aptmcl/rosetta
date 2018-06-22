@@ -422,11 +422,12 @@
         ;;r0 and r1 have something in common
         (single-ref-or-union (show "Boolean intersection:" res)))))
 
-
 (define (align-normal s1 s2)
   (when (and (not (%is-object-solid s1))
-             (< (abs (- (v.v (unitize (%surface-normal s1 (vector 0 0)))
-                             (unitize (%surface-normal s2 (vector 0 0)))) 1)) 1e-6))
+             (< (abs (+ (v.v (unitize (%surface-normal s1 (vector 0 0)))
+                             (unitize (%surface-normal s2 (vector 0 0))))
+                        1))
+                1e-6))
     (%flip-surface s1 #t))
   s1)
 
