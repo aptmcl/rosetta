@@ -425,8 +425,8 @@
 
 (define (align-normal s1 s2)
   (when (and (not (%is-object-solid s1))
-             (< (v.v (%surface-normal s1 (vector 0 0))
-                     (%surface-normal s2 (vector 0 0))) 1e-6))
+             (< (abs (- (v.v (unitize (%surface-normal s1 (vector 0 0)))
+                             (unitize (%surface-normal s2 (vector 0 0)))) 1)) 1e-6))
     (%flip-surface s1 #t))
   s1)
 
