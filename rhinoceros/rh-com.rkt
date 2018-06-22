@@ -497,6 +497,7 @@ DivideCurveEquidistant
 (def-com (extrude-curve-direction ExtrudeCurveStraight) ([curve Id] [v Point]) Id)
 (def-com extrude-curve-tapered ([curve Id] [distance Double] [direction Point] [base Point] [angle Double] #:opt [corner-type Integer]) Id)
 (def-com extrude-surface ([surface Id] (curve Id) #:opt [cap Boolean]) Id)
+(def-com flip-surface ([surface Id] #:opt [flipped Boolean]) Boolean)
 (def-com get-integer (#:opt [message String] [default Integer] [min Integer] [max Integer]) Integer)
 (def-com get-object (#:opt [message String] [type Integer] [pre-select? Boolean] [select? Boolean] [objects Ids]) Id)
 (def-com get-point (#:opt [message String] [point Point] [radius Double] [plane? Boolean]) Point)

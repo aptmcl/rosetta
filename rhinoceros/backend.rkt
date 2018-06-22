@@ -422,8 +422,16 @@
         ;;r0 and r1 have something in common
         (single-ref-or-union (show "Boolean intersection:" res)))))
 
+
+(define (align-normal s1 s2)
+  (when (and (not (%is-object-solid s1))
+             (< (v.v (%surface-normal s1 (vector 0 0))
+                     (%surface-normal s2 (vector 0 0))) 1e-6))
+    (%flip-surface s1 #t))
+  s1)
+
 (define (subtract-ref [r0 : Ref] [r1 : Ref]) : RefOp
-  (let ((res (%boolean-difference (list r0) (list r1) #t)))
+  (let ((res (%boolean-difference (list r0) (list (align-normal r1 r0)) #t)))
     (if (null? res)
         (let ((c1 (show "Point 1:" (%point-in-surface r1))))
           (if (or (%is-point-in-surface r0 c1) (%is-point-on-surface r0 c1))
