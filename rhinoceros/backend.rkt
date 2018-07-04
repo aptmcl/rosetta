@@ -54,6 +54,8 @@
          shape-color
          show-shape
          zoom-extents
+
+         shape-refs
 )
 
 (require racket/include)
