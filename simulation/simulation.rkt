@@ -958,7 +958,8 @@ END
 (define (export-obj objpath shapes write-precision polygon-density)
   (when (null? shapes) (error "No shapes can be exported. Did you forget to assign materials?"))
   (for ((shape (in-list shapes)))
-    (%object-name (shape-reference shape) (material-name (shape-material shape))))
+    (for ((ref (in-list (shape-refs shape))))
+      (%object-name ref (material-name (shape-material shape)))))
   ;;Write the obj file
   (select-shapes shapes)
   (%command
