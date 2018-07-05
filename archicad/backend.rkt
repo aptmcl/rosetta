@@ -23,7 +23,9 @@
 (require "geometry.rkt")
 (provide (all-from-out "geometry.rkt"))
 
+(require (only-in "communication.rkt" view-2d view-3d))
 (provide
+ view-2d view-3d
  #|         mt
          ft
          box
