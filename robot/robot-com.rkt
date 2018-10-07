@@ -283,11 +283,16 @@
 (define bar-counter (make-parameter 0))
 (define added-bars (make-parameter (make-hasheq)))
 
-(define (add-node! p family [load #f])
-  (node-counter (+ (node-counter) 1))
-  (let ((data (truss-node-data (node-counter) p family load)))
-    (hash-set! (added-nodes) p data) ; Should we check for collisions here? (nodes at the same location)
-    data))
+(define (add-node! p family [load #f] [reuse? #f])
+  (or (and reuse?
+           (for/or ([(k v) (in-hash (added-nodes))])
+             (and (< (distance k p) reuse?)
+                  k))) ;We should check that the families are the same. What about the loads?
+      (begin
+        (node-counter (+ (node-counter) 1))
+        (let ((data (truss-node-data (node-counter) p family load)))
+          (hash-set! (added-nodes) p data) ; Should we check for collisions here? (nodes at the same location)
+          data))))
 
 (define (current-nodes-ids)
   (range (+ (node-counter) 1)))
