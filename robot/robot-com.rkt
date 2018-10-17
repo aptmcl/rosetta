@@ -315,7 +315,7 @@
                                   (find-prox-node-data p0 reuse?)
                                   (hash-ref (added-nodes) p0))
                               (if reuse?
-                                  (find-prox-node-nada p1 reuse?)
+                                  (find-prox-node-data p1 reuse?)
                                   (hash-ref (added-nodes) p1))
                               rotation
                               family)))
