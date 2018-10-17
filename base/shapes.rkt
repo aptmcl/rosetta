@@ -558,7 +558,7 @@
 (def-base-shape 3D-shape (window [wall : Any] [loc : Loc] [family : Any]))
 (def-base-shape 3D-shape (panel [vertices : Locs] [level : Any] [family : Any]))
 (def-base-shape 3D-shape (truss-node [p : Loc] [family : Any] [reuse? : Bool #f]))
-(def-base-shape 3D-shape (truss-bar [p0 : Loc] [p1 : Loc] [angle : Real] [family : Any]))
+(def-base-shape 3D-shape (truss-bar [p0 : Loc] [p1 : Loc] [angle : Real] [family : Any] [reuse? : Bool #f]))
 
 ;;Properties
 
