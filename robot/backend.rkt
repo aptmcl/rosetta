@@ -71,8 +71,8 @@
 (def-shape (truss-node [p : Loc] [family : Truss-Node-Family (default-truss-node-family)] [reuse? : Bool #f])
   (%add-node! p family #f (if (eq? reuse? #t) 1e-16 reuse?)))
 
-(def-shape (truss-bar [p0 : Loc] [p1 : Loc] [angle : Real #f] [family : Truss-Bar-Family (default-truss-bar-family)])
-  (%add-bar! p0 p1 angle family))
+(def-shape (truss-bar [p0 : Loc] [p1 : Loc] [angle : Real #f] [family : Truss-Bar-Family (default-truss-bar-family)] [reuse? : Bool #f])
+  (%add-bar! p0 p1 angle family (if (eq? reuse? #t) 1e-16 reuse?)))
 
 (require "robot-enums.rkt")
 (provide (all-from-out "robot-enums.rkt"))

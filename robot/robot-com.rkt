@@ -283,14 +283,14 @@
 (define bar-counter (make-parameter 0))
 (define added-bars (make-parameter (make-hasheq)))
 
-(define (find-prox-node-data p)
+(define (find-prox-node-data p dist)
   (for/or ([(k v) (in-hash (added-nodes))])
-    (and (< (distance k p) reuse?)
+    (and (< (distance k p) dist)
          v)))
 
 (define (add-node! p family [load #f] [reuse? #f])
   (or (and reuse?
-           (find-prox-node-data p)) ;We should check that the families are the same. What about the loads?
+           (find-prox-node-data p reuse?)) ;We should check that the families are the same. What about the loads?
       (begin
         (node-counter (+ (node-counter) 1))
         (let ((data (truss-node-data (node-counter) p family load)))
@@ -308,11 +308,15 @@
    [rotation : Double]
    [family : Any]))
 
-(define (add-bar! p0 p1 rotation family)
+(define (add-bar! p0 p1 rotation family [reuse? #t])
   (bar-counter (+ (bar-counter) 1))
   (let ((data (truss-bar-data (bar-counter)
-                              (find-prox-node-data p0)
-                              (find-prox-node-data p1)
+                              (if reuse?
+                                  (find-prox-node-data p0 reuse?)
+                                  (hash-ref (added-nodes) p0))
+                              (if reuse?
+                                  (find-prox-node-nada p1 reuse?)
+                                  (hash-ref (added-nodes) p1))
                               rotation
                               family)))
     (hash-set! (added-bars) (bar-counter) data)
