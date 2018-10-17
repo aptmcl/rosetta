@@ -287,7 +287,7 @@
   (or (and reuse?
            (for/or ([(k v) (in-hash (added-nodes))])
              (and (< (distance k p) reuse?)
-                  k))) ;We should check that the families are the same. What about the loads?
+                  v))) ;We should check that the families are the same. What about the loads?
       (begin
         (node-counter (+ (node-counter) 1))
         (let ((data (truss-node-data (node-counter) p family load)))
