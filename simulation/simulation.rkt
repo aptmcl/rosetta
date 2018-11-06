@@ -1250,7 +1250,7 @@ thermal_simulation ~A_intgain.csv
 DDS_sensor_file ~A.dds
 DDS_file ~A.sen~%
 END
-             name name name ellpath name name name name)))
+             name (~a name "_electriclighting.htm") name ellpath name name)))
 
 
 (define (write-daysim-dynamic-simulation
