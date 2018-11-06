@@ -1061,8 +1061,12 @@ https://www.energyplus.net/weather-download/north_and_central_america_wmo_region
    "https://www.energyplus.net/weather-download/north_and_central_america_wmo_region_4/USA/AK/USA_AK_Anchorage.Intl.AP.702730_TMY3/USA_AK_Anchorage.Intl.AP.702730_TMY3.epw"))
 
 (define (get-weather-for-location [path : Path] [location (current-location)])
-  (let ((bytes (port->bytes (get-pure-port (string->url location))))
-        (epwpath (path-replace-suffix path ".epw"))
+  (if (regexp-match? #rx"^http" location)
+      (get-weather-from-bytes path (port->bytes (get-pure-port (string->url location))))
+      (get-weather-from-bytes path (file->bytes location))))
+
+(define (get-weather-from-bytes [path : Path] bytes)
+  (let ((epwpath (path-replace-suffix path ".epw"))
         (weapath (path-replace-suffix path ".wea")))
     (call-with-output-file epwpath #:mode 'text #:exists 'replace
       (lambda (port) (write-bytes bytes port)))
