@@ -1257,7 +1257,7 @@ END
          port
          name
          occupancy
-         [illuminance 300 #;3000 #;500] ;By Luis' recommendation Isn't this going to affect UDI?
+         [illuminance 300 #;3000 #;500] ;By Luis' recommendation. Isn't this going to affect UDI?
          [dgp-schedule? #f])
   (fprintf port
            #<<END
@@ -1344,7 +1344,9 @@ END
       (radiance-command (format "gen_dc \"~A\" -paste" heapath))
       (radiance-command (format "ds_illum \"~A\"" heapath))
       (radiance-command (format "gen_directsunlight \"~A\"" heapath))
-      (radiance-command (format "ds_el_lighting \"~A\" ~A ~A" heapath min-udi max-udi))
+      (if (and (= min-udi 100.0) (= max-udi 2000.0))
+          (radiance-command (format "ds_el_lighting \"~A\"" heapath))
+          (radiance-command (format "ds_el_lighting \"~A\" ~A ~A" heapath min-udi max-udi)))
       (extract-daysim-results ellpath))))
 
 (define (extract-daysim-results path)
