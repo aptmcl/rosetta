@@ -86,6 +86,8 @@
          analysis-nodes-separation
          analysis-nodes-separation-u
          analysis-nodes-separation-v
+         daysim-min-udi
+         daysim-max-udi
          sensors
          material/default
          material/ground
