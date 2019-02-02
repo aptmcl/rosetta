@@ -1257,7 +1257,7 @@ END
          port
          name
          occupancy
-         [illuminance 300 #;3000 #;500] ;By Luis' recommendation
+         [illuminance 300 #;3000 #;500] ;By Luis' recommendation Isn't this going to affect UDI?
          [dgp-schedule? #f])
   (fprintf port
            #<<END
@@ -1316,7 +1316,9 @@ END
          #:date [date : Date (current-date)]
          #:location [location : String (current-location)]
          #:occupancy [occupancy-file : String "weekdays9to5withDST.60min.occ.csv"]
-         #:parameters [parameters : String "-ab 2 -ad 1000 -as 20 -ar 300 -aa 0.1"])
+         #:parameters [parameters : String "-ab 2 -ad 1000 -as 20 -ar 300 -aa 0.1"]
+         #:min-udi [min-udi : Real 100.0]
+         #:max-udi [max-udi : Real 2000.0])
   ;(append-ies-xform path)
   (let ((radpath (export-geometry path))
         (matpath (export-materials path))
@@ -1342,7 +1344,7 @@ END
       (radiance-command (format "gen_dc \"~A\" -paste" heapath))
       (radiance-command (format "ds_illum \"~A\"" heapath))
       (radiance-command (format "gen_directsunlight \"~A\"" heapath))
-      (radiance-command (format "ds_el_lighting \"~A\"" heapath))
+      (radiance-command (format "ds_el_lighting \"~A\" ~A ~A" heapath min-udi max-udi))
       (extract-daysim-results ellpath))))
 
 (define (extract-daysim-results path)
