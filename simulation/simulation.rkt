@@ -86,6 +86,7 @@
          analysis-nodes-separation
          analysis-nodes-separation-u
          analysis-nodes-separation-v
+         daysim-min-illuminance
          daysim-min-udi
          daysim-max-udi
          sensors
@@ -1254,12 +1255,13 @@ DDS_file ~A.sen~%
 END
              name (~a name "_electriclighting.htm") name ellpath name name)))
 
+(define daysim-min-illuminance (make-parameter 300))
 
 (define (write-daysim-dynamic-simulation
          port
          name
          occupancy
-         [illuminance 300 #;3000 #;500] ;By Luis' recommendation. Isn't this going to affect UDI?
+         [illuminance (daysim-min-illuminance) #;3000 #;500] ;By Luis' recommendation. Isn't this going to affect UDI?
          [dgp-schedule? #f])
   (fprintf port
            #<<END
