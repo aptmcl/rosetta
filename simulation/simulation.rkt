@@ -1310,6 +1310,9 @@ END
                      y-resolution)
             vfpath))))))
 
+(define daysim-min-udi (make-parameter 100.0))
+(define daysim-max-udi (make-parameter 2000.0))
+
 (define (export-to-daysim
          [path : Path (simulation-path)]
          #:sensors [sensors (sensors)]
@@ -1317,8 +1320,8 @@ END
          #:location [location : String (current-location)]
          #:occupancy [occupancy-file : String "weekdays9to5withDST.60min.occ.csv"]
          #:parameters [parameters : String "-ab 2 -ad 1000 -as 20 -ar 300 -aa 0.1"]
-         #:min-udi [min-udi : Real 100.0]
-         #:max-udi [max-udi : Real 2000.0])
+         #:min-udi [min-udi : Real (daysim-min-udi)]
+         #:max-udi [max-udi : Real (daysim-max-udi)])
   ;(append-ies-xform path)
   (let ((radpath (export-geometry path))
         (matpath (export-materials path))
