@@ -82,6 +82,7 @@
 
 (provide simulation-path
          current-location
+         current-occupancy
          analysis-nodes-height
          analysis-nodes-separation
          analysis-nodes-separation-u
@@ -1293,6 +1294,8 @@ END
 
 (define-runtime-path occupancy-directory "occupancy")
 
+(define current-occupancy (make-parameter "weekdays9to5withDST.60min.occ.csv"))
+
 
 (define (export-viewpoint [path : Path (simulation-path)]
                           [x-resolution : Integer 800]
@@ -1322,7 +1325,7 @@ END
          #:sensors [sensors (sensors)]
          #:date [date : Date (current-date)]
          #:location [location : String (current-location)]
-         #:occupancy [occupancy-file : String "weekdays9to5withDST.60min.occ.csv"]
+         #:occupancy [occupancy-file : String (current-occupancy)]
          #:parameters [parameters : String "-ab 2 -ad 1000 -as 20 -ar 300 -aa 0.1"]
          #:min-udi [min-udi : Real (daysim-min-udi)]
          #:max-udi [max-udi : Real (daysim-max-udi)])
