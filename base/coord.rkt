@@ -932,7 +932,7 @@
 
 (provide locs->vector-3-single-flonums)
 (define (locs->vector-3-single-flonums [cs : (Listof Loc)]) : (Vectorof Single-Flonum)
-  (let ((v ((inst make-vector Single-Flonum) (* (length cs) 3) 0.0f0))
+  (let ((v ((inst make-vector Single-Flonum) (* (length cs) 3) (real->single-flonum 0.0)))
         (i 0))
     (for ((c (in-list cs)))
       (let ((c (loc-in-world c)))
