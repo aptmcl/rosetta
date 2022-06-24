@@ -1,6 +1,6 @@
 #lang typed/racket/base/no-check
 (require (for-syntax racket/base)
-         racket/path racket/file racket/format)
+         racket/path racket/file racket/format racket/list racket/math)
 
 (provide singleton? singleton-ref)
 (define #:forall (T) (singleton? [l : (Listof T)]) : Boolean

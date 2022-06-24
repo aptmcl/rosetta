@@ -1,7 +1,8 @@
 #lang typed/racket/base/no-check
 (require typed/racket/unit)
 (require (for-syntax racket/base racket/list racket/syntax)
-         (only-in racket/base [box rk:box]))
+         (only-in racket/base [box rk:box])
+         racket/list)
 
 (struct bim-family
   ([path : String]

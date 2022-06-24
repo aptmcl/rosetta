@@ -1,7 +1,8 @@
 #lang typed/racket/base/no-check
 (require (for-syntax racket/base racket/list))
-(require racket/function racket/string racket/match racket/port racket/file)
-(require (except-in math random-integer)
+(require racket/function racket/string racket/match racket/port racket/file
+         racket/list)
+(require (except-in math random-integer permutations)
          "../base/typed-com.rkt"
          "../base/utils.rkt"
          "../base/coord.rkt"

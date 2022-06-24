@@ -18,7 +18,8 @@
 (require racket/file)
 (require racket/runtime-path)
 (require racket/system)
-(require racket/date)
+(require racket/date racket/list racket/unit racket/function racket/match
+         racket/port racket/math)
 (require net/url)
 (require (only-in math/base sum))
 
