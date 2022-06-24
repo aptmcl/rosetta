@@ -1,5 +1,5 @@
 #lang typed/racket/base/no-check
-(require typed/racket/unit)
+(require typed/racket/unit racket/list)
 (require "coord.rkt")
 (require (except-in "shapes.rkt" new-door new-window))
 (require "bim-families.rkt")
